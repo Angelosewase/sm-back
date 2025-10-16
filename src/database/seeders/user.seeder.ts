@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User } from '../../users/schemas/user.schema';
+import { User, Role } from '../../users/schemas/user.schema';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -27,6 +27,7 @@ export class UserSeeder {
       email: 'sewasejo8@gmail.com',
       password: hashedPassword,
       name: 'Test User',
+      role: Role.ADMIN,
     });
 
     await user.save();
