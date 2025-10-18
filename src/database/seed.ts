@@ -9,6 +9,7 @@ async function bootstrap() {
 
   console.log('🌱 Starting database seeding...');
   await userSeeder.seed();
+  await userSeeder.seed2();
   console.log('✅ Seeding completed');
 
   await app.close();
