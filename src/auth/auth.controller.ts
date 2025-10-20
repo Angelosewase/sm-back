@@ -158,7 +158,7 @@ export class AuthController {
     status: 401,
     description: 'Unauthorized - Invalid or missing JWT token',
   })
-  async getProfile(@Request() req) {
+  getProfile(@Request() req) {
     return req.user;
   }
 }
