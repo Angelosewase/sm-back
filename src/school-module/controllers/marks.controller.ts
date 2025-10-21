@@ -8,6 +8,7 @@ import { Role } from '../../users/schemas/user.schema';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BulkMarksDto } from '../dto/bulk-marks.dto';
 
+@ApiBearerAuth('access-token')
 @ApiTags('Marks')
 @Controller('marks')
 export class MarksController {

@@ -9,21 +9,32 @@ import { Class, ClassDocument } from '../schemas/class.schema';
 import { CreateClassDto } from '../dto/create-class.dto';
 import { AuditLog } from '../schemas/audit.schema';
 import { Model } from 'mongoose';
+import { SchoolModuleService } from '../school-module.service';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class ClassService {
   constructor(
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
     @InjectModel(AuditLog.name) private auditModel: Model<AuditLog>,
+    private readonly schoolService: SchoolModuleService,
+    private readonly usersService: UsersService,
   ) {}
 
   async createClass(dto: CreateClassDto, actorUser: any) {
+ 
     // basic permission checks should be applied in controller/guards
-    const cls = new this.classModel({
+   
+    try {
+      if(dto.capacity && dto.capacity < 0) throw new BadRequestException('Capacity cannot be negative');
+      if(dto.school) {
+        const school = await this.schoolService.findOne(dto.school);
+        if(!school) throw new BadRequestException('School with id "' + dto.school + '" not found');
+      }
+       const cls = new this.classModel({
       ...dto,
       capacity: dto.capacity ?? undefined,
     });
-    try {
       return await cls.save();
     } catch (e) {
       if (e.code === 11000)
@@ -39,6 +50,13 @@ export class ClassService {
     teacherId: string,
     actorUser: any,
   ) {
+    //validate the teacher id
+    let teacher_ = await this.usersService.findById(teacherId);
+    if(!teacher_) {
+      throw new NotFoundException('Teacher not found');
+    }else if(teacher_.role !== 'teacher') {
+      throw new BadRequestException('User with this id "' + teacherId + '" is not a teacher');
+    }
     const cls = await this.classModel.findById(classId).exec();
     if (!cls) throw new NotFoundException('Class not found');
     const before = cls.toObject();

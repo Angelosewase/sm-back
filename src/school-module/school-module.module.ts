@@ -32,6 +32,7 @@ import { PdfService } from './services/pdf.service';
 import { SchoolModuleController } from './school-module.controller';
 import { SchoolModuleService } from './school-module.service';
 import { School, SchoolSchema } from './schemas/school.schema';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { School, SchoolSchema } from './schemas/school.schema';
       { name: AuditLog.name, schema: AuditLogSchema },
       { name: School.name, schema: SchoolSchema },
     ]),
+    UsersModule,
   ],
   providers: [
     ClassService,

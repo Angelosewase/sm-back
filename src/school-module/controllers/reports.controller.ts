@@ -1,8 +1,11 @@
-import { Controller, Get, Query, Res, Param } from '@nestjs/common';
+import { Controller, Get, Query, Res, Param, UseGuards } from '@nestjs/common';
 import { MarksService } from '../services/marks.service';
 import { PdfService } from '../services/pdf.service';
 import type { Response } from 'express';
+import { ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 
+@ApiBearerAuth('access-token')
 @Controller('reports')
 export class ReportsController {
   constructor(
@@ -10,12 +13,14 @@ export class ReportsController {
     private readonly pdfService: PdfService,
   ) {}
 
+  @UseGuards(JwtAuthGuard)
   @Get('class-performance')
   async classPerformance(@Query() q: any) {
     const { classId, academicYear, term } = q;
     return this.marksService.getClassPerformance(classId, academicYear, term);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get('student-term')
   async studentTerm(@Query() q: any) {
     // TODO: implement using marks aggregation per student

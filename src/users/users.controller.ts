@@ -9,7 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { QueryUserDto } from './dto/query-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -24,6 +24,7 @@ import { RegisterDto } from './dto/register-user.dto';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Post()
@@ -39,6 +40,7 @@ export class UsersController {
     return this.usersService.findAll(query);
   }
 
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   @ApiOkResponse({ description: 'User by id' })
@@ -46,6 +48,7 @@ export class UsersController {
     return this.usersService.findById(id);
   }
 
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @ApiOkResponse({ description: 'Updated user' })
@@ -53,6 +56,7 @@ export class UsersController {
     return this.usersService.update(id, dto as any);
   }
 
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @Delete(':id')

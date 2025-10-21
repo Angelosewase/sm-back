@@ -133,7 +133,6 @@ export class UsersService {
     try {
       const user = await this.userModel.findById(id).session(session).exec();
       if (!user) throw new Error('User not found');
-
       if (payload.school) {
         const school = await this.schoolModel
           .findById(payload.school)
@@ -148,7 +147,6 @@ export class UsersService {
           throw new ConflictException('User with that email already exists');
       }
 
-      
       if (user.school) {
         await this.userModel.db
           .model('School')
