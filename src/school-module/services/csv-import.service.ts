@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-const parse = require('csv-parse/lib/sync');
 import { StudentService } from './student.service';
+import { parse } from 'csv-parse/sync';
 
 @Injectable()
 export class CsvImportService {
@@ -9,7 +9,7 @@ export class CsvImportService {
   async importStudentsCsv(buffer: Buffer, schoolId?: string) {
     const text = buffer.toString('utf8');
     try {
-      const parsed = parse(text, {
+      const parsed = await parse(text, {
         columns: true,
         skip_empty_lines: true,
         trim: true,

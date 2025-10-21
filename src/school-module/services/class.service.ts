@@ -55,7 +55,7 @@ export class ClassService {
       const rec = new this.auditModel({
         user: actorUser?.id,
         action: 'assignTeacher',
-        collection: 'class',
+        _collection: 'class',
         documentId: classId,
         before,
         after,

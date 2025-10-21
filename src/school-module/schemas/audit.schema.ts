@@ -18,7 +18,7 @@ export class AuditLog {
   after?: any;
 
   @Prop({ trim: true })
-  collection?: string;
+  _collection?: string;
 
   @Prop()
   documentId?: string;

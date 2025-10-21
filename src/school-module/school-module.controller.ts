@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, BadRequestException, ConflictException } from '@nestjs/common';
 import { SchoolModuleService } from './school-module.service';
 import { CreateSchoolModuleDto } from './dto/create-school-module.dto';
 import { UpdateSchoolModuleDto } from './dto/update-school-module.dto';
 import { QuerySchoolDto } from './dto/query-school.dto';
 import { ApiTags, ApiOkResponse, ApiCreatedResponse, ApiQuery } from '@nestjs/swagger';
 import { QueryUserDto } from 'src/users/dto/query-user.dto';
+import { School } from './schemas/school.schema';
 
 @ApiTags('schools')
 @Controller('schools')
@@ -13,8 +14,18 @@ export class SchoolModuleController {
 
   @Post()
   @ApiCreatedResponse({ description: 'School created' })
-  create(@Body() createSchoolModuleDto: CreateSchoolModuleDto) {
-    return this.schoolModuleService.create(createSchoolModuleDto);
+  async create(@Body() createSchoolModuleDto: CreateSchoolModuleDto){
+    try {
+      return await this.schoolModuleService.create(createSchoolModuleDto);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw new BadRequestException(
+          'Please check the school records some are invalid',
+        );
+      }else{
+        throw new ConflictException(error.message);
+      }
+    }
   }
 
   @Get()

@@ -29,6 +29,9 @@ import { SubjectAssignmentService } from './services/subject-assignment.service'
 import { SubjectService } from './services/subject.service';
 import { CsvImportService } from './services/csv-import.service';
 import { PdfService } from './services/pdf.service';
+import { SchoolModuleController } from './school-module.controller';
+import { SchoolModuleService } from './school-module.service';
+import { School, SchoolSchema } from './schemas/school.schema';
 
 @Module({
   imports: [
@@ -43,6 +46,7 @@ import { PdfService } from './services/pdf.service';
       { name: Term.name, schema: TermSchema },
       { name: Teacher.name, schema: TeacherSchema },
       { name: AuditLog.name, schema: AuditLogSchema },
+      { name: School.name, schema: SchoolSchema },
     ]),
   ],
   providers: [
@@ -54,6 +58,7 @@ import { PdfService } from './services/pdf.service';
     SubjectAssignmentService,
     CsvImportService,
     PdfService,
+    SchoolModuleService
   ],
   controllers: [
     ClassController,
@@ -61,6 +66,7 @@ import { PdfService } from './services/pdf.service';
     StudentController,
     MarksController,
     ReportsController,
+    SchoolModuleController,
   ],
   exports: [
     ClassService,
@@ -71,6 +77,7 @@ import { PdfService } from './services/pdf.service';
     SubjectAssignmentService,
     CsvImportService,
     PdfService,
+    SchoolModuleService
   ],
 })
 export class SchoolModule {}

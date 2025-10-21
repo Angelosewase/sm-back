@@ -67,7 +67,7 @@ export class MarksService {
   private async writeAudit(
     userId: any,
     action: string,
-    collection: string,
+    _collection: string,
     documentId: string,
     before?: any,
     after?: any,
@@ -76,7 +76,7 @@ export class MarksService {
       const rec = new this.auditModel({
         user: userId,
         action,
-        collection,
+        _collection,
         documentId,
         before,
         after,

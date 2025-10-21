@@ -17,10 +17,10 @@ export class Class {
   @Prop({ trim: true })
   code?: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'School', required: true, index: true })
+  @Prop({ type: Types.ObjectId, ref: 'School', required: true })
   school: Types.ObjectId;
 
-  @Prop({ required: true, trim: true, index: true })
+  @Prop({ required: true, trim: true })
   academicYear: string;
 
   @Prop({ trim: true, index: true })

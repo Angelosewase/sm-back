@@ -36,7 +36,7 @@ export class Subject {
   @Prop({ type: Number, default: 50 })
   minPassingScore?: number;
 
-  @Prop({ type: Types.ObjectId, ref: 'School', index: true })
+  @Prop({ type: Types.ObjectId, ref: 'School' })
   school?: Types.ObjectId;
 }
 
