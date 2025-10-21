@@ -51,7 +51,7 @@ export class ClassController {
   @ApiOperation({
     summary: 'Assign a subject to a class (optionally with teacher)',
   })
-  @ApiBearerAuth()
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN, Role.STAFF)
   @Post(':id/subjects')

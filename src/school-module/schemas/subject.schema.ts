@@ -11,10 +11,10 @@ export enum SubjectType {
 
 @Schema({ timestamps: true })
 export class Subject {
-  @Prop({ trim: true })
+  @Prop({ trim: true , unique: true})
   code?: string;
 
-  @Prop({ required: true, trim: true, index: true })
+  @Prop({ required: true, trim: true, index: true, unique: true })
   name: string;
 
   @Prop({ trim: true })

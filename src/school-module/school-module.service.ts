@@ -92,6 +92,7 @@ export class SchoolModuleService {
     return this.schoolModel.findById(id).exec();
   }
 
+
   async update(id: string, updateSchoolModuleDto: UpdateSchoolModuleDto) {
     try {
       const school = await this.schoolModel.findById(id).exec();
