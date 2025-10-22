@@ -1,6 +1,12 @@
 import { IsNotEmpty, IsString, IsNumber, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
+export enum AssessmentType {
+  EXAM = 'exam',
+  PRACTICAL_CAT = 'practical cat',
+  PRACTICAL_EXAM = 'practical exam',
+  CAT = 'cat',
+}
 export class EnterMarkDto {
   @ApiProperty({ description: 'Student _id (ObjectId)' })
   @IsNotEmpty()

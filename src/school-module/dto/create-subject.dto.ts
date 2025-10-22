@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsOptional, IsString, IsNumber, MaxLength } from 'class-validator';
+import { SubjectType } from '../schemas/subject.schema';
 
 export class CreateSubjectDto {
   @ApiProperty({
@@ -39,6 +40,15 @@ export class CreateSubjectDto {
   @IsOptional()
   @IsNumber()
   maxScore?: number;
+
+  @ApiProperty({
+    required: false,
+    example: 'core',
+    description: 'the Type of the subject, e.g. core, optional, special, etc.',
+  })
+  @IsOptional()
+  @IsString()
+  subjectType?: SubjectType;
 
   @ApiProperty({
     required: false,

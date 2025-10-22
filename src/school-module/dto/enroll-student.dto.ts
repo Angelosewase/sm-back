@@ -20,5 +20,5 @@ export class EnrollStudentDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsDateString()
-  entryDate?: string;
+  entryDate?: Date;
 }

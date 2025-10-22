@@ -11,6 +11,8 @@ import { Subject } from '../schemas/subject.schema';
 import { Enrollment } from '../schemas/enrollment.schema';
 import { AuditLog } from '../schemas/audit.schema';
 import { InjectModel } from '@nestjs/mongoose';
+import { Class } from '../schemas/class.schema';
+import { ClassService } from './class.service';
 // import InjectModel from '@nestjs/mongoose';
 
 @Injectable()
@@ -20,6 +22,8 @@ export class MarksService {
     @InjectModel(Subject.name) private subjectModel: Model<Subject>,
     @InjectModel(Enrollment.name) private enrollmentModel: Model<Enrollment>,
     @InjectModel(AuditLog.name) private auditModel: Model<AuditLog>,
+
+    private readonly classService: ClassService,
   ) {}
 
   async enterMark(actorUser: any, dto: EnterMarkDto) {
@@ -28,6 +32,10 @@ export class MarksService {
     const subject = await this.subjectModel.findById(dto.subjectId).exec();
     if (!subject) throw new NotFoundException('Subject not found');
 
+    const class_ = await this.classService.getClassById(dto.classId);
+    if(!class_) throw new BadRequestException('Provided class id "' + dto.classId + '" not found');
+
+    
     const max = subject.maxScore ?? 100;
     if (dto.score < 0 || dto.score > max) {
       throw new BadRequestException(`score must be between 0 and ${max}`);
