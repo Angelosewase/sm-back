@@ -38,6 +38,13 @@ export class User extends Document {
   @Prop({ trim: true })
   phone?: string;
 
+  @ApiProperty({
+    required: false,
+    description: 'Filename of uploaded avatar image',
+  })
+  @Prop({ trim: true })
+  avatar?: string;
+
   @ApiProperty({ description: 'Reference to School _id', required: false })
   @Prop({ type: Types.ObjectId, ref: 'School', index: true })
   school?: Types.ObjectId;

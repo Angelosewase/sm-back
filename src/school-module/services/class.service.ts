@@ -92,6 +92,12 @@ export class ClassService {
       .exec();
   }
 
+
+  async getClassName(classId: string) {
+    let cls =  await this.classModel.findOne({ _id: classId }).exec();
+     return cls?.name;
+  }
+
   async listClasses(filter: any = {}, pagination: any = {}) {
     const q = this.classModel.find(filter);
     if (pagination.limit) q.limit(pagination.limit);

@@ -15,6 +15,10 @@ import { Class } from '../schemas/class.schema';
 import { ClassService } from './class.service';
 // import InjectModel from '@nestjs/mongoose';
 
+function round(n: number) {
+  return Math.round((n || 0) * 100) / 100;
+}
+
 @Injectable()
 export class MarksService {
   constructor(
@@ -33,9 +37,11 @@ export class MarksService {
     if (!subject) throw new NotFoundException('Subject not found');
 
     const class_ = await this.classService.getClassById(dto.classId);
-    if(!class_) throw new BadRequestException('Provided class id "' + dto.classId + '" not found');
+    if (!class_)
+      throw new BadRequestException(
+        'Provided class id "' + dto.classId + '" not found',
+      );
 
-    
     const max = subject.maxScore ?? 100;
     if (dto.score < 0 || dto.score > max) {
       throw new BadRequestException(`score must be between 0 and ${max}`);
@@ -238,7 +244,7 @@ export class MarksService {
     topN = 10,
   ) {
     // For each subject in class compute averages and pass rates
-    const match: any = { class: new Types.ObjectId(classId), academicYear };
+    const match: any = { class: classId, academicYear };
     if (term) match.term = term;
 
     const subjectStats = await this.marksModel
@@ -290,5 +296,285 @@ export class MarksService {
       .exec();
 
     return { subjectStats, topStudents: studentAverages };
+  }
+
+  /**
+   * For a given class and academicYear, compute the average score per subject per quarter.
+   * Assumes terms are named or encoded so they can be grouped into 1st..4th Quarter.
+   * Returns array: [{ subjectId, subjectName, quarterAverages: { q1, q2, q3, q4 } }]
+   */
+  async getClassSubjectQuarterAverages(classId: string, academicYear: string) {
+    // group by subject and term, then pivot
+    const match: any = { class: classId, academicYear };
+
+    const pipeline = [
+      { $match: match },
+      {
+        $group: {
+          _id: { subject: '$subject', term: '$term' },
+          avgScore: { $avg: '$score' },
+        },
+      },
+      {
+        $group: {
+          _id: '$_id.subject',
+          terms: {
+            $push: { term: '$_id.term', avgScore: '$avgScore' },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'subjects',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'subject',
+        },
+      },
+      { $unwind: { path: '$subject', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          subjectName: '$subject.name',
+          terms: 1,
+        },
+      },
+    ];
+
+    const res = await this.marksModel.aggregate(pipeline).exec();
+
+    // normalize terms into quarters q1..q4. Terms might be 'Term 1', 'Q1', '1st Quarter' etc.
+    const normalizeTermToQuarter = (term: string) => {
+      if (!term) return null;
+      const t = String(term).toLowerCase();
+      if (
+        t.includes('1') ||
+        t.includes('q1') ||
+        t.includes('first') ||
+        t.includes('1st')
+      )
+        return 'q1';
+      if (
+        t.includes('2') ||
+        t.includes('q2') ||
+        t.includes('second') ||
+        t.includes('2nd')
+      )
+        return 'q2';
+      if (
+        t.includes('3') ||
+        t.includes('q3') ||
+        t.includes('third') ||
+        t.includes('3rd')
+      )
+        return 'q3';
+      if (
+        t.includes('4') ||
+        t.includes('q4') ||
+        t.includes('fourth') ||
+        t.includes('4th')
+      )
+        return 'q4';
+      return null;
+    };
+
+    return res.map((r: any) => {
+      const quarters: any = { q1: null, q2: null, q3: null, q4: null };
+      for (const t of r.terms || []) {
+        const q = normalizeTermToQuarter(t.term);
+        if (q) quarters[q] = Math.round((t.avgScore || 0) * 100) / 100;
+      }
+      return {
+        subjectId: String(r._id),
+        subjectName: r.subjectName || 'Subject',
+        quarterAverages: quarters,
+      };
+    });
+  }
+
+  /**
+   * Build a per-subject, per-term breakdown for a single student in an academic year.
+   * Returns subjects array with per-term CAT/EXAM/TOT and totals/percentage.
+   */
+  async getStudentAcademicReport(
+    studentId: string,
+    academicYear: string,
+    classId?: string,
+  ) {
+    const match: any = { student: studentId, academicYear };
+    if (classId) match.class = classId;
+
+    const pipeline = [
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            subject: '$subject',
+            term: '$term',
+            assessment: '$assessmentType',
+          },
+          totalScore: { $sum: '$score' },
+          totalMax: { $sum: '$maxScore' },
+        },
+      },
+      {
+        $group: {
+          _id: { subject: '$_id.subject', term: '$_id.term' },
+          assessments: {
+            $push: {
+              assessment: '$_id.assessment',
+              totalScore: '$totalScore',
+              totalMax: '$totalMax',
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$_id.subject',
+          terms: { $push: { term: '$_id.term', assessments: '$assessments' } },
+        },
+      },
+      {
+        $lookup: {
+          from: 'subjects',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'subject',
+        },
+      },
+      { $unwind: { path: '$subject', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          subjectId: '$_id',
+          subjectName: '$subject.name',
+          terms: 1,
+        },
+      },
+      { $sort: { subjectName: 1 } },
+    ];
+
+    const rows = await this.marksModel.aggregate(pipeline as any).exec();
+
+    // Map terms into consistent shape for 1..4 quarters
+    const normalizeTerm = (t: string) => {
+      if (!t) return null;
+      const s = String(t).toLowerCase();
+      if (
+        s.includes('1') ||
+        s.includes('q1') ||
+        s.includes('first') ||
+        s.includes('1st')
+      )
+        return 'q1';
+      if (
+        s.includes('2') ||
+        s.includes('q2') ||
+        s.includes('second') ||
+        s.includes('2nd')
+      )
+        return 'q2';
+      if (
+        s.includes('3') ||
+        s.includes('q3') ||
+        s.includes('third') ||
+        s.includes('3rd')
+      )
+        return 'q3';
+      if (
+        s.includes('4') ||
+        s.includes('q4') ||
+        s.includes('fourth') ||
+        s.includes('4th')
+      )
+        return 'q4';
+      return null;
+    };
+
+    const subjects = [] as any[];
+    let overallScore = 0;
+    let overallMax = 0;
+
+    for (const r of rows) {
+      const termMap: any = {
+        q1: { cat: null, exam: null, tot: null },
+        q2: { cat: null, exam: null, tot: null },
+        q3: { cat: null, exam: null, tot: null },
+        q4: { cat: null, exam: null, tot: null },
+      };
+      let subjectTotal = 0;
+      let subjectMax = 0;
+      for (const term of r.terms || []) {
+        const q = normalizeTerm(term.term) || term.term;
+        let cat = 0,
+          exam = 0,
+          catMax = 0,
+          examMax = 0;
+        for (const a of term.assessments || []) {
+          const tname = String(a.assessment || '').toLowerCase();
+          if (tname.includes('cat')) {
+            cat += a.totalScore || 0;
+            catMax += a.totalMax || 0;
+          } else if (tname.includes('exam')) {
+            exam += a.totalScore || 0;
+            examMax += a.totalMax || 0;
+          } else {
+            // unknown assessment type: accumulate into tot
+            cat += a.totalScore || 0;
+            catMax += a.totalMax || 0;
+          }
+        }
+        const tot = (cat || 0) + (exam || 0);
+        const totMax = (catMax || 0) + (examMax || 0);
+        termMap[q] = {
+          cat: round(cat),
+          exam: round(exam),
+          tot: round(tot),
+          max: round(totMax),
+        };
+        subjectTotal += tot;
+        subjectMax += totMax;
+      }
+
+      overallScore += subjectTotal;
+      overallMax += subjectMax;
+
+      subjects.push({
+        subjectId: String(r.subjectId || r._id),
+        subjectName: await this.getSubjectName(r.subjectId)|| 'Subject',
+        terms: termMap,
+        total: round(subjectTotal),
+        max: round(subjectMax),
+        percentage: subjectMax
+          ? round((subjectTotal / subjectMax) * 100)
+          : null,
+      });
+    }
+
+    const overallPercentage = overallMax
+      ? round((overallScore / overallMax) * 100)
+      : null;
+
+    return {
+      student: studentId,
+      academicYear,
+      classId,
+      subjects,
+      overall: {
+        total: round(overallScore),
+        max: round(overallMax),
+        percentage: overallPercentage,
+      },
+    };
+  }
+
+
+  async getSubjectName(subjectId: string):Promise<string | undefined> {
+    let subject =  await this.subjectModel.findOne({ _id: subjectId }).exec();
+     return subject?.name;
+  }
+
+  async getAllMarksRecords() {
+    return this.marksModel.find().exec();
   }
 }

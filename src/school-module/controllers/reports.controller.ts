@@ -13,6 +13,7 @@ export class ReportsController {
     private readonly pdfService: PdfService,
   ) {}
 
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Get('class-performance')
   async classPerformance(@Query() q: any) {
@@ -20,6 +21,7 @@ export class ReportsController {
     return this.marksService.getClassPerformance(classId, academicYear, term);
   }
 
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Get('student-term')
   async studentTerm(@Query() q: any) {
@@ -27,38 +29,36 @@ export class ReportsController {
     return { message: 'student term report not yet implemented', query: q };
   }
 
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard)
   @Get('class/:id/pdf')
   async classPdf(
     @Param('id') id: string,
     @Query() q: any,
     @Res() res: Response,
   ) {
-    const { academicYear, term } = q;
-    const perf = await this.marksService.getClassPerformance(
+    const { academicYear } = q || {};
+    if (!academicYear) {
+      return res
+        .status(400)
+        .json({ error: 'academicYear query parameter is required' });
+    }
+
+    // compute per-subject quarter averages
+    const qAverages = await this.marksService.getClassSubjectQuarterAverages(
       id,
       academicYear,
-      term,
-      500,
     );
 
-    // build simple students and subjects arrays
-    const subjects = (perf.subjectStats || []).map((s: any) => ({
-      _id: s.subject?._id || s._id,
-      name: s.subject?.name || s.subjectName || 'Subject',
-    }));
-    const students = (perf.topStudents || []).map((s: any) => ({
-      name: s.student?.fullName || s.student?.firstName || 'Student',
-      scores: {},
-      total: Math.round(s.avgScore || 0),
-      percentage: Math.round(s.avgScore || 0),
-    }));
+    // attempt to include class avatar if any (not typical, but reuse loadAvatarDataUri)
+    const classAvatarUri = null; // optional: if you store class avatars, resolve here
 
-    const html = this.pdfService.buildClassPerformanceHtml({
+    const html = this.pdfService.buildClassQuarterHtml({
       schoolName: 'School',
       className: id,
       academicYear: academicYear || '',
-      students,
-      subjects,
+      avatarDataUri: classAvatarUri,
+      subjects: qAverages,
     });
 
     const pdf = await this.pdfService.generatePdfFromHtml(html);
@@ -67,6 +67,45 @@ export class ReportsController {
       'Content-Disposition',
       `attachment; filename="class-${id}-report.pdf"`,
     );
+    if (pdf && Buffer.isBuffer(pdf)) {
+      res.setHeader('Content-Length', String(pdf.length));
+    }
+    res.send(pdf);
+  }
+
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard)
+  @Get('student/:id/pdf')
+  async studentPdf(
+    @Param('id') id: string,
+    @Query() q: any,
+    @Res() res: Response,
+  ) {
+    const { academicYear, classId } = q || {};
+    if (!academicYear)
+      return res.status(400).json({ error: 'academicYear is required' });
+
+    const report = await this.marksService.getStudentAcademicReport(
+      id,
+      academicYear,
+      classId,
+    );
+
+    const user = await this.pdfService.resolveStudentInfo(id);
+    const avatarUri = await this.pdfService.loadAvatarDataUri(user?.avatar);
+    const html = await this.pdfService.buildStudentReportHtml({
+      ...report,
+      studentName: user?.name || user?.fullName || 'Student',
+      avatarDataUri: avatarUri,
+    });
+    const pdf = await this.pdfService.generatePdfFromHtml(html);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="student-${id}-report.pdf"`,
+    );
+    if (pdf && Buffer.isBuffer(pdf))
+      res.setHeader('Content-Length', String(pdf.length));
     res.send(pdf);
   }
 }

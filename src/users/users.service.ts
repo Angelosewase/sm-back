@@ -7,6 +7,8 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, FilterQuery, Types } from 'mongoose';
 import { Role, User } from './schemas/user.schema';
+import { promises as fsPromises, existsSync } from 'fs';
+import { join } from 'path';
 import * as bcrypt from 'bcrypt';
 import { QueryUserDto } from './dto/query-user.dto';
 import { RegisterDto } from './dto/register-user.dto';
@@ -65,6 +67,19 @@ export class UsersService {
 
   async findById(id: string): Promise<User | null> {
     return this.userModel.findById(id).select('-password -__v').exec();
+  }
+
+  /**
+   * Fetch multiple users by their ids in a single query. Returns array of users (lean)
+   */
+  async findByIds(ids: string[]): Promise<any[]> {
+    if (!ids || !ids.length) return [];
+    const uniq = Array.from(new Set(ids.map((i) => i.toString())));
+    return this.userModel
+      .find({ _id: { $in: uniq } })
+      .select('-password -__v')
+      .lean()
+      .exec() as unknown as any[];
   }
 
   async findAll(query: QueryUserDto) {
@@ -187,5 +202,43 @@ export class UsersService {
   async remove(id: string) {
     await this.userModel.findByIdAndDelete(id).exec();
     return { deleted: true };
+  }
+
+  async saveAvatar(userId: string, filename: string) {
+    // remove previous avatar file if present
+    const user = await this.userModel.findById(userId).exec();
+    if (user && (user as any).avatar) {
+      try {
+        const prev = (user as any).avatar as string;
+        const fullPrev = prev.startsWith('/')
+          ? prev
+          : join(process.cwd(), prev);
+        if (existsSync(fullPrev)) await fsPromises.unlink(fullPrev);
+      } catch (e) {
+        // non-fatal
+      }
+    }
+    await this.userModel.findByIdAndUpdate(userId, { avatar: filename }).exec();
+    return await this.findById(userId);
+  }
+
+  async removeAvatar(userId: string) {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) return null;
+    if ((user as any).avatar) {
+      try {
+        const prev = (user as any).avatar as string;
+        const fullPrev = prev.startsWith('/')
+          ? prev
+          : join(process.cwd(), prev);
+        if (existsSync(fullPrev)) await fsPromises.unlink(fullPrev);
+      } catch (e) {
+        // ignore
+      }
+    }
+    await this.userModel
+      .findByIdAndUpdate(userId, { $unset: { avatar: '' } })
+      .exec();
+    return await this.findById(userId);
   }
 }

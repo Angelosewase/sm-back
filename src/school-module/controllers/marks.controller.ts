@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Req, Param } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Req, Param, Get } from '@nestjs/common';
 import { MarksService } from '../services/marks.service';
 import { EnterMarkDto } from '../dto/enter-mark.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -6,7 +6,7 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Role } from '../../users/schemas/user.schema';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { BulkMarksDto } from '../dto/bulk-marks.dto';
+import { BulkApproveMarksDto, BulkMarksDto, BulkSubmitMarksDto } from '../dto/bulk-marks.dto';
 
 @ApiBearerAuth('access-token')
 @ApiTags('Marks')
@@ -69,6 +69,32 @@ export class MarksController {
     );
   }
 
+
+  @ApiOperation({
+    summary: 'Submit marks (teacher) — move drafts to submitted',
+  })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.TEACHER, Role.ADMIN)
+  @Post('submit/bulk')
+  async submitBulk(
+    @Req() req: any,
+    @Body()
+     dto:BulkSubmitMarksDto
+  ) {
+
+     const results = [] as any[];
+    for (const m of dto.marks) {
+      try {
+        const res = await this.marksService.submitMarks(req.user, m.classId, m.subjectId, m.academicYear, m.term);
+        results.push({ ok: true});
+      } catch (e: any) {
+        results.push({ ok: false, error: e?.message || String(e), mark: m });
+      }
+    }
+    return { results };
+  }
+
   @ApiOperation({ summary: 'Approve marks (admin) — lock submitted marks' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -92,6 +118,28 @@ export class MarksController {
       body.term,
     );
   }
+  @ApiOperation({ summary: 'Approve marks (admin) — lock submitted marks' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @Post('approve/bulk')
+  async approveBulk(
+    @Req() req: any,
+    @Body()
+     dto:BulkApproveMarksDto
+  ) {
+
+     const results = [] as any[];
+    for (const m of dto.marks) {
+      try {
+        const res = await this.marksService.approveMarks(req.user, m.classId, m.subjectId, m.academicYear, m.term);
+        results.push({ok: true});
+      } catch (e: any) {
+        results.push({ ok: false, error: e?.message || String(e), mark: m });
+      }
+    }
+    return { results };
+  }
 
   @ApiOperation({ summary: 'Update a mark (teacher/admin)' })
   @ApiBearerAuth()
@@ -104,5 +152,11 @@ export class MarksController {
     @Body() body: { score?: number; comment?: string },
   ) {
     return this.marksService.updateMark(req.user, id, body);
+  }
+
+
+  @Get()
+  async list() {
+    return this.marksService.getAllMarksRecords();
   }
 }
