@@ -3,11 +3,20 @@ import { IsEmail, IsEnum, IsMongoId, IsOptional, IsPhoneNumber, IsString, MaxLen
 import { Role } from '../schemas/user.schema';
 
 export class UpdateUserDto {
+  
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @MaxLength(120)
   name?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  @IsEmail()
+  email?: string;
 
   @ApiPropertyOptional({ enum: Role })
   @IsOptional()
