@@ -4,9 +4,10 @@ import { CreateSubjectDto } from '../dto/create-subject.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { UpdateSubjectDto } from '../dto/update-subject.dto';
+import { QuerySubjectDto } from '../dto/query-subject.dto';
 
 @ApiTags('Subjects')
-@Controller('subjects')
+@Controller('api/subjects')
 export class SubjectController {
   constructor(private readonly subjectService: SubjectService) {}
 
@@ -20,12 +21,12 @@ export class SubjectController {
 
   // @ApiBearerAuth('access-token')
   @ApiOkResponse({description: 'Successfully fetched subjects'})
-  // @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @UseGuards(JwtAuthGuard)
   @Get()
-  async list(@Query() query: any) {
+  async list(@Query() query: QuerySubjectDto) {
     const filter: any = {};
-    if (query.school) filter.school = query.school;
-    return this.subjectService.listSubjects(filter);
+    return this.subjectService.findAll(query);
   }
 
   @ApiBearerAuth('access-token')

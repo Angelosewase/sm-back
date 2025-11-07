@@ -1,68 +1,87 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  IsNumber,
-  MaxLength,
-} from 'class-validator';
+import { IsOptional, IsString, IsNumber, MaxLength } from 'class-validator';
 
 export class UpdateSubjectDto {
-  @ApiProperty({
-    example: 'Mathematics',
-    description: 'The full name of the subject being taught.',
-  })
-  @IsNotEmpty()
+  @ApiProperty({ required: false, example: 'Mathematics' })
+  @IsOptional()
   @IsString()
   @MaxLength(100)
-  @IsOptional()
-  name?: string;
+  subjectName?: string;
 
-  @ApiProperty({
-    required: false,
-    example: 'MATH101',
-    description:
-      'An optional subject code used for internal reference or reports.',
-  })
+  @ApiProperty({ required: false, example: 'MATH101' })
   @IsOptional()
   @IsString()
   @MaxLength(30)
-  code?: string;
+  subjectCode?: string;
 
-  @ApiProperty({
-    required: false,
-    example: 'Math',
-    description: 'Short version or abbreviation of the subject name.',
-  })
+  @ApiProperty({ required: false, example: 'Math' })
   @IsOptional()
   @IsString()
   @MaxLength(20)
   shortName?: string;
 
-  @ApiProperty({
-    required: false,
-    example: 100,
-    description: 'The maximum score attainable in the subject.',
-  })
+  @ApiProperty({ required: false, example: 100 })
   @IsOptional()
   @IsNumber()
   maxScore?: number;
 
-  @ApiProperty({
-    required: false,
-    example: 50,
-    description: 'The minimum score required to pass the subject.',
-  })
+  @ApiProperty({ required: false, example: 50 })
   @IsOptional()
   @IsNumber()
   minPassingScore?: number;
 
-  @ApiProperty({
-    required: false,
-    example: '68f79d534286e66c8b4ad219',
-    description: 'The school _id this subject belongs to.',
-  })
+  @ApiProperty({ required: false, example: '68f79d534286e66c8b4ad219' })
   @IsOptional()
   @IsString()
   school?: string;
+
+  @ApiProperty({
+    required: false,
+    example: 'Science',
+    description: 'Department name',
+  })
+  @IsOptional()
+  @IsString()
+  department?: string;
+
+  @ApiProperty({
+    required: false,
+    example: 3,
+    description: 'Credit hours for the subject',
+  })
+  @IsOptional()
+  @IsNumber()
+  creditHours?: number;
+
+  @ApiProperty({ required: false, example: 'Beginner', description: 'Level' })
+  @IsOptional()
+  @IsString()
+  level?: string;
+
+  @ApiProperty({
+    required: false,
+    example: 'Grade 10',
+    description: 'Grade level',
+  })
+  @IsOptional()
+  @IsString()
+  gradeLevel?: string;
+
+  @ApiProperty({
+    required: false,
+    example: 'Active',
+    description: 'Status: Active | Inactive',
+  })
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @ApiProperty({
+    required: false,
+    example: 'Basic Mathematics',
+    description: 'Prerequisites',
+  })
+  @IsOptional()
+  @IsString()
+  prerequisites?: string;
 }

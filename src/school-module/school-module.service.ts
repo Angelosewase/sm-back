@@ -44,7 +44,8 @@ export class SchoolModuleService {
     }
   }
 
-  async findAll(query: QuerySchoolDto) {
+
+    async findAll(query: QuerySchoolDto) {
     const {
       q,
       location,

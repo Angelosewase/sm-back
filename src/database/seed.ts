@@ -8,10 +8,9 @@ async function bootstrap() {
   const userSeeder = app.get(UserSeeder);
 
   console.log('🌱 Starting database seeding...');
-  await userSeeder.seed();
-  await userSeeder.seed2();
+  await userSeeder.seedAllUsers();
   console.log('✅ Seeding completed');
-
+;
   await app.close();
 }
 
