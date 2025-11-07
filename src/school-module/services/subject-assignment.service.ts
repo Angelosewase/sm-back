@@ -27,4 +27,20 @@ export class SubjectAssignmentService {
     });
     return rec.save();
   }
+
+  async assignSubjectToTeacher(
+   
+    subjectId: string,
+    academicYear: string,
+    teacherId: string,
+     classId?: string,
+  ) {
+    const rec = new this.saModel({
+      class: classId,
+      subject: subjectId,
+      academicYear,
+      teacher: teacherId,
+    });
+    return rec.save();
+  }
 }

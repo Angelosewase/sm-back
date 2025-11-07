@@ -19,7 +19,7 @@ import { Role } from '../../users/schemas/user.schema';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
 import { AssignTeacherDto } from '../dto/assign-teacher.dto';
 
-@Controller('classes')
+@Controller('api/classes')
 export class ClassController {
   constructor(
     private readonly classService: ClassService,
@@ -28,7 +28,7 @@ export class ClassController {
 
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.STAFF)
+  @Roles(Role.ADMIN, Role.STAFF, Role.HEADTeacher)
   @Post()
   @ApiOkResponse({description: 'Class created'})
   async create(@Body() dto: CreateClassDto) {

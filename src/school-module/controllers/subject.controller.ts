@@ -33,6 +33,7 @@ export class SubjectController {
   @ApiOkResponse({description: 'Successfully fetched subject'})
   @UseGuards(JwtAuthGuard)
   @Get(':id')
+
   async get(@Param('id') id: string) {
     return this.subjectService.getSubjectById(id);
   }
@@ -52,5 +53,7 @@ export class SubjectController {
   async delete(@Param('id') id: string) {
     return this.subjectService.deleteSubject(id);
   }
+
+  
 
 }

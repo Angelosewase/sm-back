@@ -4,13 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Types } from 'mongoose';
+import { ObjectId, Types } from 'mongoose';
 import { Class, ClassDocument } from '../schemas/class.schema';
 import { CreateClassDto } from '../dto/create-class.dto';
 import { AuditLog } from '../schemas/audit.schema';
 import { Model } from 'mongoose';
 import { SchoolModuleService } from '../school-module.service';
 import { UsersService } from 'src/users/users.service';
+import { User } from 'src/users/schemas/user.schema';
 
 @Injectable()
 export class ClassService {
@@ -22,19 +23,35 @@ export class ClassService {
   ) {}
 
   async createClass(dto: CreateClassDto, actorUser: any) {
- 
     // basic permission checks should be applied in controller/guards
-   
+
     try {
-      if(dto.capacity && dto.capacity < 0) throw new BadRequestException('Capacity cannot be negative');
-      if(dto.school) {
+      if (dto.capacity && dto.capacity < 0)
+        throw new BadRequestException('Capacity cannot be negative');
+      if (dto.school) {
         const school = await this.schoolService.findOne(dto.school);
-        if(!school) throw new BadRequestException('School with id "' + dto.school + '" not found');
+        if (!school)
+          throw new BadRequestException(
+            'School with id "' + dto.school + '" not found',
+          );
       }
-       const cls = new this.classModel({
-      ...dto,
-      capacity: dto.capacity ?? undefined,
-    });
+      if (dto.formTeacher) {
+        const teacher = await this.usersService.findById(dto.formTeacher);
+        if (!teacher)
+          throw new BadRequestException(
+            'Form teacher with id "' + dto.formTeacher + '" not found',
+          );
+        if (teacher.role !== 'teacher')
+          throw new BadRequestException(
+            'User with id "' + dto.formTeacher + '" is not a teacher',
+          );
+      }
+      const cls = new this.classModel({
+        ...dto,
+        capacity: dto.capacity ?? undefined,
+        formTeacher: dto.formTeacher ?? undefined,
+      });
+
       return await cls.save();
     } catch (e) {
       if (e.code === 11000)
@@ -52,10 +69,12 @@ export class ClassService {
   ) {
     //validate the teacher id
     let teacher_ = await this.usersService.findById(teacherId);
-    if(!teacher_) {
+    if (!teacher_) {
       throw new NotFoundException('Teacher not found');
-    }else if(teacher_.role !== 'teacher') {
-      throw new BadRequestException('User with this id "' + teacherId + '" is not a teacher');
+    } else if (teacher_.role !== 'teacher') {
+      throw new BadRequestException(
+        'User with this id "' + teacherId + '" is not a teacher',
+      );
     }
     const cls = await this.classModel.findById(classId).exec();
     if (!cls) throw new NotFoundException('Class not found');
@@ -92,10 +111,9 @@ export class ClassService {
       .exec();
   }
 
-
   async getClassName(classId: string) {
-    let cls =  await this.classModel.findOne({ _id: classId }).exec();
-     return cls?.name;
+    let cls = await this.classModel.findOne({ _id: classId }).exec();
+    return cls?.name;
   }
 
   async listClasses(filter: any = {}, pagination: any = {}) {

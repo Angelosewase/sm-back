@@ -102,7 +102,6 @@ export class UsersService {
     if (role) filter.role = role;
     if (email) filter.email = email.toLowerCase();
     if (school) filter.school = school;
-    console.log('the filter now is: ', filter);
     if (q) {
       const regex = new RegExp(q, 'i');
       filter.$or = [{ name: regex }, { email: regex }];

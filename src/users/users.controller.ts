@@ -27,8 +27,8 @@ import { Role } from './schemas/user.schema';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RegisterDto } from './dto/register-user.dto';
 
-@ApiTags('users')
-@Controller('users')
+@ApiTags('Users')
+@Controller('api/users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
