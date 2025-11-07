@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { DatabaseModule } from './database/database.module';
 import { ClassesModule } from './classes/classes.module';
+import { SchoolModule } from './school-module/school-module.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ClassesModule } from './classes/classes.module';
     UsersModule,
     DatabaseModule,
     ClassesModule,
+    SchoolModule,
   ],
   controllers: [AppController],
   providers: [AppService],

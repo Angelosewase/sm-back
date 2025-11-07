@@ -35,11 +35,11 @@ export class UsersController {
   @ApiCreatedResponse({ description: 'User created successfully' })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   async createUser(@Body() createUserDto: CreateUserDto) {
-    const user = await this.usersService.create(
-      createUserDto.email,
-      createUserDto.password,
-      createUserDto.role,
-      createUserDto.name,
+    const user = await this.usersService.createUser(
+     { email: createUserDto.email,
+      password: createUserDto.password,
+      role: createUserDto.role,
+      name: createUserDto.name,}
     );
     return this.sanitizeUser(user);
   }
