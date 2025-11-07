@@ -14,6 +14,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { TeachersService } from './teachers.service';
@@ -28,7 +29,10 @@ export class TeachersController {
 
   @Post()
   @ApiOperation({ summary: 'Register a new teacher' })
-  @ApiCreatedResponse({ description: 'Teacher registered successfully' })
+  @ApiCreatedResponse({
+    description:
+      'Teacher registered successfully. Response includes a temporaryPassword field that is also emailed.',
+  })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   async create(@Body() createTeacherDto: CreateTeacherDto) {
     return this.teachersService.create(createTeacherDto);
@@ -38,7 +42,14 @@ export class TeachersController {
   @ApiOperation({
     summary: 'List teachers with optional filtering, search, and pagination',
   })
-  @ApiOkResponse({ description: 'Teachers retrieved successfully' })
+  @ApiQuery({ name: 'q', required: false, description: 'Search across name and email' })
+  @ApiQuery({ name: 'email', required: false, description: 'Filter by exact email address' })
+  @ApiQuery({ name: 'school', required: false, description: 'Filter by school ObjectId' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (1-based)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (1-100)', example: 10 })
+  @ApiQuery({ name: 'sortBy', required: false, description: 'Field to sort by', example: 'createdAt' })
+  @ApiQuery({ name: 'order', required: false, description: 'Sort direction', example: 'desc' })
+  @ApiOkResponse({ description: 'Teachers retrieved successfully with pagination metadata' })
   async findAll(@Query() query: QueryTeacherDto) {
     return this.teachersService.findAll(query);
   }
