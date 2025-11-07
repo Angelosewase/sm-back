@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   Inject,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
@@ -120,6 +121,15 @@ export class AuthService {
     return {
       message: 'Password reset successfully',
     };
+  }
+
+  async updateUserPassword(userId: string, newPassword: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    await this.usersService.updatePassword(userId, newPassword);
+    return { message: 'Password updated successfully' };
   }
 
   // Validate user for protected routes

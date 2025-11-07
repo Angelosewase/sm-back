@@ -20,9 +20,7 @@ export class EmailService {
   }
 
   async sendOtpEmail(email: string, otp: string): Promise<void> {
-    await this.transporter.sendMail({
-      from:
-        this.configService.get<string>('SMTP_FROM') || 'noreply@example.com',
+    await this.sendMail({
       to: email,
       subject: 'Password Reset OTP',
       html: `
@@ -31,6 +29,50 @@ export class EmailService {
         <p>This code will expire in 15 minutes.</p>
         <p>If you didn't request this, please ignore this email.</p>
       `,
+    });
+  }
+
+  async sendTeacherWelcomeEmail(email: string, name?: string): Promise<void> {
+    await this.sendMail({
+      to: email,
+      subject: 'Welcome to the Teaching Team',
+      html: `
+        <h1>Welcome${name ? `, ${name}` : ''}!</h1>
+        <p>You have been registered as a teacher on the School Management platform.</p>
+        <p>Please log in using your email address to explore your dashboard.</p>
+        <p>If you have any questions, reach out to the administration team.</p>
+      `,
+    });
+  }
+
+  async sendStaffWelcomeEmail(email: string, name?: string): Promise<void> {
+    await this.sendMail({
+      to: email,
+      subject: 'Welcome to the Staff Portal',
+      html: `
+        <h1>Welcome${name ? `, ${name}` : ''}!</h1>
+        <p>You have been added as a staff member to the School Management platform.</p>
+        <p>Log in with your credentials to get started.</p>
+        <p>If you need assistance, please contact support.</p>
+      `,
+    });
+  }
+
+  private async sendMail({
+    to,
+    subject,
+    html,
+  }: {
+    to: string;
+    subject: string;
+    html: string;
+  }) {
+    await this.transporter.sendMail({
+      from:
+        this.configService.get<string>('SMTP_FROM') || 'noreply@example.com',
+      to,
+      subject,
+      html,
     });
   }
 }
