@@ -19,8 +19,8 @@ export class UsersService {
   async create(
     email: string,
     password: string,
-    name: string,
     role: Role,
+    name?: string,
   ): Promise<User> {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new this.userModel({
