@@ -12,11 +12,14 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import * as cacheManager from 'cache-manager';
+import { Role } from 'src/users/schemas/user.schema';
+import { School } from 'src/school-module/schemas/school.schema';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
+
     private jwtService: JwtService,
     private emailService: EmailService,
     @Inject(CACHE_MANAGER) private cacheManager: cacheManager.Cache,
@@ -24,11 +27,20 @@ export class AuthService {
 
   // Login Flow
   async login(email: string, password: string) {
+    let _school: School | null = null
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (user.school) {
+      _school = await this.usersService.getUserSchool(
+        user.school?.toString(),
+      );
+      if (!_school && user.role !== Role.ADMIN) {
+        throw new UnauthorizedException('You are not assigned in any school');
+      }
+    }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
@@ -44,6 +56,10 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
+      },
+      school: {
+        id: _school?._id,
+        name: _school?.name,
       },
     };
   }

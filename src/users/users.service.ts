@@ -73,6 +73,10 @@ export class UsersService {
     return this.userModel.findById(id).select('-password -__v').exec();
   }
 
+  async getUserSchool(id: string): Promise<School | null> {
+    return  await this.schoolModel.findById(id)
+  }
+
   /**
    * Fetch multiple users by their ids in a single query. Returns array of users (lean)
    */
