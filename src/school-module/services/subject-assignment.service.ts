@@ -13,18 +13,4 @@ export class SubjectAssignmentService {
     private saModel: Model<SubjectAssignmentDocument>,
   ) {}
 
-  async assignSubjectToClass(
-    classId: string,
-    subjectId: string,
-    academicYear: string,
-    teacherId?: string,
-  ) {
-    const rec = new this.saModel({
-      class: classId,
-      subject: subjectId,
-      academicYear,
-      teacher: teacherId,
-    });
-    return rec.save();
-  }
 }

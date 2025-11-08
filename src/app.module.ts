@@ -8,6 +8,8 @@ import { UsersModule } from './users/users.module';
 import { DatabaseModule } from './database/database.module';
 import { ClassesModule } from './classes/classes.module';
 import { SchoolModule } from './school-module/school-module.module';
+import { AcademicYearModule } from './academic-year/academic-year.module';
+import { TermModule } from './terms/terms.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { StaffModule } from './staff/staff.module';
 
@@ -22,6 +24,8 @@ import { StaffModule } from './staff/staff.module';
     DatabaseModule,
     ClassesModule,
     SchoolModule,
+    AcademicYearModule,
+    TermModule,
     TeachersModule,
     StaffModule,
   ],
