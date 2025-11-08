@@ -1,9 +1,20 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsEmail, IsEnum, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class QueryClassDto {
-  @ApiPropertyOptional({ description: 'Search text across name, location, address, contactEmail' })
+  @ApiPropertyOptional({
+    description: 'Search text across name, location, address, contactEmail',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(200)
@@ -21,7 +32,11 @@ export class QueryClassDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ description: 'Items per page', default: 10, maximum: 100 })
+  @ApiPropertyOptional({
+    description: 'Items per page',
+    default: 10,
+    maximum: 100,
+  })
   @Type(() => Number)
   @IsOptional()
   @IsNumber()
@@ -29,7 +44,10 @@ export class QueryClassDto {
   @Max(100)
   limit?: number = 10;
 
-  @ApiPropertyOptional({ description: 'Sort by field (e.g., name, createdAt)', default: 'createdAt' })
+  @ApiPropertyOptional({
+    description: 'Sort by field (e.g., name, createdAt)',
+    default: 'createdAt',
+  })
   @IsOptional()
   @IsString()
   sortBy?: string = 'createdAt';
@@ -39,4 +57,24 @@ export class QueryClassDto {
   @IsString()
   @IsEnum(['asc', 'desc'] as any)
   order?: 'asc' | 'desc' = 'desc';
+
+  @ApiPropertyOptional({ description: 'Filter by School _id' })
+  @IsOptional()
+  @IsString()
+  school?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by academic year' })
+  @IsOptional()
+  @IsString()
+  academicYear?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by level' })
+  @IsOptional()
+  @IsString()
+  level?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by status' })
+  @IsOptional()
+  @IsString()
+  status?: string;
 }

@@ -10,6 +10,14 @@ export enum SubjectType {
   VOCATIONAL = 'vocational',
 }
 
+export enum GradeLevel {
+  GRADE_9 = 'Grade 9',
+  GRADE_10 = 'Grade 10',
+  GRADE_11 = 'Grade 11',
+  GRADE_12 = 'Grade 12',
+  ALL_GRADES = 'All Grades',
+}
+
 @Schema({ timestamps: true })
 export class Subject {
   @Prop({ trim: true, unique: true })
@@ -46,8 +54,8 @@ export class Subject {
   @Prop({ trim: true })
   level?: string;
 
-  @Prop({ type: [String], default: [] })
-  gradeLevels?: string[];
+  @Prop({ type: [String], enum: Object.values(GradeLevel), default: [] })
+  gradeLevels?: GradeLevel[];
 
   @Prop({ trim: true })
   prerequisites?: string;

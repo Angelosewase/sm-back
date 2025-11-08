@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { DatabaseModule } from './database/database.module';
 import { SchoolModule } from './school-module/school-module.module';
+import { AcademicYearModule } from './academic-year/academic-year.module';
+import { TermModule } from './terms/terms.module';
 
 @Module({
   imports: [
@@ -18,6 +20,9 @@ import { SchoolModule } from './school-module/school-module.module';
     UsersModule,
     DatabaseModule,
     SchoolModule,
+    AcademicYearModule,
+    TermModule,
+
   ],
   controllers: [AppController],
   providers: [AppService],

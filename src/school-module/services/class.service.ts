@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { ObjectId, Types } from 'mongoose';
+import { FilterQuery, ObjectId, Types } from 'mongoose';
 import { Class, ClassDocument } from '../schemas/class.schema';
 import { CreateClassDto } from '../dto/create-class.dto';
 import { AuditLog } from '../schemas/audit.schema';
@@ -12,6 +12,7 @@ import { Model } from 'mongoose';
 import { SchoolModuleService } from '../school-module.service';
 import { UsersService } from 'src/users/users.service';
 import { User } from 'src/users/schemas/user.schema';
+import { QueryClassDto } from '../dto/query-class.dto';
 
 @Injectable()
 export class ClassService {
@@ -102,24 +103,169 @@ export class ClassService {
     return cls;
   }
 
-  async getClassById(id: string) {
-    if (!Types.ObjectId.isValid(id))
-      throw new NotFoundException('Invalid class id');
-    return this.classModel
-      .findById(id)
-      .populate(['assignedTeachers', 'subjects', 'formTeacher'])
-      .exec();
-  }
 
   async getClassName(classId: string) {
     let cls = await this.classModel.findOne({ _id: classId }).exec();
     return cls?.name;
   }
 
-  async listClasses(filter: any = {}, pagination: any = {}) {
-    const q = this.classModel.find(filter);
-    if (pagination.limit) q.limit(pagination.limit);
-    if (pagination.skip) q.skip(pagination.skip);
-    return q.exec();
+  async listClasses(query: any) {
+    const {
+          q,
+          page = 1,
+          limit = 10,
+          sortBy = 'createdAt',
+          order = 'desc',
+        } = query;
+    
+        const filter: FilterQuery<Class> = {};
+        
+        if (q) {
+          const regex = new RegExp(q, 'i');
+          filter.$or = [
+            { name: regex },
+            { grade: regex },
+            { level: regex },
+            { status: regex },
+          ];
+        }
+    
+        const skip = (page - 1) * limit;
+        const sort: Record<string, 1 | -1> = { [sortBy]: order === 'asc' ? 1 : -1 };
+    
+        const [items, total] = await Promise.all([
+          this.classModel.find(filter).sort(sort).skip(skip).limit(limit).exec(),
+          this.classModel.countDocuments(filter).exec(),
+        ]);
+    
+        const totalPages = Math.ceil(total / limit) || 1;
+        return {
+          items,
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        };
   }
+
+
+   async findAll(query: QueryClassDto = {}) {
+    const {
+      school,
+      academicYear,
+      level,
+      status,
+      q,
+      page = 1,
+      limit = 100,
+      sortBy = 'createdAt',
+      order = 'desc',
+    } = query;
+
+    // Build filter object
+    const filter: FilterQuery<Class> = {};
+
+    if (school) {
+      filter.school = school;
+    }
+
+    if (academicYear) {
+      filter.academicYear = academicYear;
+    }
+
+    if (level) {
+      filter.level = level;
+    }
+
+    if (status) {
+      filter.status = status;
+    }
+
+    // Text search across multiple fields
+    if (q) {
+      const regex = new RegExp(q, 'i');
+      filter.$or = [
+        { name: regex },
+        { code: regex },
+        { program: regex },
+        { stream: regex },
+        { description: regex },
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+    const sort: Record<string, 1 | -1> = { [sortBy]: order === 'asc' ? 1 : -1 };
+
+    // Execute query with pagination
+    const [items, total] = await Promise.all([
+      this.classModel
+        .find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .populate('school', 'name code')
+        .populate('formTeacher', 'name email')
+        .populate('assignedTeachers', 'name email')
+        .exec(),
+      this.classModel.countDocuments(filter).exec(),
+    ]);
+
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    };
+  }
+
+  async getClassById(id: string) {
+    const classDoc = await this.classModel
+      .findById(id)
+      .populate('school')
+      .populate('formTeacher', 'name email')
+      .populate('assignedTeachers', 'name email')
+      .exec();
+
+    if (!classDoc) {
+      throw new NotFoundException(`Class with id "${id}" not found`);
+    }
+
+    return classDoc;
+  }
+
+  async findClassesBySchool(schoolId: string, academicYear?: string) {
+    const filter: FilterQuery<Class> = { school: schoolId };
+    if (academicYear) {
+      filter.academicYear = academicYear;
+    }
+
+    return this.classModel
+      .find(filter)
+      .sort({ name: 1 })
+      .populate('formTeacher', 'name email')
+      .exec();
+  }
+
+  async findActiveClassesBySchool(schoolId: string, academicYear?: string) {
+    const filter: FilterQuery<Class> = {
+      school: schoolId,
+      status: 'active',
+    };
+    if (academicYear) {
+      filter.academicYear = academicYear;
+    }
+
+    return this.classModel
+      .find(filter)
+      .sort({ name: 1 })
+      .exec();
+  }
+  
 }

@@ -48,36 +48,10 @@ export class ClassController {
     return this.classService.assignTeacherToClass(id, body.teacherId, req.user);
   }
 
-  @ApiOperation({
-    summary: 'Assign a subject to a class (optionally with teacher)',
-  })
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.STAFF)
-  @Post(':id/subjects')
-  async assignSubject(
-    @Param('id') id: string,
-    @Body() dto: AssignSubjectDto,
-    @Req() req: any,
-  ) {
-    return this.saService.assignSubjectToClass(
-      id,
-      dto.subjectId,
-      dto.academicYear,
-      dto.teacherId,
-    );
-  }
 
   @Get()
   async list(@Query() query: any) {
-    const filter: any = {};
-    if (query.school) filter.school = query.school;
-    if (query.academicYear) filter.academicYear = query.academicYear;
-    if (query.level) filter.level = query.level;
-    return this.classService.listClasses(filter, {
-      limit: parseInt(query.limit) || 0,
-      skip: parseInt(query.skip) || 0,
-    });
+    return this.classService.listClasses(query);
   }
 
   @Get(':id')
