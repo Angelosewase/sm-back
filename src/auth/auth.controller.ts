@@ -7,6 +7,8 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Param,
+  Put,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -14,12 +16,17 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiParam,
+  ApiOkResponse,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RequestResetDto } from './dto/request-reset.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { UpdatePasswordDto } from './dto/update-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('auth')
@@ -136,6 +143,29 @@ export class AuthController {
     );
   }
 
+  @Put('users/:id/password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update user password',
+    description:
+      'Updates the password of the specified user. Passwords are stored hashed.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'MongoDB ObjectId of the user',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @ApiBody({ type: UpdatePasswordDto })
+  @ApiOkResponse({ description: 'Password updated successfully' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  async updatePassword(
+    @Param('id') id: string,
+    @Body() { newPassword }: UpdatePasswordDto,
+  ) {
+    return this.authService.updateUserPassword(id, newPassword);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ApiBearerAuth('JWT-auth')
@@ -158,7 +188,7 @@ export class AuthController {
     status: 401,
     description: 'Unauthorized - Invalid or missing JWT token',
   })
-  async getProfile(@Request() req) {
+  getProfile(@Request() req) {
     return req.user;
   }
 }

@@ -6,9 +6,12 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { DatabaseModule } from './database/database.module';
+import { ClassesModule } from './classes/classes.module';
 import { SchoolModule } from './school-module/school-module.module';
 import { AcademicYearModule } from './academic-year/academic-year.module';
 import { TermModule } from './terms/terms.module';
+import { TeachersModule } from './teachers/teachers.module';
+import { StaffModule } from './staff/staff.module';
 
 @Module({
   imports: [
@@ -19,10 +22,12 @@ import { TermModule } from './terms/terms.module';
     AuthModule,
     UsersModule,
     DatabaseModule,
+    ClassesModule,
     SchoolModule,
     AcademicYearModule,
     TermModule,
-
+    TeachersModule,
+    StaffModule,
   ],
   controllers: [AppController],
   providers: [AppService],

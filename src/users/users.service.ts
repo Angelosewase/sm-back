@@ -16,6 +16,10 @@ import { isInstance } from 'class-validator';
 import { School } from 'src/school-module/schemas/school.schema';
 import { hash } from 'crypto';
 
+type UpdateUserPayload = Partial<
+  Pick<User, 'name' | 'role' | 'phone' | 'email'>
+> & { school?: string | Types.ObjectId };
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -139,33 +143,33 @@ export class UsersService {
       password: hashedPassword,
     });
   }
-  async update(
-    id: string,
-    payload: Partial<
-      Pick<User, 'name' | 'role' | 'phone' | 'school' | 'email'>
-    >,
-  ) {
+  async update(id: string, payload: UpdateUserPayload) {
     const session = await this.userModel.db.startSession();
     session.startTransaction();
 
     try {
       const user = await this.userModel.findById(id).session(session).exec();
       if (!user) throw new Error('User not found');
-      if (payload.school) {
-        const school = await this.schoolModel
-          .findById(payload.school)
+      const { school, ...rest } = payload;
+
+      let schoolId: Types.ObjectId | undefined;
+      if (school) {
+        schoolId = typeof school === 'string' ? new Types.ObjectId(school) : school;
+
+        const schoolDoc = await this.schoolModel
+          .findById(schoolId)
           .session(session)
           .exec();
-        if (!school) throw new Error('School not found');
+        if (!schoolDoc) throw new Error('School not found');
       }
 
-      if (payload.email) {
-        const user_ = await this.findByEmail(payload.email);
+      if (rest.email) {
+        const user_ = await this.findByEmail(rest.email);
         if (user_ && user_.email !== user.email)
           throw new ConflictException('User with that email already exists');
       }
 
-      if (user.school) {
+      if (user.school && schoolId) {
         await this.userModel.db
           .model('School')
           .findByIdAndUpdate(
@@ -174,19 +178,24 @@ export class UsersService {
             { session },
           );
       }
-      // Add user to the new school's users array
-      await this.userModel.db.model('School').findByIdAndUpdate(
-        payload.school,
-        { $addToSet: { users: user._id } }, // $addToSet prevents duplicates
-        { session },
-      );
-      // }
+      if (schoolId) {
+        await this.userModel.db.model('School').findByIdAndUpdate(
+          schoolId,
+          { $addToSet: { users: user._id } },
+          { session },
+        );
+      }
+
+      const updateData: UpdateUserPayload = {
+        ...rest,
+        ...(schoolId ? { school: schoolId } : {}),
+      };
 
       // Update the user
       const updatedUser = await this.userModel
         .findByIdAndUpdate(
           id,
-          { $set: payload },
+          { $set: updateData },
           { new: true, runValidators: true, session },
         )
         .select('-password -__v')
