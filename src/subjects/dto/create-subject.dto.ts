@@ -87,7 +87,7 @@ export class CreateSubjectDto {
 
   @ApiProperty({
     required: false,
-    example: 3, 
+    example: 3,
     description: 'Credit hours for the subject',
   })
   @IsOptional()

@@ -13,6 +13,7 @@ import { TermModule } from './terms/terms.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { StaffModule } from './staff/staff.module';
 import { SchoolModule } from './school/school.module';
+import { SubjectsModule } from './subjects/subjects.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { SchoolModule } from './school/school.module';
     UsersModule,
     DatabaseModule,
     ClassesModule,
+    SubjectsModule,
     SchoolModule,
     AcademicYearModule,
     TermModule,
