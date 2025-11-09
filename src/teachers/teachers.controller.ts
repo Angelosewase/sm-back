@@ -21,6 +21,8 @@ import { TeachersService } from './teachers.service';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { QueryTeacherDto } from './dto/query-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
+import { AssignClassesDto } from './dto/assign-classes.dto';
+import { AssignSubjectsDto } from './dto/assign-subjects.dto';
 
 @ApiTags('teachers')
 @Controller('teachers')
@@ -80,6 +82,30 @@ export class TeachersController {
   @ApiNotFoundResponse({ description: 'Teacher not found' })
   async remove(@Param('id') id: string) {
     return this.teachersService.remove(id);
+  }
+
+  @Post(':id/classes')
+  @ApiOperation({ summary: 'Assign classes to a teacher' })
+  @ApiOkResponse({ description: 'Classes assigned successfully' })
+  @ApiBadRequestResponse({ description: 'Invalid request payload' })
+  @ApiNotFoundResponse({ description: 'Teacher or class not found' })
+  async assignClasses(
+    @Param('id') id: string,
+    @Body() dto: AssignClassesDto,
+  ) {
+    return this.teachersService.assignClasses(id, dto.classIds);
+  }
+
+  @Post(':id/subjects')
+  @ApiOperation({ summary: 'Assign subjects to a teacher' })
+  @ApiOkResponse({ description: 'Subjects assigned successfully' })
+  @ApiBadRequestResponse({ description: 'Invalid request payload' })
+  @ApiNotFoundResponse({ description: 'Teacher or subject not found' })
+  async assignSubjects(
+    @Param('id') id: string,
+    @Body() dto: AssignSubjectsDto,
+  ) {
+    return this.teachersService.assignSubjects(id, dto.subjectIds);
   }
 }
 

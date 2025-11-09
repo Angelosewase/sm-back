@@ -49,6 +49,54 @@ export class User extends Document {
   @ApiProperty({ description: 'Reference to School _id', required: false })
   @Prop({ type: Types.ObjectId, ref: 'School', index: true })
   school?: Types.ObjectId;
+
+  @ApiProperty({
+    description: 'Classes assigned to the teacher',
+    required: false,
+    type: [String],
+  })
+  @Prop({ type: [Types.ObjectId], ref: 'Class', default: [] })
+  assignedClasses?: Types.ObjectId[];
+
+  @ApiProperty({
+    description: 'Subjects the teacher can teach',
+    required: false,
+    type: [String],
+  })
+  @Prop({ type: [Types.ObjectId], ref: 'Subject', default: [] })
+  subjectsCanTeach?: Types.ObjectId[];
+
+  @ApiProperty({ description: 'Years of professional experience', required: false })
+  @Prop({ type: Number, min: 0 })
+  yearsOfExperience?: number;
+
+  @ApiProperty({ description: 'List of qualifications or certifications', required: false, type: [String] })
+  @Prop({ type: [String], default: [] })
+  qualifications?: string[];
+
+  @ApiProperty({ description: 'Street address', required: false })
+  @Prop({ trim: true })
+  address?: string;
+
+  @ApiProperty({ description: 'City of residence', required: false })
+  @Prop({ trim: true })
+  city?: string;
+
+  @ApiProperty({ description: 'State or region of residence', required: false })
+  @Prop({ trim: true })
+  state?: string;
+
+  @ApiProperty({ description: 'Postal or ZIP code', required: false })
+  @Prop({ trim: true })
+  zipCode?: string;
+
+  @ApiProperty({ description: 'Emergency contact information', required: false })
+  @Prop({ trim: true })
+  emergencyContact?: string;
+
+  @ApiProperty({ description: 'Additional notes about the user', required: false })
+  @Prop({ trim: true })
+  additionalNotes?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
