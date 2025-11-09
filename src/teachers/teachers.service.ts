@@ -318,7 +318,7 @@ export class TeachersService {
   private getTeacherObjectId(teacher: User): Types.ObjectId {
     return teacher._id instanceof Types.ObjectId
       ? teacher._id
-      : new Types.ObjectId(teacher._id);
+      : new Types.ObjectId((teacher as any)._id);
   }
 }
 

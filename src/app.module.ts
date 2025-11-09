@@ -7,9 +7,10 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { DatabaseModule } from './database/database.module';
 import { ClassesModule } from './classes/classes.module';
-import { SchoolModule } from './school-module/school-module.module';
+import { SchoolModule as SchoolModuleOperations } from './school-module/school-module.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { StaffModule } from './staff/staff.module';
+import { SchoolModule } from './school/school.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { StaffModule } from './staff/staff.module';
     SchoolModule,
     TeachersModule,
     StaffModule,
+    SchoolModuleOperations,
   ],
   controllers: [AppController],
   providers: [AppService],
