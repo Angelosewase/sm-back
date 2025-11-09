@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -14,6 +15,7 @@ import { QueryClassesDto } from './dto/query-classes.dto';
 
 @Injectable()
 export class ClassesService {
+  private readonly logger = new Logger('ClassesService');
   constructor(
     @InjectModel(Class.name) private readonly classModel: Model<Class>,
     private readonly usersService: UsersService,

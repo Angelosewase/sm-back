@@ -15,7 +15,7 @@ import { UpdateClassDto } from './dto/update-class.dto';
 import { QueryClassesDto } from './dto/query-classes.dto';
 
 @ApiTags('classes')
-@Controller('classes')
+@Controller('api/classes')
 export class ClassesController {
   constructor(private readonly classesService: ClassesService) {}
 

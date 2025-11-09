@@ -10,8 +10,8 @@ import {
   Delete,
   Req,
 } from '@nestjs/common';
-import { SubjectService } from '../services/subject.service';
-import { CreateSubjectDto } from '../dto/create-subject.dto';
+import { SubjectService } from './subject.service';
+import { CreateSubjectDto } from './dto/create-subject.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import {
   ApiBearerAuth,
@@ -19,8 +19,8 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { UpdateSubjectDto } from '../dto/update-subject.dto';
-import { QuerySubjectDto } from '../dto/query-subject.dto';
+import { UpdateSubjectDto } from './dto/update-subject.dto';
+import { QuerySubjectDto } from './dto/query-subject.dto';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Role } from 'src/users/schemas/user.schema';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -29,14 +29,12 @@ import {
   AssignSubjectDto,
   AssignSubjectToClassWithTeacherDto,
   AssignSubjectToTeacherDto,
-} from '../dto/assign-subject.dto';
+} from './dto/assign-subject.dto';
 
 @ApiTags('Subjects')
 @Controller('api/subjects')
 export class SubjectController {
   constructor(private readonly subjectService: SubjectService) {}
-
-
 
   @ApiBearerAuth('access-token')
   @ApiOkResponse({ description: 'Successfully created subject' })
@@ -96,7 +94,7 @@ export class SubjectController {
       id,
       dto.classId,
       dto.academicYear,
-      dto.term
+      dto.term,
     );
   }
 
@@ -116,7 +114,7 @@ export class SubjectController {
       id,
       dto.teacherId,
       dto.academicYear,
-      dto.term
+      dto.term,
     );
   }
 
@@ -137,22 +135,23 @@ export class SubjectController {
       dto.classId,
       dto.teacherId,
       dto.academicYear,
-      dto.term
+      dto.term,
     );
   }
 
-
-
   // Assignment endpoints
   @Post('assign/class')
-  async assignToClass(@Body() body: {
-    subjectId: string;
-    classId: string;
-    academicYear: string;
-    teacherId?: string;
-    term?: string;
-    hoursPerWeek?: number;
-  }) {
+  async assignToClass(
+    @Body()
+    body: {
+      subjectId: string;
+      classId: string;
+      academicYear: string;
+      teacherId?: string;
+      term?: string;
+      hoursPerWeek?: number;
+    },
+  ) {
     return this.subjectService.assignSubjectToClass(
       body.subjectId,
       body.classId,
@@ -169,12 +168,15 @@ export class SubjectController {
   }
 
   @Delete('remove-from-class')
-  async removeFromClass(@Body() body: {
-    subjectId: string;
-    classId: string;
-    academicYear: string;
-    term?: string;
-  }) {
+  async removeFromClass(
+    @Body()
+    body: {
+      subjectId: string;
+      classId: string;
+      academicYear: string;
+      term?: string;
+    },
+  ) {
     return this.subjectService.removeSubjectFromClass(
       body.subjectId,
       body.classId,
@@ -186,7 +188,8 @@ export class SubjectController {
   @Patch('assignments/:assignmentId')
   async updateAssignment(
     @Param('assignmentId') assignmentId: string,
-    @Body() body: {
+    @Body()
+    body: {
       teacherId?: string;
       term?: string;
       hoursPerWeek?: number;
@@ -220,8 +223,7 @@ export class SubjectController {
     });
   }
 
-
-  @Get("all-assignments/subjects")
+  @Get('all-assignments/subjects')
   async getAllAssignedSubjects(
     @Query('academicYear') academicYear?: string | undefined,
     @Query('term') term?: string | undefined,
@@ -274,10 +276,7 @@ export class SubjectController {
     @Param('schoolId') schoolId: string,
     @Query('academicYear') academicYear?: string,
   ) {
-    return this.subjectService.getSchoolAssignmentStats(
-      schoolId,
-      academicYear,
-    );
+    return this.subjectService.getSchoolAssignmentStats(schoolId, academicYear);
   }
 
   @Get('analytics/teacher/:teacherId/workload')
@@ -312,11 +311,22 @@ export class SubjectController {
     return this.subjectService.removeCoTeacher(assignmentId, coTeacherId);
   }
 
-
   @Post(':subjectId/assign-multiple')
-async assignBulk(@Param('subjectId') subjectId: string, @Body() bulk: { assignments: Array<{ classId: string, teacherId: string, academicYear: string, term?: string }> }) {
-  return await this.subjectService.assignMultipleToClasses(subjectId, bulk.assignments);
-}
-
-
+  async assignBulk(
+    @Param('subjectId') subjectId: string,
+    @Body()
+    bulk: {
+      assignments: Array<{
+        classId: string;
+        teacherId: string;
+        academicYear: string;
+        term?: string;
+      }>;
+    },
+  ) {
+    return await this.subjectService.assignMultipleToClasses(
+      subjectId,
+      bulk.assignments,
+    );
+  }
 }
