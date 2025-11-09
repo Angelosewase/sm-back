@@ -1,19 +1,17 @@
-import { GradeLevel } from '../schemas/subject.schema';
-
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsEmail,
+  IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
-  MaxLength,
-  IsEmail,
-  IsNumber,
-  Min,
   Max,
-  IsEnum,
+  MaxLength,
+  Min,
 } from 'class-validator';
 
-export class QuerySubjectDto {
+export class QueryClassDto {
   @ApiPropertyOptional({
     description: 'Search text across name, location, address, contactEmail',
   })
@@ -22,10 +20,10 @@ export class QuerySubjectDto {
   @MaxLength(200)
   q?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by exact school ID' })
+  @ApiPropertyOptional({ description: 'Filter by Grade' })
   @IsOptional()
   @IsString()
-  school?: string;
+  grade?: string;
 
   @ApiPropertyOptional({ description: 'Page number (1-based)', default: 1 })
   @Type(() => Number)
@@ -60,16 +58,23 @@ export class QuerySubjectDto {
   @IsEnum(['asc', 'desc'] as any)
   order?: 'asc' | 'desc' = 'desc';
 
-  @ApiPropertyOptional({
-    description: 'Filter by grade level',
-    enum: GradeLevel,
-  })
+  @ApiPropertyOptional({ description: 'Filter by School _id' })
   @IsOptional()
   @IsString()
-  gradeLevel?: GradeLevel;
+  school?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by subject type' })
+  @ApiPropertyOptional({ description: 'Filter by academic year' })
   @IsOptional()
   @IsString()
-  subjectType?: string;
+  academicYear?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by level' })
+  @IsOptional()
+  @IsString()
+  level?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by status' })
+  @IsOptional()
+  @IsString()
+  status?: string;
 }

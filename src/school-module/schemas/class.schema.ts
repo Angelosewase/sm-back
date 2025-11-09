@@ -54,6 +54,11 @@ export class Class {
     index: true,
   })
   status: ClassStatus;
+
+  @Prop({
+    type:String
+  })
+  room?: string;
 }
 
 export const ClassSchema = SchemaFactory.createForClass(Class);
