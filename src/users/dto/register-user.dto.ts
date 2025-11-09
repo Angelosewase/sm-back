@@ -1,6 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MinLength, IsOptional, IsEnum } from 'class-validator';
+import {
+  IsArray,
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { Role } from '../schemas/user.schema';
+import { Type } from 'class-transformer';
 
 export class RegisterDto {
   @ApiProperty({
@@ -56,4 +66,80 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   school?: string;
+
+  @ApiProperty({
+    example: 3,
+    description: 'Total years of teaching or professional experience',
+    required: false,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  yearsOfExperience?: number;
+
+  @ApiProperty({
+    example: ['B.Ed', 'TESOL Certificate'],
+    description: 'List of qualifications or certifications',
+    required: false,
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  qualifications?: string[];
+
+  @ApiProperty({
+    example: '123 Main St',
+    description: 'Street address',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiProperty({
+    example: 'Springfield',
+    description: 'City of residence',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiProperty({
+    example: 'Illinois',
+    description: 'State or region of residence',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  state?: string;
+
+  @ApiProperty({
+    example: '62704',
+    description: 'Postal or ZIP code',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  zipCode?: string;
+
+  @ApiProperty({
+    example: 'Jane Doe - +1-555-987-6543',
+    description: 'Emergency contact details',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  emergencyContact?: string;
+
+  @ApiProperty({
+    example: 'Prefers online meetings in the afternoon',
+    description: 'Additional notes about the user',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  additionalNotes?: string;
 }

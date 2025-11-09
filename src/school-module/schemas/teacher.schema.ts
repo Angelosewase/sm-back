@@ -24,6 +24,9 @@ export class Teacher {
   phone?: string;
 
   @Prop({ trim: true })
+  address?: string;
+
+  @Prop({ trim: true })
   qualification?: string;
 
   @Prop()
@@ -31,6 +34,27 @@ export class Teacher {
 
   @Prop({ type: Types.ObjectId, ref: 'School', index: true })
   school?: Types.ObjectId;
+
+  @Prop({ type: Number, min: 0 })
+  yearsOfExperience?: number;
+
+  @Prop({ type: [String], default: [] })
+  qualifications?: string[];
+
+  @Prop({ trim: true })
+  city?: string;
+
+  @Prop({ trim: true })
+  state?: string;
+
+  @Prop({ trim: true })
+  zipCode?: string;
+
+  @Prop({ trim: true })
+  emergencyContact?: string;
+
+  @Prop({ trim: true })
+  additionalNotes?: string;
 }
 
 export const TeacherSchema = SchemaFactory.createForClass(Teacher);

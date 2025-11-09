@@ -1,6 +1,17 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsMongoId, IsOptional, IsPhoneNumber, IsString, MaxLength } from 'class-validator';
+import {
+  IsArray,
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsMongoId,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { Role } from '../schemas/user.schema';
+import { Type } from 'class-transformer';
 
 export class UpdateUserDto {
   
@@ -33,4 +44,47 @@ export class UpdateUserDto {
   @IsOptional()
   @IsMongoId()
   school?: string;
+
+  @ApiPropertyOptional({ description: 'Updated years of experience', example: 10 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  yearsOfExperience?: number;
+
+  @ApiPropertyOptional({ description: 'Updated list of qualifications', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  qualifications?: string[];
+
+  @ApiPropertyOptional({ description: 'Updated street address' })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiPropertyOptional({ description: 'Updated city' })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiPropertyOptional({ description: 'Updated state or region' })
+  @IsOptional()
+  @IsString()
+  state?: string;
+
+  @ApiPropertyOptional({ description: 'Updated postal or ZIP code' })
+  @IsOptional()
+  @IsString()
+  zipCode?: string;
+
+  @ApiPropertyOptional({ description: 'Updated emergency contact details' })
+  @IsOptional()
+  @IsString()
+  emergencyContact?: string;
+
+  @ApiPropertyOptional({ description: 'Updated additional notes' })
+  @IsOptional()
+  @IsString()
+  additionalNotes?: string;
 }
