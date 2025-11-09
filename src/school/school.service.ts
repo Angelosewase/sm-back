@@ -9,18 +9,31 @@ import { Model, Types } from 'mongoose';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 import { School } from './entities/school.entity';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class SchoolService {
   constructor(
     @InjectModel(School.name)
     private readonly schoolModel: Model<School>,
+    private readonly usersService: UsersService,
   ) {}
 
-  async create(createSchoolDto: CreateSchoolDto): Promise<School> {
+  async create(
+    createSchoolDto: CreateSchoolDto,
+    ownerId: string,
+  ): Promise<School> {
+    if (!ownerId) {
+      throw new BadRequestException('Owner id is required to create a school');
+    }
+
     try {
-      const school = new this.schoolModel(createSchoolDto);
-      return await school.save();
+      const school = await this.schoolModel.create(createSchoolDto);
+      await this.usersService.assignSchoolToUser(
+        ownerId,
+        school._id as unknown as Types.ObjectId,
+      );
+      return school;
     } catch (error: any) {
       if (error?.code === 11000) {
         throw new ConflictException(

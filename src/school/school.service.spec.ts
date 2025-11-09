@@ -8,22 +8,31 @@ import {
 } from '@nestjs/common';
 import { SchoolService } from './school.service';
 import { School } from './entities/school.entity';
+import { UsersService } from '../users/users.service';
 
 describe('SchoolService', () => {
   let service: SchoolService;
-  const mockSchoolModel = jest.fn() as unknown as jest.Mock;
+  let mockSchoolModel: {
+    create: jest.Mock;
+    find: jest.Mock;
+    findById: jest.Mock;
+    findByIdAndUpdate: jest.Mock;
+    findByIdAndDelete: jest.Mock;
+  };
+  let mockUsersService: { assignSchoolToUser: jest.Mock };
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    mockSchoolModel = {
+      create: jest.fn(),
+      find: jest.fn(),
+      findById: jest.fn(),
+      findByIdAndUpdate: jest.fn(),
+      findByIdAndDelete: jest.fn(),
+    };
 
-    (mockSchoolModel as unknown as jest.Mock).mockImplementation(() => ({
-      save: jest.fn(),
-    }));
-
-    (mockSchoolModel as any).find = jest.fn();
-    (mockSchoolModel as any).findById = jest.fn();
-    (mockSchoolModel as any).findByIdAndUpdate = jest.fn();
-    (mockSchoolModel as any).findByIdAndDelete = jest.fn();
+    mockUsersService = {
+      assignSchoolToUser: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -31,6 +40,10 @@ describe('SchoolService', () => {
         {
           provide: getModelToken(School.name),
           useValue: mockSchoolModel,
+        },
+        {
+          provide: UsersService,
+          useValue: mockUsersService,
         },
       ],
     }).compile();
@@ -49,45 +62,55 @@ describe('SchoolService', () => {
   };
 
   const schoolId = new Types.ObjectId().toHexString();
+  const ownerId = new Types.ObjectId().toHexString();
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
   describe('create', () => {
-    it('should create a school successfully', async () => {
-      const savedSchool = { _id: schoolId, ...createSchoolDto };
-      (mockSchoolModel as unknown as jest.Mock).mockImplementation(() => ({
-        save: jest.fn().mockResolvedValue(savedSchool),
-      }));
+    it('should require an owner id', async () => {
+      await expect(
+        service.create(createSchoolDto as any, ''),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockSchoolModel.create).not.toHaveBeenCalled();
+    });
 
-      await expect(service.create(createSchoolDto as any)).resolves.toEqual(
-        savedSchool,
+    it('should create a school and assign it to the owner', async () => {
+      const savedSchool = { _id: schoolId, ...createSchoolDto };
+      mockSchoolModel.create.mockResolvedValue(savedSchool);
+
+      await expect(
+        service.create(createSchoolDto as any, ownerId),
+      ).resolves.toEqual(savedSchool);
+      expect(mockSchoolModel.create).toHaveBeenCalledWith(createSchoolDto);
+      expect(mockUsersService.assignSchoolToUser).toHaveBeenCalledWith(
+        ownerId,
+        savedSchool._id,
       );
     });
 
     it('should translate duplicate key errors into ConflictException', async () => {
-      (mockSchoolModel as unknown as jest.Mock).mockImplementation(() => ({
-        save: jest.fn().mockRejectedValue({ code: 11000 }),
-      }));
+      mockSchoolModel.create.mockRejectedValue({ code: 11000 });
 
-      await expect(service.create(createSchoolDto as any)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.create(createSchoolDto as any, ownerId),
+      ).rejects.toThrow(ConflictException);
+      expect(mockUsersService.assignSchoolToUser).not.toHaveBeenCalled();
     });
   });
 
   describe('findAll', () => {
     it('should return all schools sorted by name', async () => {
       const schoolList = [{ _id: schoolId, ...createSchoolDto }];
-      (mockSchoolModel as any).find.mockReturnValue({
-        sort: jest.fn().mockReturnValue({
-          exec: jest.fn().mockResolvedValue(schoolList),
-        }),
-      });
+      const execMock = jest.fn().mockResolvedValue(schoolList);
+      const sortMock = jest.fn().mockReturnValue({ exec: execMock });
+      mockSchoolModel.find.mockReturnValue({ sort: sortMock });
 
       await expect(service.findAll()).resolves.toEqual(schoolList);
-      expect((mockSchoolModel as any).find).toHaveBeenCalled();
+      expect(mockSchoolModel.find).toHaveBeenCalled();
+      expect(sortMock).toHaveBeenCalledWith({ name: 1 });
+      expect(execMock).toHaveBeenCalled();
     });
   });
 
@@ -100,17 +123,15 @@ describe('SchoolService', () => {
 
     it('should return school when found', async () => {
       const school = { _id: schoolId, ...createSchoolDto };
-      (mockSchoolModel as any).findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(school),
-      });
+      const execMock = jest.fn().mockResolvedValue(school);
+      mockSchoolModel.findById.mockReturnValue({ exec: execMock });
 
       await expect(service.findOne(schoolId)).resolves.toEqual(school);
     });
 
     it('should throw NotFoundException when school is missing', async () => {
-      (mockSchoolModel as any).findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
+      const execMock = jest.fn().mockResolvedValue(null);
+      mockSchoolModel.findById.mockReturnValue({ exec: execMock });
 
       await expect(service.findOne(schoolId)).rejects.toThrow(
         NotFoundException,
@@ -127,9 +148,8 @@ describe('SchoolService', () => {
 
     it('should update school successfully', async () => {
       const updatedSchool = { _id: schoolId, ...createSchoolDto, name: 'New' };
-      (mockSchoolModel as any).findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(updatedSchool),
-      });
+      const execMock = jest.fn().mockResolvedValue(updatedSchool);
+      mockSchoolModel.findByIdAndUpdate.mockReturnValue({ exec: execMock });
 
       await expect(
         service.update(schoolId, { name: 'New' } as any),
@@ -137,9 +157,8 @@ describe('SchoolService', () => {
     });
 
     it('should throw NotFoundException when school is missing', async () => {
-      (mockSchoolModel as any).findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
+      const execMock = jest.fn().mockResolvedValue(null);
+      mockSchoolModel.findByIdAndUpdate.mockReturnValue({ exec: execMock });
 
       await expect(
         service.update(schoolId, { name: 'New' } as any),
@@ -147,9 +166,8 @@ describe('SchoolService', () => {
     });
 
     it('should translate duplicate key errors into ConflictException', async () => {
-      (mockSchoolModel as any).findByIdAndUpdate.mockReturnValue({
-        exec: jest.fn().mockRejectedValue({ code: 11000 }),
-      });
+      const execMock = jest.fn().mockRejectedValue({ code: 11000 });
+      mockSchoolModel.findByIdAndUpdate.mockReturnValue({ exec: execMock });
 
       await expect(
         service.update(schoolId, { name: 'New' } as any),
@@ -165,17 +183,15 @@ describe('SchoolService', () => {
     });
 
     it('should remove school successfully', async () => {
-      (mockSchoolModel as any).findByIdAndDelete.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ _id: schoolId }),
-      });
+      const execMock = jest.fn().mockResolvedValue({ _id: schoolId });
+      mockSchoolModel.findByIdAndDelete.mockReturnValue({ exec: execMock });
 
       await expect(service.remove(schoolId)).resolves.toBeUndefined();
     });
 
     it('should throw NotFoundException when school is missing', async () => {
-      (mockSchoolModel as any).findByIdAndDelete.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(null),
-      });
+      const execMock = jest.fn().mockResolvedValue(null);
+      mockSchoolModel.findByIdAndDelete.mockReturnValue({ exec: execMock });
 
       await expect(service.remove(schoolId)).rejects.toThrow(
         NotFoundException,

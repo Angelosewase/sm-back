@@ -6,8 +6,11 @@ import {
   Param,
   Patch,
   Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -18,9 +21,25 @@ import { SchoolService } from './school.service';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 import { School as SchoolEntity } from './entities/school.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../users/schemas/user.schema';
+import { Request } from 'express';
+
+interface AuthenticatedRequest extends Request {
+  user: {
+    userId: string;
+    email: string;
+    role: Role;
+  };
+}
 
 @ApiTags('schools')
 @Controller('school')
+@ApiBearerAuth('access-token')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN)
 export class SchoolController {
   constructor(private readonly schoolService: SchoolService) {}
 
@@ -30,8 +49,11 @@ export class SchoolController {
     type: SchoolEntity,
   })
   @Post()
-  create(@Body() createSchoolDto: CreateSchoolDto): Promise<SchoolEntity> {
-    return this.schoolService.create(createSchoolDto);
+  create(
+    @Req() req: AuthenticatedRequest,
+    @Body() createSchoolDto: CreateSchoolDto,
+  ): Promise<SchoolEntity> {
+    return this.schoolService.create(createSchoolDto, req.user.userId);
   }
 
   @ApiOperation({ summary: 'Retrieve all schools' })

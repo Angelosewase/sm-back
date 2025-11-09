@@ -2,10 +2,11 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, FilterQuery, Types } from 'mongoose';
+import { Model, FilterQuery, Types, ClientSession } from 'mongoose';
 import { Role, User } from './schemas/user.schema';
 import { promises as fsPromises, existsSync } from 'fs';
 import { join } from 'path';
@@ -13,7 +14,7 @@ import * as bcrypt from 'bcrypt';
 import { QueryUserDto } from './dto/query-user.dto';
 import { RegisterDto } from './dto/register-user.dto';
 import { isInstance } from 'class-validator';
-import { School } from 'src/school-module/schemas/school.schema';
+import { School } from '../school/entities/school.entity';
 import { hash } from 'crypto';
 
 type UpdateUserPayload = Partial<
@@ -90,7 +91,7 @@ export class UsersService {
   }
 
   async getUserSchool(id: string): Promise<School | null> {
-    return  await this.schoolModel.findById(id)
+    return this.schoolModel.findById(id);
   }
 
   /**
@@ -158,6 +159,53 @@ export class UsersService {
     await this.userModel.findByIdAndUpdate(userId, {
       password: hashedPassword,
     });
+  }
+
+  async assignSchoolToUser(
+    userId: string,
+    schoolId: Types.ObjectId | string,
+    session?: ClientSession,
+  ): Promise<void> {
+    const normalizedSchoolId =
+      typeof schoolId === 'string' ? new Types.ObjectId(schoolId) : schoolId;
+
+    const userQuery = this.userModel.findById(userId);
+    if (session) {
+      userQuery.session(session);
+    }
+    const user = await userQuery.exec();
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.school) {
+      const pullQuery = this.schoolModel.findByIdAndUpdate(
+        user.school,
+        { $pull: { users: user._id } },
+        { new: false },
+      );
+      if (session) {
+        pullQuery.session(session);
+      }
+      await pullQuery.exec();
+    }
+
+    user.school = normalizedSchoolId;
+    if (session) {
+      await user.save({ session });
+    } else {
+      await user.save();
+    }
+
+    const pushQuery = this.schoolModel.findByIdAndUpdate(
+      normalizedSchoolId,
+      { $addToSet: { users: user._id } },
+      { new: false },
+    );
+    if (session) {
+      pushQuery.session(session);
+    }
+    await pushQuery.exec();
   }
   async update(id: string, payload: UpdateUserPayload) {
     const session = await this.userModel.db.startSession();
