@@ -7,13 +7,12 @@ import {
 import { Model, Types } from 'mongoose';
 import { Marks, MarksDocument } from '../schemas/marks.schema';
 import { EnterMarkDto } from '../dto/enter-mark.dto';
-import { Subject } from '../schemas/subject.schema';
+import { Subject } from '../../subjects/schemas/subject.schema';
 import { Enrollment } from '../schemas/enrollment.schema';
 import { AuditLog } from '../schemas/audit.schema';
 import { InjectModel } from '@nestjs/mongoose';
-import { Class } from '../schemas/class.schema';
-import { ClassService } from './class.service';
-// import InjectModel from '@nestjs/mongoose';
+import { ClassesService } from 'src/classes/classes.service';
+
 
 function round(n: number) {
   return Math.round((n || 0) * 100) / 100;
@@ -27,7 +26,7 @@ export class MarksService {
     @InjectModel(Enrollment.name) private enrollmentModel: Model<Enrollment>,
     @InjectModel(AuditLog.name) private auditModel: Model<AuditLog>,
 
-    private readonly classService: ClassService,
+    private readonly classService: ClassesService,
   ) {}
 
   async enterMark(actorUser: any, dto: EnterMarkDto) {
@@ -36,7 +35,7 @@ export class MarksService {
     const subject = await this.subjectModel.findById(dto.subjectId).exec();
     if (!subject) throw new NotFoundException('Subject not found');
 
-    const class_ = await this.classService.getClassById(dto.classId);
+    const class_ = await this.classService.findOne(dto.classId);
     if (!class_)
       throw new BadRequestException(
         'Provided class id "' + dto.classId + '" not found',
@@ -541,7 +540,7 @@ export class MarksService {
 
       subjects.push({
         subjectId: String(r.subjectId || r._id),
-        subjectName: await this.getSubjectName(r.subjectId)|| 'Subject',
+        subjectName: (await this.getSubjectName(r.subjectId)) || 'Subject',
         terms: termMap,
         total: round(subjectTotal),
         max: round(subjectMax),
@@ -568,10 +567,9 @@ export class MarksService {
     };
   }
 
-
-  async getSubjectName(subjectId: string):Promise<string | undefined> {
-    let subject =  await this.subjectModel.findOne({ _id: subjectId }).exec();
-     return subject?.name;
+  async getSubjectName(subjectId: string): Promise<string | undefined> {
+    let subject = await this.subjectModel.findOne({ _id: subjectId }).exec();
+    return subject?.name;
   }
 
   async getAllMarksRecords() {

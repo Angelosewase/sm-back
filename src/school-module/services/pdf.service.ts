@@ -3,7 +3,7 @@ import * as puppeteer from 'puppeteer';
 import { UsersService } from 'src/users/users.service';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { ClassService } from './class.service';
+import { ClassesService } from 'src/classes/classes.service';
 
 /**
  * Small in-memory cache helper. Kept simple (per-process) and intended for short-lived
@@ -32,7 +32,7 @@ export class PdfService {
 
   constructor(
     private readonly usersService: UsersService,
-    private readonly classService: ClassService,
+    private readonly classService: ClassesService,
   ) {}
 
   async generatePdfFromHtml(html: string, options?: puppeteer.PDFOptions) {
@@ -216,7 +216,7 @@ export class PdfService {
       overall,
       avatarDataUri,
     } = report;
-    let class_name = await this.classService.getClassName(classId);
+    let class_name = (await this.classService.findOne(classId)).name
     const header = `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:2px solid #222;">
         <div>

@@ -39,5 +39,6 @@ SubjectAssignmentSchema.index(
 );
 
 SubjectAssignmentSchema.index(
-  { subject: 1, teacher: 1, academicYear: 1 }
+  { subject: 1, teacher: 1, academicYear: 1 },
+  { unique: true },
 );

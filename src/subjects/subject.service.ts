@@ -6,19 +6,19 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
-import { Subject, SubjectDocument } from '../schemas/subject.schema';
+import { Subject, SubjectDocument } from './schemas/subject.schema';
 import {
   SubjectAssignment,
   SubjectAssignmentDocument,
-} from '../schemas/subject-assignment.schema';
-import { CreateSubjectDto } from '../dto/create-subject.dto';
-import { UpdateSubjectDto } from '../dto/update-subject.dto';
+} from './schemas/subject-assignment.schema';
+import { CreateSubjectDto } from './dto/create-subject.dto';
+import { UpdateSubjectDto } from './dto/update-subject.dto';
 import { UsersService } from 'src/users/users.service';
-import { SchoolModuleService } from '../school-module.service';
-import { QuerySubjectDto } from '../dto/query-subject.dto';
-import { ClassService } from './class.service';
-import { Class } from '../schemas/class.schema';
+import { SchoolModuleService } from '../school-module/school-module.service';
+import { QuerySubjectDto } from './dto/query-subject.dto';
 import { User } from 'src/users/schemas/user.schema';
+import { Class } from 'src/classes/schemas/class.schema';
+import { ClassesService } from 'src/classes/classes.service';
 
 interface ResultInterface {
   class?: Class | null;
@@ -40,7 +40,7 @@ export class SubjectService {
     private subjectAssignmentModel: Model<SubjectAssignmentDocument>,
     private readonly usersService: UsersService,
     private readonly schoolService: SchoolModuleService,
-    private readonly classService: ClassService,
+    private readonly classService: ClassesService,
   ) {}
 
   // ============= ASSIGNMENT METHODS =============
@@ -116,13 +116,11 @@ export class SubjectService {
     term?: string,
   ) {
     try {
-
       const { subject, teacher } = await this.ValidateParams({
         subjectId,
         teacherId,
       });
 
-   
       // Check if already assigned
       const existing = await this.checkAssignmentExistsWithTeacher(
         subjectId,
@@ -149,7 +147,7 @@ export class SubjectService {
 
       const rec = new this.subjectAssignmentModel({
         subject: '_id' in subject ? subject._id : subjectId,
-        teacher: '_id' in teacher ? teacher._id: teacherId,
+        teacher: '_id' in teacher ? teacher._id : teacherId,
         academicYear,
         term,
       });
@@ -509,8 +507,6 @@ export class SubjectService {
       if (options.academicYear) filter.academicYear = options.academicYear;
       if (options.term) filter.term = options.term;
 
-      console.log('Finding assignments with filter:', filter);
-
       let query = this.subjectAssignmentModel.find(filter);
 
       // Always populate all fields except sensitive data
@@ -540,13 +536,23 @@ export class SubjectService {
       // Filter out any null/undefined classes when mapping
       const classes = assignments.map((a) => a.class).filter(Boolean);
       // const students = assignments.map(a=> a.students).filter(Boolean);
-      const teachers = assignments.map(a=> a.teacher).filter(Boolean)
-    
+      const uniqueTeachers = Array.from(
+        new Set(
+          assignments.map((a) => a.teacher?._id?.toString()).filter(Boolean),
+        ),
+      )
+        .map(
+          (id) =>
+            assignments.find((a) => a.teacher?._id?.toString() === id)?.teacher,
+        )
+        .filter(Boolean);
       return {
         subjectId,
+        totalTeachers: uniqueTeachers.length,
         totalClasses: classes.length,
         assignments,
         classes,
+        uniqueTeachers,
         debug: {
           filter,
           matchedAssignments: assignments.length,
@@ -812,7 +818,7 @@ export class SubjectService {
         school: schoolId,
         academicYear,
       });
-      const classIds = classes.items.map((c) => (c as any)._id.toString());
+      const classIds = classes.data.map((c) => (c as any)._id.toString());
 
       filter.class = { $in: classIds };
 
@@ -987,8 +993,8 @@ export class SubjectService {
     term?: string,
   ): Promise<boolean> {
     const filter: any = {
-      subject: subjectId,
-      teacher: teacherId,
+      subject: new Types.ObjectId(subjectId),
+      teacher: new Types.ObjectId(teacherId),
       academicYear,
     };
     if (term) filter.term = term;
@@ -996,6 +1002,8 @@ export class SubjectService {
     const count = await this.subjectAssignmentModel
       .countDocuments(filter)
       .exec();
+    console.log('the filter was: ', filter);
+    console.log('output count is: ', count);
     return count > 0;
   }
 
@@ -1020,7 +1028,7 @@ export class SubjectService {
     result.subject = subject_;
 
     if (classId) {
-      const class_ = await this.classService.getClassById(classId);
+      const class_ = await this.classService.findOne(classId);
       if (!class_) {
         throw new NotFoundException(`Class with id "${classId}" not found`);
       }
@@ -1113,13 +1121,12 @@ export class SubjectService {
         { location: regex },
         { address: regex },
         { contactEmail: regex },
-        {subjectType: regex}
+        { subjectType: regex },
       ];
     }
-    if(subjectType){
+    if (subjectType) {
       filter.subjectType = subjectType;
-    }
-    else if(gradeLevel) {
+    } else if (gradeLevel) {
       filter.gradeLevels = gradeLevel;
     }
 

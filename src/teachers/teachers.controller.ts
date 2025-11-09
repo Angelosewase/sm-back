@@ -22,7 +22,7 @@ import { QueryTeacherDto } from './dto/query-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
 
 @ApiTags('teachers')
-@Controller('teachers')
+@Controller('api/teachers')
 export class TeachersController {
   constructor(private readonly teachersService: TeachersService) {}
 
@@ -35,7 +35,7 @@ export class TeachersController {
   }
 
   @Get()
-  @ApiOperation({
+@ApiOperation({
     summary: 'List teachers with optional filtering, search, and pagination',
   })
   @ApiOkResponse({ description: 'Teachers retrieved successfully' })

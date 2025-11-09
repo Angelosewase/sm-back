@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsInt,
@@ -49,5 +49,16 @@ export class QueryClassesDto {
   @IsString()
   @IsNotEmpty()
   gradeLevel?: string;
-}
+
+
+  @ApiPropertyOptional({ description: 'School _id to filter classes', example: '68f79d534286e66c8b4ad219' })
+  @IsOptional()
+  @IsString()
+  school?: string;
+
+  @ApiPropertyOptional({ description: 'Academic year to filter classes', example: '2024/2025' })
+  @IsOptional()
+  @IsString()
+  academicYear?: string;
+ }
 
