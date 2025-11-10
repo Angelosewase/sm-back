@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { StudentService } from './student.service';
+import { StudentService } from '../../students/student.service';
 import { parse } from 'csv-parse/sync';
 
 @Injectable()

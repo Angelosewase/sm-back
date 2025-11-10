@@ -9,14 +9,13 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { StudentService } from '../services/student.service';
-import { CreateStudentDto } from '../dto/create-student.dto';
-import { EnrollmentService } from '../services/enrollment.service';
-import { EnrollStudentDto } from '../dto/enroll-student.dto';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { Role } from '../../users/schemas/user.schema';
+import { StudentService } from './student.service';
+import { CreateStudentDto } from './dto/create-student.dto';
+import { EnrollStudentDto } from './dto/enroll-student.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Role } from '../users/schemas/user.schema';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -25,7 +24,8 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CsvImportService } from '../services/csv-import.service';
+import { CsvImportService } from '../school-module/services/csv-import.service';
+import { EnrollmentService } from './enrollment.service';
 
 @ApiTags('Students')
 @Controller('students')

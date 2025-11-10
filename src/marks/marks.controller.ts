@@ -1,16 +1,23 @@
-import { Controller, Post, Body, UseGuards, Req, Param, Get } from '@nestjs/common';
-import { MarksService } from '../services/marks.service';
-import { EnterMarkDto } from '../dto/enter-mark.dto';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { Role } from '../../users/schemas/user.schema';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Req,
+  Param,
+  Get,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { BulkApproveMarksDto, BulkMarksDto, BulkSubmitMarksDto } from '../dto/bulk-marks.dto';
-
+import { Roles } from 'src/auth/decorators/roles.decorator';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Role } from 'src/users/schemas/user.schema';
+import { BulkMarksDto, BulkSubmitMarksDto, BulkApproveMarksDto } from './dto/bulk-marks.dto';
+import { EnterMarkDto } from './dto/enter-mark.dto';
+import { MarksService } from './marks.service';
 @ApiBearerAuth('access-token')
 @ApiTags('Marks')
-@Controller('marks')
+@Controller('api/marks')
 export class MarksController {
   constructor(private readonly marksService: MarksService) {}
 
@@ -69,7 +76,6 @@ export class MarksController {
     );
   }
 
-
   @ApiOperation({
     summary: 'Submit marks (teacher) — move drafts to submitted',
   })
@@ -80,14 +86,19 @@ export class MarksController {
   async submitBulk(
     @Req() req: any,
     @Body()
-     dto:BulkSubmitMarksDto
+    dto: BulkSubmitMarksDto,
   ) {
-
-     const results = [] as any[];
+    const results = [] as any[];
     for (const m of dto.marks) {
       try {
-        const res = await this.marksService.submitMarks(req.user, m.classId, m.subjectId, m.academicYear, m.term);
-        results.push({ ok: true});
+        const res = await this.marksService.submitMarks(
+          req.user,
+          m.classId,
+          m.subjectId,
+          m.academicYear,
+          m.term,
+        );
+        results.push({ ok: true });
       } catch (e: any) {
         results.push({ ok: false, error: e?.message || String(e), mark: m });
       }
@@ -126,14 +137,19 @@ export class MarksController {
   async approveBulk(
     @Req() req: any,
     @Body()
-     dto:BulkApproveMarksDto
+    dto: BulkApproveMarksDto,
   ) {
-
-     const results = [] as any[];
+    const results = [] as any[];
     for (const m of dto.marks) {
       try {
-        const res = await this.marksService.approveMarks(req.user, m.classId, m.subjectId, m.academicYear, m.term);
-        results.push({ok: true});
+        const res = await this.marksService.approveMarks(
+          req.user,
+          m.classId,
+          m.subjectId,
+          m.academicYear,
+          m.term,
+        );
+        results.push({ ok: true });
       } catch (e: any) {
         results.push({ ok: false, error: e?.message || String(e), mark: m });
       }
@@ -153,7 +169,6 @@ export class MarksController {
   ) {
     return this.marksService.updateMark(req.user, id, body);
   }
-
 
   @Get()
   async list() {

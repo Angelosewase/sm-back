@@ -1,9 +1,9 @@
 import { Controller, Get, Query, Res, Param, UseGuards } from '@nestjs/common';
-import { MarksService } from '../services/marks.service';
-import { PdfService } from '../services/pdf.service';
+import { PdfService } from '../school-module/services/pdf.service';
 import type { Response } from 'express';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { MarksService } from 'src/marks/marks.service';
 
 @ApiBearerAuth('access-token')
 @Controller('reports')

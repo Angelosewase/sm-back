@@ -14,6 +14,9 @@ import { TeachersModule } from './teachers/teachers.module';
 import { StaffModule } from './staff/staff.module';
 import { SubjectsModule } from './subjects/subjects.module';
 import { HeadTeachersModule } from './head-teacher/head-teachers.module';
+import { MarksModule } from './marks/marks.module';
+import { StudentsModule } from './students/students.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -31,6 +34,9 @@ import { HeadTeachersModule } from './head-teacher/head-teachers.module';
     TermModule,
     TeachersModule,
     HeadTeachersModule,
+    StudentsModule,
+    ReportsModule,
+    MarksModule,
     StaffModule,
   ],
   controllers: [AppController],
