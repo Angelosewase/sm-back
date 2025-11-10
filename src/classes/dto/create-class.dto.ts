@@ -50,8 +50,10 @@ export class CreateClassDto {
   @ApiProperty({
     description: 'Identifier of the assigned teacher',
     example: '64f0a5b3c21a7123456789ab',
+    required: false,
   })
+  @IsOptional()
   @IsMongoId()
-  classTeacher: string;
+  classTeacher?: string;
 }
 

@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, TransformFnParams, Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -9,6 +10,18 @@ import {
   Max,
   Min,
 } from 'class-validator';
+
+const booleanTransformer = ({ value }: TransformFnParams): boolean | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  if (typeof value === 'string') {
+    return value.trim().toLowerCase() === 'true';
+  }
+
+  return value === true;
+};
 
 export class QueryClassesDto {
   @ApiProperty({ description: 'Page number', required: false, example: 1 })
@@ -60,5 +73,23 @@ export class QueryClassesDto {
   @IsOptional()
   @IsString()
   academicYear?: string;
- }
+
+  @ApiPropertyOptional({
+    description: 'Include trashed classes in the results',
+    example: false,
+  })
+  @IsOptional()
+  @Transform(booleanTransformer)
+  @IsBoolean()
+  includeTrashed?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Return only trashed classes',
+    example: false,
+  })
+  @IsOptional()
+  @Transform(booleanTransformer)
+  @IsBoolean()
+  onlyTrashed?: boolean;
+}
 

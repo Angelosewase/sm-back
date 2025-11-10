@@ -16,11 +16,8 @@ import {
   Teacher,
   TeacherDocument,
 } from '../school-module/schemas/teacher.schema';
-import { Class, ClassDocument } from '../school-module/schemas/class.schema';
-import {
-  Subject,
-  SubjectDocument,
-} from '../school-module/schemas/subject.schema';
+import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
+import { Subject, SubjectSchema } from 'src/subjects/schemas/subject.schema';
 
 @Injectable()
 export class TeachersService {
@@ -30,9 +27,9 @@ export class TeachersService {
     @InjectModel(Teacher.name)
     private readonly teacherModel: Model<TeacherDocument>,
     @InjectModel(Class.name)
-    private readonly classModel: Model<ClassDocument>,
+    private readonly classModel: Model<Class>,
     @InjectModel(Subject.name)
-    private readonly subjectModel: Model<SubjectDocument>,
+    private readonly subjectModel: Model<Subject>,
   ) {}
 
   async create(createTeacherDto: CreateTeacherDto) {
@@ -77,9 +74,7 @@ export class TeachersService {
 
   async update(id: string, updateTeacherDto: UpdateTeacherDto) {
     await this.ensureTeacher(id);
-    const updatePayload: Parameters<
-      typeof this.usersService.update
-    >[1] = {
+    const updatePayload: Parameters<typeof this.usersService.update>[1] = {
       ...updateTeacherDto,
       role: Role.TEACHER,
     };
@@ -102,7 +97,10 @@ export class TeachersService {
     return teacher;
   }
 
-  private async sendWelcomeEmailSafely(teacher: User, temporaryPassword: string) {
+  private async sendWelcomeEmailSafely(
+    teacher: User,
+    temporaryPassword: string,
+  ) {
     try {
       await this.emailService.sendTeacherWelcomeEmail(
         teacher.email,
@@ -146,23 +144,23 @@ export class TeachersService {
     const foundIds = new Set(classes.map((cls) => cls._id.toString()));
     const missing = uniqueClassIds.filter((id) => !foundIds.has(id));
     if (missing.length) {
-      throw new NotFoundException(
-        `Classes not found: ${missing.join(', ')}`,
-      );
+      throw new NotFoundException(`Classes not found: ${missing.join(', ')}`);
     }
 
-    if (teacher.school) {
-      const teacherSchoolId = teacher.school.toString();
-      const mismatched = classes.filter(
-        (cls) =>
-          cls.school && cls.school.toString() !== teacherSchoolId,
-      );
-      if (mismatched.length) {
-        throw new BadRequestException(
-          'One or more classes belong to a different school',
-        );
-      }
-    }
+    // if (teacher.school) {
+    //   const teacherSchoolId = teacher.school.toString();
+    //   const mismatched = classes.filter(
+    //     (cls) =>
+    //       cls.classTeacher &&
+    //       cls.classTeacher.schoolId &&
+    //       cls.classTeacher.schoolId.toString() !== teacherSchoolId,
+    //   );
+    //   if (mismatched.length) {
+    //     throw new BadRequestException(
+    //       'One or more classes belong to a different school',
+    //     );
+    //   }
+    // }
 
     const teacherObjectId = this.getTeacherObjectId(teacher);
 
@@ -185,7 +183,7 @@ export class TeachersService {
 
     const existingUserClasses = Array.from(
       new Set(
-        ([...(teacher as any).assignedClasses ?? []] as any[]).map((value) =>
+        ([...((teacher as any).assignedClasses ?? [])] as any[]).map((value) =>
           value.toString(),
         ),
       ),
@@ -230,9 +228,7 @@ export class TeachersService {
     const foundIds = new Set(subjects.map((subject) => subject._id.toString()));
     const missing = uniqueSubjectIds.filter((id) => !foundIds.has(id));
     if (missing.length) {
-      throw new NotFoundException(
-        `Subjects not found: ${missing.join(', ')}`,
-      );
+      throw new NotFoundException(`Subjects not found: ${missing.join(', ')}`);
     }
 
     if (teacher.school) {
@@ -264,7 +260,7 @@ export class TeachersService {
 
     const existingUserSubjects = Array.from(
       new Set(
-        ([...(teacher as any).subjectsCanTeach ?? []] as any[]).map((value) =>
+        ([...((teacher as any).subjectsCanTeach ?? [])] as any[]).map((value) =>
           value.toString(),
         ),
       ),
@@ -321,5 +317,3 @@ export class TeachersService {
       : new Types.ObjectId((teacher as any)._id);
   }
 }
-
-

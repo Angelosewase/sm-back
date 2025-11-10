@@ -11,8 +11,10 @@ The `classes` module provides CRUD operations for managing class records, along 
 | `capacity`     | number   | Maximum number of students allowed.                                  |
 | `description`  | string   | Optional description.                                                |
 | `status`       | enum     | `active` or `inactive`. Defaults to `active`.                         |
-| `classTeacher` | ObjectId | Reference to a `User` document with role `teacher`.                  |
+| `classTeacher` | ObjectId | Optional reference to a `User` document with role `teacher`.          |
 | `studentCount` | number   | Internally managed count of enrolled students. Defaults to `0`.      |
+| `isTrashed`    | boolean  | Indicates whether the class sits in the trash. Defaults to `false`.   |
+| `trashedAt`    | Date     | Timestamp of when the class was trashed (null when active).           |
 
 ## REST Endpoints
 
@@ -32,7 +34,7 @@ Base path: `/classes`
     "classTeacher": "64f0a5b3c21a7123456789ab"
   }
   ```
-- **Notes**: `classTeacher` must reference an existing user with the `teacher` role.
+- **Notes**: `classTeacher` is optional. When provided it must reference an existing user with the `teacher` role.
 
 ### List Classes
 
@@ -41,7 +43,9 @@ Base path: `/classes`
   - `page` *(optional)*: number ≥ 1 (default `1`)
   - `limit` *(optional)*: number between 1 and 100 (default `10`)
   - `search` *(optional)*: case-insensitive match on `name` or `description`
-  - `gradeLevel` *(optional)*: exact grade-level match
+- `gradeLevel` *(optional)*: exact grade-level match
+- `includeTrashed` *(optional)*: include trashed classes alongside active ones
+- `onlyTrashed` *(optional)*: return only trashed classes
 - **Response**:
   ```json
   {
@@ -75,11 +79,34 @@ Base path: `/classes`
 - **Rules**:
   - Updating `classTeacher` triggers the same teacher-role validation as creation.
   - `capacity` cannot be set below the current `studentCount`.
+  - Trashed classes must be restored before they can be updated.
 
-### Delete Class
+### Soft-Delete (Trash) Class
 
 - **Method**: `DELETE /classes/:id`
-- **Response**: `204 No Content` on success. Returns `404` if the class does not exist.
+- **Response**: `204 No Content` on success. Marks the class as trashed without removing it from the database.
+- **Notes**: Trashed classes are excluded from results unless `includeTrashed` or `onlyTrashed` is used.
+
+### Restore Class
+
+- **Method**: `PATCH /classes/:id/restore`
+- **Response**: Restored class document. Returns `400` if the class is not trashed.
+
+### Permanently Delete Class
+
+- **Method**: `DELETE /classes/:id/permanent`
+- **Response**: `204 No Content` on success. Class must already be in the trash.
+
+### Bulk Operations
+
+- **Method**: `POST /classes/bulk/trash`
+- **Body**: `{ "ids": ["..."] }` — moves multiple classes to the trash.
+- **Method**: `POST /classes/bulk/restore`
+- **Body**: `{ "ids": ["..."] }` — restores multiple trashed classes.
+- **Method**: `POST /classes/bulk/permanent`
+- **Body**: `{ "ids": ["..."] }` — permanently removes trashed classes.
+
+- **Responses**: Bulk endpoints return the number of modified/deleted records.
 
 ## Student Count Management
 
@@ -87,8 +114,8 @@ Student counts are managed through service-level helpers rather than direct API 
 
 | Method                                  | Description                                                       |
 |-----------------------------------------|-------------------------------------------------------------------|
-| `ClassesService.incrementStudentCount`  | Increases `studentCount` by a positive amount (capacity-checked). |
-| `ClassesService.decrementStudentCount`  | Decreases `studentCount` by a positive amount (floored at zero).  |
+| `ClassesService.incrementStudentCount`  | Increases `studentCount` by a positive amount (capacity-checked). Fails when the class is trashed. |
+| `ClassesService.decrementStudentCount`  | Decreases `studentCount` by a positive amount (floored at zero). Fails when the class is trashed.  |
 
 Use these helpers from other modules (e.g., enrollment flows) to keep class sizes in sync. Both methods return the updated, teacher-populated class document.
 

@@ -5,8 +5,8 @@ import { TeachersController } from './teachers.controller';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
 import { Teacher, TeacherSchema } from '../school-module/schemas/teacher.schema';
-import { Class, ClassSchema } from '../school-module/schemas/class.schema';
-import { Subject, SubjectSchema } from '../school-module/schemas/subject.schema';
+import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
+import { Subject, SubjectSchema } from 'src/subjects/schemas/subject.schema';
 
 @Module({
   imports: [
