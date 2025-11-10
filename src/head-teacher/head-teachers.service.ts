@@ -6,7 +6,7 @@ import { UpdateHeadTeacherDto } from './dto/update-head-teacher.dto';
 import { CreateHeadTeacherDto } from './dto/create-head-teacher.dto';
 import { QueryHeadTeacherDto } from './dto/query-head-teacher.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { FilterQuery, Model, Types } from 'mongoose';
 import { HeadTeacher, HeadTeacherDocument } from './schemas/head-teacher-schema';
 
 @Injectable()
@@ -52,8 +52,50 @@ constructor(
     return headTeacher.save();
   }
 
-  async findAll(query: QueryHeadTeacherDto): Promise<HeadTeacher[]> {
-    return this.headTeacherModel.find().populate('user subjects school').exec();
+  async findAll(query: QueryHeadTeacherDto){
+
+     const {
+          q,
+          email,
+          school,
+          page = 1,
+          limit = 10,
+          sortBy = 'createdAt',
+          order = 'desc',
+        } = query;
+    
+        const filter: FilterQuery<HeadTeacher> = {};
+        if (email) filter.email = email.toLowerCase();
+        if (school) filter.school = school;
+        if (q) {
+          const regex = new RegExp(q, 'i');
+          filter.$or = [{ name: regex }, { email: regex }];
+        }
+    
+        const skip = (page - 1) * limit;
+        const sort: Record<string, 1 | -1> = { [sortBy]: order === 'asc' ? 1 : -1 };
+    
+        const [items, total] = await Promise.all([
+          this.headTeacherModel
+            .find(filter)
+            .select('-password -__v')
+            .sort(sort)
+            .skip(skip)
+            .limit(limit)
+            .exec(),
+          this.headTeacherModel.countDocuments(filter).exec(),
+        ]);
+    
+        const totalPages = Math.ceil(total / limit) || 1;
+        return {
+          items,
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        };
   }
 
   async findOne(id: string): Promise<HeadTeacher> {
