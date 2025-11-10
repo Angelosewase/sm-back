@@ -1,93 +1,142 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../auth/email.service';
 import { Role, User } from '../users/schemas/user.schema';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { QueryTeacherDto } from './dto/query-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
-import { randomBytes } from 'crypto';
+import { FilterQuery, Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import {
-  Teacher,
-  TeacherDocument,
-} from '../school-module/schemas/teacher.schema';
-import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
-import { Subject, SubjectSchema } from 'src/subjects/schemas/subject.schema';
+import { Teacher, TeacherDocument } from './schemas/teacher.schema';
+import { randomBytes } from 'crypto';
+import { SubjectDocument } from 'src/subjects/schemas/subject.schema';
+import { Class, ClassDocument } from 'src/classes/schemas/class.schema';
+import { Subject } from 'rxjs';
 
 @Injectable()
 export class TeachersService {
   constructor(
     private readonly usersService: UsersService,
     private readonly emailService: EmailService,
-    @InjectModel(Teacher.name)
-    private readonly teacherModel: Model<TeacherDocument>,
-    @InjectModel(Class.name)
-    private readonly classModel: Model<Class>,
-    @InjectModel(Subject.name)
-    private readonly subjectModel: Model<Subject>,
+   @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>, 
+   @InjectModel(Class.name) private classModel: Model<ClassDocument>,
+   @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
   ) {}
+async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
+  console.log("the create teacher dto is 1: ", createTeacherDto)
 
-  async create(createTeacherDto: CreateTeacherDto) {
-    const temporaryPassword = this.generateTemporaryPassword();
-    const teacher = await this.usersService.createUser({
-      ...createTeacherDto,
-      password: temporaryPassword,
+   const temporaryPassword = this.generateTemporaryPassword();
+    // Create user first with role TEACHER
+    const userDto = {
+      email: createTeacherDto.email,
+      password: createTeacherDto.password,
+      name: createTeacherDto.name,
+      phone: createTeacherDto.phone,
+      experience: createTeacherDto.experience,
       role: Role.TEACHER,
+      school: createTeacherDto.school,
+    };
+    const user = await this.usersService.createUser(userDto);
+
+    // Create teacher document
+    const teacher = new this.teacherModel({
+      user: user._id,
+      teacherId: createTeacherDto.teacherId,
+      subjectsCanTeach: createTeacherDto.subjectsCanTeach?.map(id => new Types.ObjectId(id)),
+      assignedClasses: createTeacherDto.assignedClasses?.map(id => new Types.ObjectId(id)),
+      phone: createTeacherDto.phone, // Override if needed
+      qualification: createTeacherDto.qualification,
+      hireDate: createTeacherDto.hireDate,
+      school: new Types.ObjectId(createTeacherDto.school),
+      status: createTeacherDto.status,
+      address: createTeacherDto.address,
+      city: createTeacherDto.city,
+      state: createTeacherDto.state,
+      zip: createTeacherDto.zip,
+      emergencyContact: createTeacherDto.emergencyContact,
+      notes: createTeacherDto.notes,
     });
 
-    this.sendWelcomeEmailSafely(teacher, temporaryPassword);
+    this.sendWelcomeEmailSafely(user, temporaryPassword);
 
-    const teacherObjectId = this.getTeacherObjectId(teacher);
-
-    await this.teacherModel.findOneAndUpdate(
-      { user: teacherObjectId },
-      { $setOnInsert: this.buildTeacherInsertData(teacher) },
-      { upsert: true },
-    );
-
-    const teacherData =
-      typeof (teacher as any).toObject === 'function'
-        ? (teacher as any).toObject()
-        : (teacher as any);
-
-    return {
-      ...teacherData,
-      temporaryPassword,
-    };
+    return teacher.save();
   }
 
   async findAll(query: QueryTeacherDto) {
-    return this.usersService.findAll({
-      ...query,
-      role: Role.TEACHER,
-    });
+        const {
+          q,
+          email,
+          school,
+          page = 1,
+          limit = 10,
+          sortBy = 'createdAt',
+          order = 'desc',
+        } = query;
+    
+        const filter: FilterQuery<Teacher> = {};
+        if (email) filter.email = email.toLowerCase();
+        if (school) filter.school = school;
+        if (q) {
+          const regex = new RegExp(q, 'i');
+          filter.$or = [{ name: regex }, { email: regex }];
+        }
+    
+        const skip = (page - 1) * limit;
+        const sort: Record<string, 1 | -1> = { [sortBy]: order === 'asc' ? 1 : -1 };
+    
+        const [items, total] = await Promise.all([
+          this.teacherModel
+            .find(filter)
+            .populate('user subjectsCanTeach assignedClasses school')
+            .select('-password -__v')
+            .sort(sort)
+            .skip(skip)
+            .limit(limit)
+            .exec(),
+          this.teacherModel.countDocuments(filter).exec(),
+        ]);
+    
+        const totalPages = Math.ceil(total / limit) || 1;
+        return {
+          items,
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        } 
   }
 
-  async findOne(id: string) {
-    return this.ensureTeacher(id);
+  async findOne(id: string): Promise<Teacher> {
+    const teacher = await this.teacherModel.findById(id).populate('user subjectsCanTeach assignedClasses school').exec();
+    if (!teacher) throw new NotFoundException('Teacher not found');
+    return teacher;
   }
 
-  async update(id: string, updateTeacherDto: UpdateTeacherDto) {
-    await this.ensureTeacher(id);
-    const updatePayload: Parameters<typeof this.usersService.update>[1] = {
+  async update(id: string, updateTeacherDto: UpdateTeacherDto): Promise<Teacher | null> {
+    const teacher = await this.findOne(id);
+    // Update user if needed (e.g., phone, experience via usersService)
+    if (updateTeacherDto.phone || updateTeacherDto.experience) {
+      await this.usersService.update(teacher.user.toString(), {
+        phone: updateTeacherDto.phone,
+        experience: updateTeacherDto.experience,
+      });
+    }
+    // Update teacher fields
+    return this.teacherModel.findByIdAndUpdate(id, {
       ...updateTeacherDto,
-      role: Role.TEACHER,
-    };
-
-    return this.usersService.update(id, updatePayload);
+      subjectsCanTeach: updateTeacherDto.subjectsCanTeach?.map(id => new Types.ObjectId(id)),
+      assignedClasses: updateTeacherDto.assignedClasses?.map(id => new Types.ObjectId(id)),
+    }, { new: true }).exec();
   }
 
-  async remove(id: string) {
-    const teacher = await this.ensureTeacher(id);
-    const teacherObjectId = this.getTeacherObjectId(teacher);
-    await this.teacherModel.deleteOne({ user: teacherObjectId });
-    return this.usersService.remove(id);
+  async delete(id: string): Promise<Teacher | null> {
+    const teacher = await this.findOne(id);
+    await this.usersService.remove(teacher.user.toString()); // Cascade delete user
+    return this.teacherModel.findByIdAndDelete(id).exec();
   }
+
 
   private async ensureTeacher(id: string): Promise<User> {
     const teacher = await this.usersService.findById(id);
@@ -97,10 +146,7 @@ export class TeachersService {
     return teacher;
   }
 
-  private async sendWelcomeEmailSafely(
-    teacher: User,
-    temporaryPassword: string,
-  ) {
+  private async sendWelcomeEmailSafely(teacher: User, temporaryPassword: string) {
     try {
       await this.emailService.sendTeacherWelcomeEmail(
         teacher.email,
@@ -114,6 +160,7 @@ export class TeachersService {
     }
   }
 
+  
   private generateTemporaryPassword(): string {
     return randomBytes(9)
       .toString('base64')
@@ -144,23 +191,23 @@ export class TeachersService {
     const foundIds = new Set(classes.map((cls) => cls._id.toString()));
     const missing = uniqueClassIds.filter((id) => !foundIds.has(id));
     if (missing.length) {
-      throw new NotFoundException(`Classes not found: ${missing.join(', ')}`);
+      throw new NotFoundException(
+        `Classes not found: ${missing.join(', ')}`,
+      );
     }
 
-    // if (teacher.school) {
-    //   const teacherSchoolId = teacher.school.toString();
-    //   const mismatched = classes.filter(
-    //     (cls) =>
-    //       cls.classTeacher &&
-    //       cls.classTeacher.schoolId &&
-    //       cls.classTeacher.schoolId.toString() !== teacherSchoolId,
-    //   );
-    //   if (mismatched.length) {
-    //     throw new BadRequestException(
-    //       'One or more classes belong to a different school',
-    //     );
-    //   }
-    // }
+    if (teacher.school) {
+      const teacherSchoolId = teacher.school.toString();
+      const mismatched = classes.filter(
+        (cls: any) =>
+          cls.school && cls.school.toString() !== teacherSchoolId,
+      );
+      if (mismatched.length) {
+        throw new BadRequestException(
+          'One or more classes belong to a different school',
+        );
+      }
+    }
 
     const teacherObjectId = this.getTeacherObjectId(teacher);
 
@@ -183,7 +230,7 @@ export class TeachersService {
 
     const existingUserClasses = Array.from(
       new Set(
-        ([...((teacher as any).assignedClasses ?? [])] as any[]).map((value) =>
+        ([...(teacher as any).assignedClasses ?? []] as any[]).map((value) =>
           value.toString(),
         ),
       ),
@@ -228,7 +275,9 @@ export class TeachersService {
     const foundIds = new Set(subjects.map((subject) => subject._id.toString()));
     const missing = uniqueSubjectIds.filter((id) => !foundIds.has(id));
     if (missing.length) {
-      throw new NotFoundException(`Subjects not found: ${missing.join(', ')}`);
+      throw new NotFoundException(
+        `Subjects not found: ${missing.join(', ')}`,
+      );
     }
 
     if (teacher.school) {
@@ -260,7 +309,7 @@ export class TeachersService {
 
     const existingUserSubjects = Array.from(
       new Set(
-        ([...((teacher as any).subjectsCanTeach ?? [])] as any[]).map((value) =>
+        ([...(teacher as any).subjectsCanTeach ?? []] as any[]).map((value) =>
           value.toString(),
         ),
       ),
@@ -317,3 +366,5 @@ export class TeachersService {
       : new Types.ObjectId((teacher as any)._id);
   }
 }
+
+

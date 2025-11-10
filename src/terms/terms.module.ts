@@ -1,7 +1,7 @@
 // src/term/term.module.ts
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Term, TermSchema } from 'src/school-module/schemas/term.schema';
+import { Term, TermSchema } from 'src/terms/schemas/term.schema';
 import { TermController } from './terms.controller';
 import { TermService } from './terms.service';
 

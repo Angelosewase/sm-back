@@ -6,7 +6,9 @@ import {
   HttpStatus,
   NotFoundException,
   Param,
+  Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
@@ -20,6 +22,8 @@ import {
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './schemas/user.schema';
+import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @ApiTags('Users')
 @Controller('api/users')
@@ -65,6 +69,17 @@ export class UsersController {
     return this.sanitizeUser(user);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  @ApiOperation({})
+  async updateUser(
+    @Param('id') id: string,
+    @Body() userDto: UpdateUserDto
+  )
+   {
+    return this.usersService.update(id, userDto)
+  }
+
   @Get('email/:email')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -94,4 +109,7 @@ export class UsersController {
     const { password, ...rest } = rawUser;
     return rest;
   }
+
+
+  
 }

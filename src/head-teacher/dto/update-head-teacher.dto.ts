@@ -1,31 +1,22 @@
-import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsArray,
-  IsDateString,
-  IsEnum,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsArray, IsDateString, IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
 
-// teachers/dto/update-teacher.dto.ts (partial)
-export class UpdateTeacherDto {
-  // Teacher-specific fields for update
+export class UpdateHeadTeacherDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  teacherId?: string;
+  headTeacherId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  department?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  subjectsCanTeach?: string[];
-
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  assignedClasses?: string[];
+  subjects?: string[];
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -77,12 +68,8 @@ export class UpdateTeacherDto {
   @IsString()
   notes?: string;
 
-  @ApiProperty({
-    example: '5 years',
-    description: 'Experience',
-    required: false,
-  })
+  @ApiProperty({ required: false })
   @IsOptional()
-  @IsString()
+  @IsEmail()
   experience?: string;
 }

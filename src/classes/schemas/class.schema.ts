@@ -7,6 +7,8 @@ export enum ClassStatus {
   INACTIVE = 'inactive',
 }
 
+export type ClassDocument = Class & Document;
+
 @Schema({ timestamps: true })
 export class Class extends Document {
   @Prop({ required: true, unique: true, trim: true })

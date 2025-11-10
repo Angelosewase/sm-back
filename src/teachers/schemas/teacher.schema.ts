@@ -2,7 +2,6 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
 export type TeacherDocument = Teacher & Document;
-
 @Schema({ timestamps: true })
 export class Teacher {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
@@ -16,9 +15,6 @@ export class Teacher {
 
   @Prop({ type: [Types.ObjectId], ref: 'Class', default: [] })
   assignedClasses?: Types.ObjectId[];
-
-  @Prop({ default: false })
-  isHeadTeacher?: boolean;
 
   @Prop({ trim: true })
   phone?: string;
@@ -35,11 +31,9 @@ export class Teacher {
   @Prop({ type: Types.ObjectId, ref: 'School', index: true })
   school?: Types.ObjectId;
 
-  @Prop({ type: Number, min: 0 })
-  yearsOfExperience?: number;
-
-  @Prop({ type: [String], default: [] })
-  qualifications?: string[];
+  // Added fields based on form for customization (Teacher-specific: e.g., no department, but add experience if needed; experience is in User)
+  @Prop({ trim: true, enum: ['Active', 'On Leave', 'Inactive'], default: 'Active' })
+  status?: string;
 
   @Prop({ trim: true })
   city?: string;
@@ -48,13 +42,16 @@ export class Teacher {
   state?: string;
 
   @Prop({ trim: true })
-  zipCode?: string;
+  zip?: string;
 
   @Prop({ trim: true })
   emergencyContact?: string;
 
   @Prop({ trim: true })
-  additionalNotes?: string;
+  notes?: string;
+
+  @Prop({ trim: true })
+  experience?: string;
 }
 
 export const TeacherSchema = SchemaFactory.createForClass(Teacher);

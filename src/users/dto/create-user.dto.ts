@@ -43,5 +43,11 @@ export class CreateUserDto {
   })
   @IsEnum(Role)
   role: Role;
+
+
+  @ApiProperty({ example: 'schoolId', description: 'School ID', required: false })
+  @IsOptional()
+  @IsString()
+  school?: string
 }
 

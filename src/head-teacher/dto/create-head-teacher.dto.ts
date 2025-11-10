@@ -1,15 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsArray,
-  IsDateString,
-  IsEnum,
-  IsOptional,
-  IsString,
-} from 'class-validator';
-
-export class CreateTeacherDto {
-  // User fields
-  @ApiProperty({ example: 'teacher@example.com' })
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsArray, IsDateString, IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
+// Similar but with department, fewer class fields
+export class CreateHeadTeacherDto {
+  @ApiProperty({ example: 'head@example.com' })
   @IsString()
   email: string;
 
@@ -17,7 +10,7 @@ export class CreateTeacherDto {
   @IsString()
   password: string;
 
-  @ApiProperty({ example: 'John Teacher' })
+  @ApiProperty({ example: 'John Head' })
   @IsString()
   name: string;
 
@@ -26,7 +19,7 @@ export class CreateTeacherDto {
   @IsString()
   phone?: string;
 
-  @ApiProperty({ example: '5 years', required: false })
+  @ApiProperty({ example: '10 years', required: false })
   @IsOptional()
   @IsString()
   experience?: string;
@@ -35,25 +28,23 @@ export class CreateTeacherDto {
   @IsString()
   school: string;
 
-  // Teacher-specific
-  @ApiProperty({ example: 'T001', required: false })
+  // HeadTeacher-specific
+  @ApiProperty({ example: 'HT001', required: false })
   @IsOptional()
   @IsString()
-  teacherId?: string;
+  headTeacherId?: string;
+
+  @ApiProperty({ example: 'Mathematics', description: 'Department' })
+  @IsString()
+  department: string; // Required for head teacher
 
   @ApiProperty({ example: ['subjectId1'], required: false })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  subjectsCanTeach?: string[];
+  subjects?: string[];
 
-  @ApiProperty({ example: ['classId1'], required: false })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  assignedClasses?: string[];
-
-  @ApiProperty({ example: 'M.Ed.', required: false })
+  @ApiProperty({ example: 'Ph.D.', required: false })
   @IsOptional()
   @IsString()
   qualification?: string;
@@ -97,5 +88,4 @@ export class CreateTeacherDto {
   @IsOptional()
   @IsString()
   notes?: string;
-
 }

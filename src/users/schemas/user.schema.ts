@@ -11,6 +11,8 @@ export enum Role {
   PARENT = 'parent',
 }
 
+export type UserDocument = User & Document;
+
 @Schema({ timestamps: true })
 export class User extends Document {
   @ApiProperty({ example: 'user@example.com' })
@@ -45,6 +47,13 @@ export class User extends Document {
   })
   @Prop({ trim: true })
   avatar?: string;
+
+  @ApiProperty({
+    required: false,
+    description: "Experience of the user but optional"
+  })
+  @Prop({ trim: true , optional: true})
+  experience?: string;
 
   @ApiProperty({ description: 'Reference to School _id', required: false })
   @Prop({ type: Types.ObjectId, ref: 'School', index: true })

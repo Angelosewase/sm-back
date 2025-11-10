@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { Types } from 'mongoose';
 
 export class UpdateStaffDto {
   @ApiPropertyOptional({ description: 'Updated staff name' })
@@ -20,7 +21,7 @@ export class UpdateStaffDto {
   @ApiPropertyOptional({ description: 'Identifier of the associated school' })
   @IsOptional()
   @IsString()
-  school?: string;
+  school?: Types.ObjectId
 }
 
 

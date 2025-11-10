@@ -2,7 +2,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { AcademicYear, AcademicYearDocument } from 'src/school-module/schemas/academic-year.schema';
+import {
+  AcademicYear,
+  AcademicYearDocument,
+} from 'src/academic-year/schemas/academic-year.schema';
 
 @Injectable()
 export class AcademicYearService {

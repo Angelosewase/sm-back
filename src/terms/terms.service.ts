@@ -2,7 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Term, TermDocument } from 'src/school-module/schemas/term.schema';
+import { Term, TermDocument } from 'src/terms/schemas/term.schema';
 
 @Injectable()
 export class TermService {

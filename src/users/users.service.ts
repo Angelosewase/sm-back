@@ -16,26 +16,7 @@ import { RegisterDto } from './dto/register-user.dto';
 import { isInstance } from 'class-validator';
 import { School } from '../school/entities/school.entity';
 import { hash } from 'crypto';
-
-type UpdateUserPayload = Partial<
-  Pick<
-    User,
-    | 'name'
-    | 'role'
-    | 'phone'
-    | 'email'
-    | 'assignedClasses'
-    | 'subjectsCanTeach'
-    | 'yearsOfExperience'
-    | 'qualifications'
-    | 'address'
-    | 'city'
-    | 'state'
-    | 'zipCode'
-    | 'emergencyContact'
-    | 'additionalNotes'
-  >
-> & { school?: string | Types.ObjectId };
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -160,61 +141,14 @@ export class UsersService {
       password: hashedPassword,
     });
   }
-
-  async assignSchoolToUser(
-    userId: string,
-    schoolId: Types.ObjectId | string,
-    session?: ClientSession,
-  ): Promise<void> {
-    const normalizedSchoolId =
-      typeof schoolId === 'string' ? new Types.ObjectId(schoolId) : schoolId;
-
-    const userQuery = this.userModel.findById(userId);
-    if (session) {
-      userQuery.session(session);
-    }
-    const user = await userQuery.exec();
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    if (user.school) {
-      const pullQuery = this.schoolModel.findByIdAndUpdate(
-        user.school,
-        { $pull: { users: user._id } },
-        { new: false },
-      );
-      if (session) {
-        pullQuery.session(session);
-      }
-      await pullQuery.exec();
-    }
-
-    user.school = normalizedSchoolId;
-    if (session) {
-      await user.save({ session });
-    } else {
-      await user.save();
-    }
-
-    const pushQuery = this.schoolModel.findByIdAndUpdate(
-      normalizedSchoolId,
-      { $addToSet: { users: user._id } },
-      { new: false },
-    );
-    if (session) {
-      pushQuery.session(session);
-    }
-    await pushQuery.exec();
-  }
-  async update(id: string, payload: UpdateUserPayload) {
+  async update(id: string, payload: UpdateUserDto) {
     const session = await this.userModel.db.startSession();
     session.startTransaction();
 
     try {
       const user = await this.userModel.findById(id).session(session).exec();
       if (!user) throw new Error('User not found');
-      const { school, assignedClasses, subjectsCanTeach, ...rest } = payload;
+      const { school, ...rest } = payload;
 
       let schoolId: Types.ObjectId | undefined;
       if (school) {
@@ -250,29 +184,9 @@ export class UsersService {
         );
       }
 
-      let assignedClassIds: Types.ObjectId[] | undefined;
-      if (assignedClasses !== undefined) {
-        assignedClassIds = assignedClasses.map((id) =>
-          typeof id === 'string' ? new Types.ObjectId(id) : id,
-        );
-      }
-
-      let subjectIds: Types.ObjectId[] | undefined;
-      if (subjectsCanTeach !== undefined) {
-        subjectIds = subjectsCanTeach.map((id) =>
-          typeof id === 'string' ? new Types.ObjectId(id) : id,
-        );
-      }
-
-      const updateData: UpdateUserPayload = {
+      const updateData: UpdateUserDto = {
         ...rest,
-        ...(schoolId ? { school: schoolId } : {}),
-        ...(assignedClasses !== undefined
-          ? { assignedClasses: assignedClassIds ?? [] }
-          : {}),
-        ...(subjectsCanTeach !== undefined
-          ? { subjectsCanTeach: subjectIds ?? [] }
-          : {}),
+        ...(schoolId ? { school: schoolId as Types.ObjectId } : {}),
       };
 
       // Update the user

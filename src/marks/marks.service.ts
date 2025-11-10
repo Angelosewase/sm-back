@@ -5,14 +5,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
-import { Marks, MarksDocument } from '../schemas/marks.schema';
-import { EnterMarkDto } from '../dto/enter-mark.dto';
-import { Subject } from '../../subjects/schemas/subject.schema';
-import { Enrollment } from '../schemas/enrollment.schema';
-import { AuditLog } from '../schemas/audit.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { ClassesService } from 'src/classes/classes.service';
-
+import { AuditLog } from 'src/school-module/schemas/audit.schema';
+import { Enrollment } from 'src/students/schemas/enrollment.schema';
+import { Marks, MarksDocument } from 'src/marks/schemas/marks.schema';
+import { EnterMarkDto } from './dto/enter-mark.dto';
+import { Subject } from 'src/subjects/schemas/subject.schema';
 
 function round(n: number) {
   return Math.round((n || 0) * 100) / 100;
