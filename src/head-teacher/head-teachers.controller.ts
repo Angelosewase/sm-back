@@ -16,21 +16,21 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { TeachersService } from './teachers.service';
-import { CreateTeacherDto } from './dto/create-teacher.dto';
-import { QueryTeacherDto } from './dto/query-teacher.dto';
-import { UpdateTeacherDto } from './dto/update-teacher.dto';
+import { HeadTeachersService } from './head-teachers.service';
+import { CreateHeadTeacherDto } from './dto/create-head-teacher.dto';
+import { QueryHeadTeacherDto } from './dto/query-head-teacher.dto';
+import { UpdateHeadTeacherDto } from './dto/update-head-teacher.dto';
 
 @ApiTags('teachers')
-@Controller('api/teachers')
-export class TeachersController {
-  constructor(private readonly teachersService: TeachersService) {}
+@Controller('api/head-teachers')
+export class HeadTeachersController {
+  constructor(private readonly teachersService: HeadTeachersService) {}
 
   @Post()
   @ApiOperation({ summary: 'Register a new teacher' })
   @ApiCreatedResponse({ description: 'Teacher registered successfully' })
   @ApiBadRequestResponse({ description: 'Validation failed' })
-  async create(@Body() createTeacherDto: CreateTeacherDto) {
+  async create(@Body() createTeacherDto: CreateHeadTeacherDto) {
     return this.teachersService.create(createTeacherDto);
   }
 
@@ -39,7 +39,7 @@ export class TeachersController {
     summary: 'List teachers with optional filtering, search, and pagination',
   })
   @ApiOkResponse({ description: 'Teachers retrieved successfully' })
-  async findAll(@Query() query: QueryTeacherDto) {
+  async findAll(@Query() query: QueryHeadTeacherDto) {
     return this.teachersService.findAll(query);
   }
 
@@ -58,7 +58,7 @@ export class TeachersController {
   @ApiNotFoundResponse({ description: 'Teacher not found' })
   async update(
     @Param('id') id: string,
-    @Body() updateTeacherDto: UpdateTeacherDto,
+    @Body() updateTeacherDto: UpdateHeadTeacherDto,
   ) {
     return this.teachersService.update(id, updateTeacherDto);
   }

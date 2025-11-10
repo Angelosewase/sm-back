@@ -533,7 +533,6 @@ export class SubjectService {
         `Found ${assignments.length} assignments for subject ${subjectId}`,
       );
 
-      // Filter out any null/undefined classes when mapping
       const classes = assignments.map((a) => a.class).filter(Boolean);
       // const students = assignments.map(a=> a.students).filter(Boolean);
       const uniqueTeachers = Array.from(

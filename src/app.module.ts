@@ -13,6 +13,7 @@ import { TermModule } from './terms/terms.module';
 import { TeachersModule } from './teachers/teachers.module';
 import { StaffModule } from './staff/staff.module';
 import { SubjectsModule } from './subjects/subjects.module';
+import { HeadTeachersModule } from './head-teacher/head-teachers.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { SubjectsModule } from './subjects/subjects.module';
     AcademicYearModule,
     TermModule,
     TeachersModule,
+    HeadTeachersModule,
     StaffModule,
   ],
   controllers: [AppController],
