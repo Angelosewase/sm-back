@@ -5,7 +5,7 @@ import { Role, User } from '../users/schemas/user.schema';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { QueryTeacherDto } from './dto/query-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
-import { Model, Types } from 'mongoose';
+import { FilterQuery, Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { randomBytes } from 'crypto';
@@ -62,8 +62,50 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
     return teacher.save();
   }
 
-  async findAll(query: QueryTeacherDto): Promise<Teacher[]> {
-    return this.teacherModel.find().populate('user subjectsCanTeach assignedClasses school').exec();
+  async findAll(query: QueryTeacherDto) {
+        const {
+          q,
+          email,
+          school,
+          page = 1,
+          limit = 10,
+          sortBy = 'createdAt',
+          order = 'desc',
+        } = query;
+    
+        const filter: FilterQuery<Teacher> = {};
+        if (email) filter.email = email.toLowerCase();
+        if (school) filter.school = school;
+        if (q) {
+          const regex = new RegExp(q, 'i');
+          filter.$or = [{ name: regex }, { email: regex }];
+        }
+    
+        const skip = (page - 1) * limit;
+        const sort: Record<string, 1 | -1> = { [sortBy]: order === 'asc' ? 1 : -1 };
+    
+        const [items, total] = await Promise.all([
+          this.teacherModel
+            .find(filter)
+            .populate('user subjectsCanTeach assignedClasses school')
+            .select('-password -__v')
+            .sort(sort)
+            .skip(skip)
+            .limit(limit)
+            .exec(),
+          this.teacherModel.countDocuments(filter).exec(),
+        ]);
+    
+        const totalPages = Math.ceil(total / limit) || 1;
+        return {
+          items,
+          total,
+          page,
+          limit,
+          totalPages,
+          hasNext: page < totalPages,
+          hasPrev: page > 1,
+        } 
   }
 
   async findOne(id: string): Promise<Teacher> {

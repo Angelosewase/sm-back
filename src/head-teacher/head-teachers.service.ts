@@ -132,7 +132,7 @@ export class HeadTeachersService {
   async findOne(id: string): Promise<HeadTeacher> {
     const headTeacher = await this.headTeacherModel
       .findById(id)
-      .populate('user subjects school')
+      .populate('user school')
       .exec();
     if (!headTeacher) throw new NotFoundException('Head Teacher not found');
     return headTeacher;
