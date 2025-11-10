@@ -20,6 +20,9 @@ export class Teacher {
   phone?: string;
 
   @Prop({ trim: true })
+  address?: string;
+
+  @Prop({ trim: true })
   qualification?: string;
 
   @Prop()
@@ -31,9 +34,6 @@ export class Teacher {
   // Added fields based on form for customization (Teacher-specific: e.g., no department, but add experience if needed; experience is in User)
   @Prop({ trim: true, enum: ['Active', 'On Leave', 'Inactive'], default: 'Active' })
   status?: string;
-
-  @Prop({ trim: true })
-  address?: string;
 
   @Prop({ trim: true })
   city?: string;

@@ -13,7 +13,7 @@ import * as crypto from 'crypto';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import * as cacheManager from 'cache-manager';
 import { Role } from 'src/users/schemas/user.schema';
-import { School } from 'src/school-module/schemas/school.schema';
+import { School } from '../school/entities/school.entity';
 
 @Injectable()
 export class AuthService {
@@ -27,7 +27,7 @@ export class AuthService {
 
   // Login Flow
   async login(email: string, password: string) {
-    let _school: School | null = null
+    let _school: School | null = null;
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -49,6 +49,23 @@ export class AuthService {
     const payload = { email: user.email, sub: user._id, role: user.role };
     const accessToken = this.jwtService.sign(payload);
 
+    const schoolPayload = _school
+      ? {
+          id: _school._id,
+          name: _school.name,
+          schoolType: _school.schoolType,
+          establishedYear: _school.establishedYear,
+          studentCapacity: _school.studentCapacity,
+          description: _school.description,
+          address: _school.address,
+          city: _school.city,
+          district: _school.district,
+          phoneNumber: _school.phoneNumber,
+          email: _school.email,
+          website: _school.website,
+        }
+      : null;
+
     return {
       accessToken,
       user: {
@@ -57,10 +74,7 @@ export class AuthService {
         name: user.name,
         role: user.role,
       },
-      school: {
-        id: _school?._id,
-        name: _school?.name,
-      },
+      school: schoolPayload,
     };
   }
 

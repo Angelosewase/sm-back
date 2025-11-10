@@ -2,10 +2,11 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, FilterQuery, Types } from 'mongoose';
+import { Model, FilterQuery, Types, ClientSession } from 'mongoose';
 import { Role, User } from './schemas/user.schema';
 import { promises as fsPromises, existsSync } from 'fs';
 import { join } from 'path';
@@ -13,7 +14,7 @@ import * as bcrypt from 'bcrypt';
 import { QueryUserDto } from './dto/query-user.dto';
 import { RegisterDto } from './dto/register-user.dto';
 import { isInstance } from 'class-validator';
-import { School } from 'src/school-module/schemas/school.schema';
+import { School } from '../school/entities/school.entity';
 import { hash } from 'crypto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -71,7 +72,7 @@ export class UsersService {
   }
 
   async getUserSchool(id: string): Promise<School | null> {
-    return  await this.schoolModel.findById(id)
+    return this.schoolModel.findById(id);
   }
 
   /**

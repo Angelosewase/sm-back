@@ -36,9 +36,15 @@ export class Class extends Document {
   @Prop({
     type: Types.ObjectId,
     ref: User.name,
-    required: true,
+    default: null,
   })
-  classTeacher: Types.ObjectId;
+  classTeacher?: Types.ObjectId | null;
+
+  @Prop({ default: false })
+  isTrashed: boolean;
+
+  @Prop({ type: Date, default: null })
+  trashedAt?: Date | null;
 }
 
 export const ClassSchema = SchemaFactory.createForClass(Class);

@@ -22,26 +22,49 @@ export class ClassesService {
   ) {}
 
   async create(createClassDto: CreateClassDto): Promise<Class> {
-    const teacherId = new Types.ObjectId(createClassDto.classTeacher);
-    await this.ensureTeacherExists(teacherId);
+    const { classTeacher, ...classData } = createClassDto;
+
+    let teacherId: Types.ObjectId | undefined;
+    if (classTeacher) {
+      teacherId = new Types.ObjectId(classTeacher);
+      await this.ensureTeacherExists(teacherId);
+    }
 
     const createdClass = new this.classModel({
-      ...createClassDto,
-      classTeacher: teacherId,
-      status: createClassDto.status ?? ClassStatus.ACTIVE,
+      ...classData,
+      status: classData.status ?? ClassStatus.ACTIVE,
       studentCount: 0,
+      isTrashed: false,
+      trashedAt: null,
     });
+
+    if (teacherId) {
+      createdClass.classTeacher = teacherId;
+    }
 
     return createdClass.save();
   }
 
   async findAll(query: QueryClassesDto) {
-    const { page = 1, limit = 10, search, gradeLevel } = query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      gradeLevel,
+      includeTrashed,
+      onlyTrashed,
+    } = query;
 
     const paginationLimit = limit > 100 ? 100 : limit;
     const skip = (page - 1) * paginationLimit;
 
     const filter: FilterQuery<Class> = {};
+
+    if (onlyTrashed) {
+      filter.isTrashed = true;
+    } else if (!includeTrashed) {
+      filter.isTrashed = false;
+    }
 
     if (gradeLevel) {
       filter.gradeLevel = gradeLevel;
@@ -85,6 +108,18 @@ export class ClassesService {
       throw new NotFoundException(`Class with id ${id} not found`);
     }
 
+    if (classEntity.isTrashed) {
+      throw new BadRequestException('Cannot modify a class that is in the trash');
+    }
+
+    if (classEntity.isTrashed) {
+      throw new BadRequestException('Cannot update a class that is in the trash');
+    }
+
+    if (classEntity.isTrashed) {
+      throw new NotFoundException(`Class with id ${id} not found`);
+    }
+
     return classEntity;
   }
 
@@ -93,6 +128,10 @@ export class ClassesService {
 
     if (!classEntity) {
       throw new NotFoundException(`Class with id ${id} not found`);
+    }
+
+    if (classEntity.isTrashed) {
+      throw new BadRequestException('Cannot modify a class that is in the trash');
     }
 
     if (updateClassDto.classTeacher) {
@@ -135,11 +174,93 @@ export class ClassesService {
   }
 
   async remove(id: string): Promise<void> {
-    const result = await this.classModel.findByIdAndDelete(id).exec();
+    const classEntity = await this.classModel.findById(id).exec();
 
-    if (!result) {
+    if (!classEntity) {
       throw new NotFoundException(`Class with id ${id} not found`);
     }
+
+    if (classEntity.isTrashed) {
+      throw new BadRequestException('Class is already in the trash');
+    }
+
+    classEntity.isTrashed = true;
+    classEntity.trashedAt = new Date();
+    await classEntity.save();
+  }
+
+  async restore(id: string): Promise<Class> {
+    const classEntity = await this.classModel.findById(id).exec();
+
+    if (!classEntity) {
+      throw new NotFoundException(`Class with id ${id} not found`);
+    }
+
+    if (!classEntity.isTrashed) {
+      throw new BadRequestException('Class is not in the trash');
+    }
+
+    classEntity.isTrashed = false;
+    classEntity.trashedAt = null;
+    await classEntity.save();
+
+    return this.classModel
+      .findById(id)
+      .populate('classTeacher')
+      .exec() as Promise<Class>;
+  }
+
+  async removePermanently(id: string): Promise<void> {
+    const classEntity = await this.classModel.findById(id).exec();
+
+    if (!classEntity) {
+      throw new NotFoundException(`Class with id ${id} not found`);
+    }
+
+    if (!classEntity.isTrashed) {
+      throw new BadRequestException(
+        'Class must be moved to trash before permanent deletion',
+      );
+    }
+
+    await this.classModel.deleteOne({ _id: id }).exec();
+  }
+
+  async bulkTrash(ids: string[]): Promise<{ modifiedCount: number }> {
+    const objectIds = this.mapToObjectIds(ids);
+    const trashedAt = new Date();
+
+    const result = await this.classModel
+      .updateMany(
+        { _id: { $in: objectIds }, isTrashed: false },
+        { $set: { isTrashed: true, trashedAt } },
+      )
+      .exec();
+
+    return { modifiedCount: this.extractModifiedCount(result) };
+  }
+
+  async bulkRestore(ids: string[]): Promise<{ modifiedCount: number }> {
+    const objectIds = this.mapToObjectIds(ids);
+
+    const result = await this.classModel
+      .updateMany(
+        { _id: { $in: objectIds }, isTrashed: true },
+        { $set: { isTrashed: false, trashedAt: null } },
+      )
+      .exec();
+
+    return { modifiedCount: this.extractModifiedCount(result) };
+  }
+
+  async bulkRemovePermanently(ids: string[]): Promise<{ deletedCount: number }> {
+    const objectIds = this.mapToObjectIds(ids);
+
+    const result = await this.classModel
+      .deleteMany({ _id: { $in: objectIds }, isTrashed: true })
+      .exec();
+
+    return { deletedCount: this.extractDeletedCount(result) };
   }
 
   async incrementStudentCount(id: string, amount = 1): Promise<Class> {
@@ -151,6 +272,10 @@ export class ClassesService {
 
     if (!classEntity) {
       throw new NotFoundException(`Class with id ${id} not found`);
+    }
+
+    if (classEntity.isTrashed) {
+      throw new BadRequestException('Cannot modify a class that is in the trash');
     }
 
     if (classEntity.studentCount + amount > classEntity.capacity) {
@@ -177,6 +302,10 @@ export class ClassesService {
       throw new NotFoundException(`Class with id ${id} not found`);
     }
 
+    if (classEntity.isTrashed) {
+      throw new BadRequestException('Cannot modify a class that is in the trash');
+    }
+
     if (classEntity.studentCount - amount < 0) {
       throw new BadRequestException('Student count cannot be negative');
     }
@@ -188,6 +317,54 @@ export class ClassesService {
       .findById(id)
       .populate('classTeacher')
       .exec() as Promise<Class>;
+  }
+
+  private mapToObjectIds(ids: string[]): Types.ObjectId[] {
+    return ids.map((id) => new Types.ObjectId(id));
+  }
+
+  private extractModifiedCount(result: unknown): number {
+    if (
+      result &&
+      typeof result === 'object' &&
+      'modifiedCount' in result &&
+      typeof (result as { modifiedCount: unknown }).modifiedCount === 'number'
+    ) {
+      return (result as { modifiedCount: number }).modifiedCount;
+    }
+
+    if (
+      result &&
+      typeof result === 'object' &&
+      'nModified' in result &&
+      typeof (result as { nModified: unknown }).nModified === 'number'
+    ) {
+      return (result as { nModified: number }).nModified;
+    }
+
+    return 0;
+  }
+
+  private extractDeletedCount(result: unknown): number {
+    if (
+      result &&
+      typeof result === 'object' &&
+      'deletedCount' in result &&
+      typeof (result as { deletedCount: unknown }).deletedCount === 'number'
+    ) {
+      return (result as { deletedCount: number }).deletedCount;
+    }
+
+    if (
+      result &&
+      typeof result === 'object' &&
+      'n' in result &&
+      typeof (result as { n: unknown }).n === 'number'
+    ) {
+      return (result as { n: number }).n;
+    }
+
+    return 0;
   }
 
   private async ensureTeacherExists(teacherId: Types.ObjectId): Promise<void> {
