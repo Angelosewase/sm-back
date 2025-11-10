@@ -10,13 +10,6 @@ import {
 import { Type } from 'class-transformer';
 
 export class CreateTeacherDto {
-  @ApiProperty({
-    description: 'Unique email address for the teacher',
-    example: 'teacher@example.com',
-  })
-  @IsEmail()
-  email: string;
-
   @ApiPropertyOptional({
     description: 'Full name of the teacher',
     example: 'Alex Smith',
@@ -24,6 +17,14 @@ export class CreateTeacherDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiProperty({
+    description: 'Unique email address for the teacher',
+    example: 'teacher@example.com',
+  })
+  @IsEmail()
+  email: string;
+
 
   @ApiPropertyOptional({
     description: 'Teacher phone number',
@@ -39,7 +40,7 @@ export class CreateTeacherDto {
   })
   @IsOptional()
   @IsString()
-  school?: string;
+  school: string;
 
   @ApiPropertyOptional({
     description: 'Number of years the teacher has been teaching',
@@ -75,7 +76,7 @@ export class CreateTeacherDto {
   })
   @IsOptional()
   @IsString()
-  city?: string;
+  province?: string;
 
   @ApiPropertyOptional({
     description: 'State where the teacher resides',
@@ -83,15 +84,8 @@ export class CreateTeacherDto {
   })
   @IsOptional()
   @IsString()
-  state?: string;
+  district?: string;
 
-  @ApiPropertyOptional({
-    description: 'Postal or ZIP code of the teacher address',
-    example: '90210',
-  })
-  @IsOptional()
-  @IsString()
-  zipCode?: string;
 
   @ApiPropertyOptional({
     description: 'Emergency contact information for the teacher',
@@ -108,6 +102,17 @@ export class CreateTeacherDto {
   @IsOptional()
   @IsString()
   additionalNotes?: string;
+
+  @ApiPropertyOptional({
+    description: 'Departement of the teacher',
+    example: 'science',
+  })
+  @IsOptional()
+  @IsString()
+  department?: string;
+
+
+
 }
 
 
