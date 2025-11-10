@@ -9,65 +9,54 @@ import {
   Query,
 } from '@nestjs/common';
 import {
-  ApiBadRequestResponse,
-  ApiCreatedResponse,
-  ApiNotFoundResponse,
-  ApiOkResponse,
   ApiOperation,
+  ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { HeadTeachersService } from './head-teachers.service';
 import { CreateHeadTeacherDto } from './dto/create-head-teacher.dto';
 import { QueryHeadTeacherDto } from './dto/query-head-teacher.dto';
 import { UpdateHeadTeacherDto } from './dto/update-head-teacher.dto';
-
-@ApiTags('teachers')
+import { HeadTeacher } from './schemas/head-teacher-schema';
+@ApiTags('head-teachers')
 @Controller('api/head-teachers')
 export class HeadTeachersController {
-  constructor(private readonly teachersService: HeadTeachersService) {}
+  constructor(private readonly headTeachersService: HeadTeachersService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Register a new teacher' })
-  @ApiCreatedResponse({ description: 'Teacher registered successfully' })
-  @ApiBadRequestResponse({ description: 'Validation failed' })
-  async create(@Body() createTeacherDto: CreateHeadTeacherDto) {
-    return this.teachersService.create(createTeacherDto);
+  @ApiOperation({ summary: 'Create a new head teacher (creates user too)' })
+  @ApiResponse({ status: 201, description: 'Head teacher created', type: HeadTeacher })
+  create(@Body() createHeadTeacherDto: CreateHeadTeacherDto) {
+    return this.headTeachersService.create(createHeadTeacherDto);
   }
 
   @Get()
-  @ApiOperation({
-    summary: 'List teachers with optional filtering, search, and pagination',
-  })
-  @ApiOkResponse({ description: 'Teachers retrieved successfully' })
-  async findAll(@Query() query: QueryHeadTeacherDto) {
-    return this.teachersService.findAll(query);
+  @ApiOperation({ summary: 'Get all head teachers' })
+  @ApiResponse({ status: 200, description: 'Head teachers found', type: [HeadTeacher] })
+  findAll(
+    @Query() query: QueryHeadTeacherDto,
+  ) {
+    return this.headTeachersService.findAll(query);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get teacher by id' })
-  @ApiOkResponse({ description: 'Teacher retrieved successfully' })
-  @ApiNotFoundResponse({ description: 'Teacher not found' })
-  async findOne(@Param('id') id: string) {
-    return this.teachersService.findOne(id);
+  @ApiOperation({ summary: 'Get head teacher by ID' })
+  @ApiResponse({ status: 200, description: 'Head teacher found', type: HeadTeacher })
+  findOne(@Param('id') id: string) {
+    return this.headTeachersService.findOne(id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a teacher profile' })
-  @ApiOkResponse({ description: 'Teacher updated successfully' })
-  @ApiBadRequestResponse({ description: 'Validation failed' })
-  @ApiNotFoundResponse({ description: 'Teacher not found' })
-  async update(
-    @Param('id') id: string,
-    @Body() updateTeacherDto: UpdateHeadTeacherDto,
-  ) {
-    return this.teachersService.update(id, updateTeacherDto);
+  @ApiOperation({ summary: 'Update head teacher by ID (updates user if needed)' })
+  @ApiResponse({ status: 200, description: 'Head teacher updated', type: HeadTeacher })
+  update(@Param('id') id: string, @Body() updateHeadTeacherDto: UpdateHeadTeacherDto) {
+    return this.headTeachersService.update(id, updateHeadTeacherDto);
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Remove a teacher' })
-  @ApiOkResponse({ description: 'Teacher removed successfully' })
-  @ApiNotFoundResponse({ description: 'Teacher not found' })
-  async remove(@Param('id') id: string) {
-    return this.teachersService.remove(id);
+  @ApiOperation({ summary: 'Delete head teacher by ID (deletes user too)' })
+  @ApiResponse({ status: 200, description: 'Head teacher deleted', type: HeadTeacher })
+  remove(@Param('id') id: string) {
+    return this.headTeachersService.delete(id);
   }
 }

@@ -15,10 +15,7 @@ import { RegisterDto } from './dto/register-user.dto';
 import { isInstance } from 'class-validator';
 import { School } from 'src/school-module/schemas/school.schema';
 import { hash } from 'crypto';
-
-type UpdateUserPayload = Partial<
-  Pick<User, 'name' | 'role' | 'phone' | 'email'>
-> & { school?: string | Types.ObjectId };
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -143,7 +140,7 @@ export class UsersService {
       password: hashedPassword,
     });
   }
-  async update(id: string, payload: UpdateUserPayload) {
+  async update(id: string, payload: UpdateUserDto) {
     const session = await this.userModel.db.startSession();
     session.startTransaction();
 
@@ -186,9 +183,9 @@ export class UsersService {
         );
       }
 
-      const updateData: UpdateUserPayload = {
+      const updateData: UpdateUserDto = {
         ...rest,
-        ...(schoolId ? { school: schoolId } : {}),
+        ...(schoolId ? { school: schoolId as Types.ObjectId } : {}),
       };
 
       // Update the user

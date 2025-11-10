@@ -32,18 +32,25 @@ export class EmailService {
     });
   }
 
-  async sendTeacherWelcomeEmail(email: string, name?: string): Promise<void> {
+
+  async sendTeacherWelcomeEmail(
+    email: string,
+    temporaryPassword: string,
+    name?: string,
+  ): Promise<void> {
     await this.sendMail({
       to: email,
       subject: 'Welcome to the Teaching Team',
       html: `
         <h1>Welcome${name ? `, ${name}` : ''}!</h1>
         <p>You have been registered as a teacher on the School Management platform.</p>
-        <p>Please log in using your email address to explore your dashboard.</p>
+        <p>Your temporary password is: <strong>${temporaryPassword}</strong></p>
+        <p>Please log in using your email address and change this password immediately.</p>
         <p>If you have any questions, reach out to the administration team.</p>
       `,
     });
   }
+
 
   async sendStaffWelcomeEmail(email: string, name?: string): Promise<void> {
     await this.sendMail({

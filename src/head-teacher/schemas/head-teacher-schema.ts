@@ -1,20 +1,21 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-export type TeacherDocument = Teacher & Document;
+export type HeadTeacherDocument = HeadTeacher & Document;
+
 @Schema({ timestamps: true })
-export class Teacher {
+export class HeadTeacher {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
   user: Types.ObjectId;
 
   @Prop({ trim: true })
-  teacherId?: string;
+  headTeacherId?: string;
 
-  @Prop({ type: [Types.ObjectId], ref: 'Subject', default: [] })
-  subjectsCanTeach?: Types.ObjectId[];
+  @Prop({ trim: true }) // Custom for head teacher
+  department?: string;
 
-  @Prop({ type: [Types.ObjectId], ref: 'Class', default: [] })
-  assignedClasses?: Types.ObjectId[];
+  @Prop({ type: [Types.ObjectId], ref: 'Subject', default: [] }) // Optional for head teachers
+  subjects?: Types.ObjectId[];
 
   @Prop({ trim: true })
   phone?: string;
@@ -28,7 +29,7 @@ export class Teacher {
   @Prop({ type: Types.ObjectId, ref: 'School', index: true })
   school?: Types.ObjectId;
 
-  // Added fields based on form for customization (Teacher-specific: e.g., no department, but add experience if needed; experience is in User)
+  // Added fields based on form (HeadTeacher-specific: e.g., department required, status, etc.)
   @Prop({ trim: true, enum: ['Active', 'On Leave', 'Inactive'], default: 'Active' })
   status?: string;
 
@@ -49,9 +50,6 @@ export class Teacher {
 
   @Prop({ trim: true })
   notes?: string;
-
-  @Prop({ trim: true })
-  experience?: string;
 }
 
-export const TeacherSchema = SchemaFactory.createForClass(Teacher);
+export const HeadTeacherSchema = SchemaFactory.createForClass(HeadTeacher);

@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsEnum, IsMongoId, IsOptional, IsPhoneNumber, IsString, MaxLength } from 'class-validator';
 import { Role } from '../schemas/user.schema';
+import { ObjectId, Types } from 'mongoose';
 
 export class UpdateUserDto {
   
@@ -29,8 +30,18 @@ export class UpdateUserDto {
   @MaxLength(30)
   phone?: string;
 
+  @ApiPropertyOptional({ required: false })
+  @IsOptional()
+  @IsString()
+  avatar?: string;
+
+  @ApiPropertyOptional({ required: false })
+  @IsOptional()
+  @IsString()
+  experience?: string;
+
   @ApiPropertyOptional({ description: 'School id to assign' })
   @IsOptional()
   @IsMongoId()
-  school?: string;
+  school?: Types.ObjectId;
 }

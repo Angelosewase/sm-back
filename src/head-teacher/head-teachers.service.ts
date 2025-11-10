@@ -5,46 +5,83 @@ import { Role, User } from '../users/schemas/user.schema';
 import { UpdateHeadTeacherDto } from './dto/update-head-teacher.dto';
 import { CreateHeadTeacherDto } from './dto/create-head-teacher.dto';
 import { QueryHeadTeacherDto } from './dto/query-head-teacher.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
+import { HeadTeacher, HeadTeacherDocument } from './schemas/head-teacher-schema';
 
 @Injectable()
 export class HeadTeachersService {
-  constructor(
-    private readonly usersService: UsersService,
-    private readonly emailService: EmailService,
+
+constructor(
+    @InjectModel(HeadTeacher.name) private headTeacherModel: Model<HeadTeacherDocument>,
+    private usersService: UsersService,
+    private emailService: EmailService,
   ) {}
 
-  async create(createTeacherDto: CreateHeadTeacherDto) {
-    const teacher = await this.usersService.createUser({
-      ...createTeacherDto,
+  async create(createHeadTeacherDto: CreateHeadTeacherDto): Promise<HeadTeacher> {
+    // Create user with role HEADTeacher
+    const userDto = {
+      email: createHeadTeacherDto.email,
+      password: createHeadTeacherDto.password,
+      name: createHeadTeacherDto.name,
+      phone: createHeadTeacherDto.phone,
+      experience: createHeadTeacherDto.experience,
       role: Role.HEADTeacher,
+      school: createHeadTeacherDto.school,
+    };
+    const user = await this.usersService.createUser(userDto);
+
+    // Create head teacher document
+    const headTeacher = new this.headTeacherModel({
+      user: user._id,
+      headTeacherId: createHeadTeacherDto.headTeacherId,
+      department: createHeadTeacherDto.department,
+      subjects: createHeadTeacherDto.subjects?.map(id => new Types.ObjectId(id)),
+      phone: createHeadTeacherDto.phone,
+      qualification: createHeadTeacherDto.qualification,
+      hireDate: createHeadTeacherDto.hireDate,
+      school: new Types.ObjectId(createHeadTeacherDto.school),
+      status: createHeadTeacherDto.status,
+      address: createHeadTeacherDto.address,
+      city: createHeadTeacherDto.city,
+      state: createHeadTeacherDto.state,
+      zip: createHeadTeacherDto.zip,
+      emergencyContact: createHeadTeacherDto.emergencyContact,
+      notes: createHeadTeacherDto.notes,
     });
-
-    this.sendWelcomeEmailSafely(teacher);
-    return teacher;
+    return headTeacher.save();
   }
 
-  async findAll(query: QueryHeadTeacherDto) {
-    return this.usersService.findAll({
-      ...query,
-      role: Role.HEADTeacher,
-    });
+  async findAll(query: QueryHeadTeacherDto): Promise<HeadTeacher[]> {
+    return this.headTeacherModel.find().populate('user subjects school').exec();
   }
 
-  async findOne(id: string) {
-    return this.ensureTeacher(id);
+  async findOne(id: string): Promise<HeadTeacher> {
+    const headTeacher = await this.headTeacherModel.findById(id).populate('user subjects school').exec();
+    if (!headTeacher) throw new NotFoundException('Head Teacher not found');
+    return headTeacher;
   }
 
-  async update(id: string, updateTeacherDto: UpdateHeadTeacherDto) {
-    await this.ensureTeacher(id);
-    return this.usersService.update(id, {
-      ...updateTeacherDto,
-      role: Role.HEADTeacher,
-    });
+  async update(id: string, updateHeadTeacherDto: UpdateHeadTeacherDto): Promise<HeadTeacher | null> {
+    const headTeacher = await this.findOne(id);
+    // Update user if needed
+    if (updateHeadTeacherDto.phone || updateHeadTeacherDto.experience) {
+      await this.usersService.update(headTeacher.user.toString(), {
+        phone: updateHeadTeacherDto.phone,
+        experience: updateHeadTeacherDto.experience,
+      });
+    }
+    // Update head teacher fields
+    return this.headTeacherModel.findByIdAndUpdate(id, {
+      ...updateHeadTeacherDto,
+      subjects: updateHeadTeacherDto.subjects?.map(id => new Types.ObjectId(id)),
+    }, { new: true }).exec();
   }
 
-  async remove(id: string) {
-    await this.ensureTeacher(id);
-    return this.usersService.remove(id);
+  async delete(id: string): Promise<HeadTeacher | null> {
+    const headTeacher = await this.findOne(id);
+    await this.usersService.remove(headTeacher.user.toString());
+    return this.headTeacherModel.findByIdAndDelete(id).exec();
   }
 
   private async ensureTeacher(id: string): Promise<User> {
@@ -68,5 +105,3 @@ export class HeadTeachersService {
     }
   }
 }
-
-

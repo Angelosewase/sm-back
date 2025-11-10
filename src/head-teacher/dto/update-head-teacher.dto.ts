@@ -1,26 +1,75 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsArray, IsDateString, IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class UpdateHeadTeacherDto {
-  @ApiPropertyOptional({ description: 'Updated teacher name' })
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  name?: string;
+  headTeacherId?: string;
 
-  @ApiPropertyOptional({ description: 'Updated teacher email' })
+  @ApiProperty({ required: false })
   @IsOptional()
-  @IsEmail()
-  email?: string;
+  @IsString()
+  department?: string;
 
-  @ApiPropertyOptional({ description: 'Updated teacher phone number' })
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  subjects?: string[];
+
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   phone?: string;
 
-  @ApiPropertyOptional({ description: 'Identifier of the school the teacher belongs to' })
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  school?: string;
+  qualification?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  hireDate?: Date;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsEnum(['Active', 'On Leave', 'Inactive'])
+  status?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  city?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  state?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  zip?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  emergencyContact?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsEmail()
+  experience?: string;
 }
-
-
