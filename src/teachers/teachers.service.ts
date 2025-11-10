@@ -23,6 +23,7 @@ export class TeachersService {
    @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
   ) {}
 async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
+  console.log("the create teacher dto is 1: ", createTeacherDto)
 
    const temporaryPassword = this.generateTemporaryPassword();
     // Create user first with role TEACHER

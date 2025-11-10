@@ -11,11 +11,6 @@ export class HeadTeacher {
   @Prop({ trim: true })
   headTeacherId?: string;
 
-  @Prop({ trim: true }) // Custom for head teacher
-  department?: string;
-
-  @Prop({ type: [Types.ObjectId], ref: 'Subject', default: [] }) // Optional for head teachers
-  subjects?: Types.ObjectId[];
 
   @Prop({ trim: true })
   phone?: string;
