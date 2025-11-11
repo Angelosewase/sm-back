@@ -65,6 +65,10 @@ export class Subject {
 
   @Prop({ type: Types.ObjectId, ref: 'School' })
   school?: Types.ObjectId;
+
+  @Prop({ type: [Types.ObjectId], ref: 'Assessment', default: [] })
+  assessments?: Types.ObjectId[];
+
 }
 
 export const SubjectSchema = SchemaFactory.createForClass(Subject);

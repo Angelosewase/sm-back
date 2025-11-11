@@ -6,10 +6,6 @@ import {
   Enrollment,
   EnrollmentSchema,
 } from '../students/schemas/enrollment.schema';
-import {
-  SubjectAssignment,
-  SubjectAssignmentSchema,
-} from '../subjects/schemas/subject-assignment.schema';
 import { Marks, MarksSchema } from '../marks/schemas/marks.schema';
 import {
   AcademicYear,
@@ -32,7 +28,6 @@ import { StudentsModule } from 'src/students/students.module';
     MongooseModule.forFeature([
       { name: Student.name, schema: StudentSchema },
       { name: Enrollment.name, schema: EnrollmentSchema },
-      { name: SubjectAssignment.name, schema: SubjectAssignmentSchema },
       { name: Marks.name, schema: MarksSchema },
       { name: AcademicYear.name, schema: AcademicYearSchema },
       { name: Term.name, schema: TermSchema },
@@ -41,8 +36,8 @@ import { StudentsModule } from 'src/students/students.module';
       { name: Subject.name, schema: SubjectSchema },
     ]),
     UsersModule,
-    SubjectsModule,
-    ClassesModule,
+    forwardRef(()=> SubjectsModule),
+    forwardRef(()=> ClassesModule),
     forwardRef(()=> StudentsModule),
   ],
   providers: [CsvImportService, PdfService, SchoolModuleService],

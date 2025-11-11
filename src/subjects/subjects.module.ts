@@ -3,21 +3,22 @@ import { SubjectController } from './subject.controller';
 import { SubjectService } from './subject.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Subject, SubjectSchema } from './schemas/subject.schema';
-import {
-  SubjectAssignment,
-  SubjectAssignmentSchema,
-} from './schemas/subject-assignment.schema';
 import { UsersModule } from 'src/users/users.module';
 import { SchoolModule } from 'src/school-module/school-module.module';
 import { ClassesModule } from 'src/classes/classes.module';
+import { Teacher, TeacherSchema } from 'src/teachers/schemas/teacher.schema';
+import { User, UserSchema } from 'src/users/schemas/user.schema';
+import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Subject.name, schema: SubjectSchema },
-      { name: SubjectAssignment.name, schema: SubjectAssignmentSchema },
+      { name: Teacher.name, schema: TeacherSchema },
+      { name: User.name, schema: UserSchema },
+      { name: Class.name, schema: ClassSchema },
     ]),
-    forwardRef(() => UsersModule),
+    UsersModule,
     forwardRef(() => SchoolModule),
     forwardRef(() => ClassesModule),
   ],

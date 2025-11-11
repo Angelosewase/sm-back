@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../auth/email.service';
 import { Role, User } from '../users/schemas/user.schema';
@@ -15,6 +15,7 @@ import { Subject } from 'rxjs';
 
 @Injectable()
 export class TeachersService {
+  private readonly logger = new Logger(TeachersService.name);
   constructor(
     private readonly usersService: UsersService,
     private readonly emailService: EmailService,
@@ -399,6 +400,42 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
       ? teacher._id
       : new Types.ObjectId((teacher as any)._id);
   }
+
+
+  /** Assign subjects to a teacher */
+  async assignSubjectsToTeacher(teacherId: string, subjectIds: string[]) {
+    // Validate teacher exists
+    const teacher = await this.teacherModel.findById(teacherId);
+    if (!teacher) throw new BadRequestException('Teacher not found');
+
+    // Validate subjects exist
+    for (const subjectId of subjectIds) {
+      const exists = await this.subjectModel.exists({ _id: subjectId });
+      if (!exists) throw new BadRequestException(`Subject ${subjectId} not found`);
+    }
+
+    // Add subjects avoiding duplicates
+    await this.teacherModel.updateOne(
+      { _id: teacherId },
+      { $addToSet: { subjectsCanTeach: { $each: subjectIds } } }
+    );
+    this.logger.log(`Assigned subjects ${subjectIds.join(', ')} to teacher ${teacherId}`);
+    return await this.teacherModel.findById(teacherId).populate('subjectsCanTeach');
+  }
+
+  /** Remove subject from teacher */
+  async removeSubjectFromTeacher(teacherId: string, subjectId: string) {
+    const teacher = await this.teacherModel.findById(teacherId);
+    if (!teacher) throw new BadRequestException('Teacher not found');
+    await this.teacherModel.updateOne(
+      { _id: teacherId },
+      { $pull: { subjectsCanTeach: subjectId } }
+    );
+    this.logger.log(`Removed subject ${subjectId} from teacher ${teacherId}`);
+    return await this.teacherModel.findById(teacherId).populate('subjectsCanTeach');
+  }
 }
+
+
 
 
