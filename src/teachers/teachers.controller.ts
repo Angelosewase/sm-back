@@ -15,6 +15,7 @@ import { QueryTeacherDto } from './dto/query-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
 import { AssignClassesDto } from './dto/assign-classes.dto';
 import { AssignSubjectsDto } from './dto/assign-subjects.dto';
+import { BulkTeacherActionDto } from './dto/bulk-teacher-action.dto';
 import { Teacher } from './schemas/teacher.schema';
 import { UnassignClassesDto } from './dto/unassign-class.dto';
 import { UnassignSubjectsDto } from './dto/unassign-subjects.dto';
@@ -52,10 +53,22 @@ export class TeachersController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete teacher by ID (deletes user too)' })
-  @ApiResponse({ status: 200, description: 'Teacher deleted', type: Teacher })
+  @ApiOperation({ summary: 'Move teacher to trash' })
+  @ApiResponse({ status: 200, description: 'Teacher moved to trash', type: Teacher })
   remove(@Param('id') id: string) {
     return this.teachersService.delete(id);
+  }
+
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a trashed teacher' })
+  restore(@Param('id') id: string) {
+    return this.teachersService.restore(id);
+  }
+
+  @Delete(':id/permanent')
+  @ApiOperation({ summary: 'Permanently remove a trashed teacher' })
+  removePermanently(@Param('id') id: string) {
+    return this.teachersService.removePermanently(id);
   }
 
   @Post(':id/classes')
@@ -92,5 +105,23 @@ export class TeachersController {
     @Body() body: UnassignSubjectsDto,
   ) {
     return this.teachersService.removeSubjects(id, body.subjectIds);
+  }
+
+  @Post('bulk/trash')
+  @ApiOperation({ summary: 'Move multiple teachers to trash' })
+  bulkTrash(@Body() body: BulkTeacherActionDto) {
+    return this.teachersService.bulkTrash(body.ids);
+  }
+
+  @Post('bulk/restore')
+  @ApiOperation({ summary: 'Restore multiple trashed teachers' })
+  bulkRestore(@Body() body: BulkTeacherActionDto) {
+    return this.teachersService.bulkRestore(body.ids);
+  }
+
+  @Post('bulk/permanent')
+  @ApiOperation({ summary: 'Permanently remove multiple trashed teachers' })
+  bulkRemovePermanently(@Body() body: BulkTeacherActionDto) {
+    return this.teachersService.bulkRemovePermanently(body.ids);
   }
 }
