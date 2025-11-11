@@ -11,7 +11,9 @@ import {
   Min,
 } from 'class-validator';
 
-const booleanTransformer = ({ value }: TransformFnParams): boolean | undefined => {
+const booleanTransformer = ({
+  value,
+}: TransformFnParams): boolean | undefined => {
   if (value === undefined || value === null || value === '') {
     return undefined;
   }
@@ -63,13 +65,18 @@ export class QueryClassesDto {
   @IsNotEmpty()
   gradeLevel?: string;
 
-
-  @ApiPropertyOptional({ description: 'School _id to filter classes', example: '68f79d534286e66c8b4ad219' })
+  @ApiPropertyOptional({
+    description: 'School _id to filter classes',
+    example: '68f79d534286e66c8b4ad219',
+  })
   @IsOptional()
   @IsString()
   school?: string;
 
-  @ApiPropertyOptional({ description: 'Academic year to filter classes', example: '2024/2025' })
+  @ApiPropertyOptional({
+    description: 'Academic year to filter classes',
+    example: '2024/2025',
+  })
   @IsOptional()
   @IsString()
   academicYear?: string;
@@ -91,5 +98,22 @@ export class QueryClassesDto {
   @Transform(booleanTransformer)
   @IsBoolean()
   onlyTrashed?: boolean;
-}
 
+  @ApiPropertyOptional({
+    description: 'Include teacher profile for each class',
+    example: false,
+  })
+  @IsOptional()
+  @Transform(booleanTransformer)
+  @IsBoolean()
+  includeTeacherProfile?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Include subjects assigned to each class',
+    example: false,
+  })
+  @IsOptional()
+  @Transform(booleanTransformer)
+  @IsBoolean()
+  includeSubjects?: boolean;
+}

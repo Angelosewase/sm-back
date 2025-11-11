@@ -4,7 +4,6 @@ import { TeachersService } from './teachers.service';
 import { TeachersController } from './teachers.controller';
 import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
-import { MongooseModule } from '@nestjs/mongoose';
 import { Teacher, TeacherSchema } from './schemas/teacher.schema';
 import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
 import { SubjectSchema, Subject } from 'src/subjects/schemas/subject.schema';

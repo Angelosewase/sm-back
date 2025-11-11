@@ -8,16 +8,14 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import {
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { TeachersService } from './teachers.service';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { QueryTeacherDto } from './dto/query-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
+import { AssignClassesDto } from './dto/assign-classes.dto';
 import { Teacher } from './schemas/teacher.schema';
+import { UnassignClassesDto } from './dto/unassign-class.dto';
 @ApiTags('teachers')
 @Controller('api/teachers')
 export class TeachersController {
@@ -33,9 +31,7 @@ export class TeachersController {
   @Get()
   @ApiOperation({ summary: 'Get all teachers' })
   @ApiResponse({ status: 200, description: 'Teachers found', type: [Teacher] })
-  findAll(
-    @Query() query: QueryTeacherDto,
-  ) {
+  findAll(@Query() query: QueryTeacherDto) {
     return this.teachersService.findAll(query);
   }
 
@@ -58,5 +54,23 @@ export class TeachersController {
   @ApiResponse({ status: 200, description: 'Teacher deleted', type: Teacher })
   remove(@Param('id') id: string) {
     return this.teachersService.delete(id);
+  }
+
+  @Post(':id/classes')
+  @ApiOperation({ summary: 'Assign classes to a teacher' })
+  assignClasses(@Param('id') id: string, @Body() body: AssignClassesDto) {
+    return this.teachersService.assignClasses(id, body.classIds);
+  }
+
+  @Delete(':id/classes')
+  @ApiOperation({ summary: 'Unassign (remove) classes from a teacher' })
+  @ApiResponse({ status: 200, description: 'Classes unassigned successfully' })
+  @ApiResponse({ status: 404, description: 'Teacher not found' })
+  @ApiResponse({ status: 400, description: 'Invalid class IDs' })
+  unassignClasses(
+    @Param('id') id: string,
+    @Body() body: UnassignClassesDto,
+  ) {
+    return this.teachersService.unassignClasses(id, body.classIds);
   }
 }
