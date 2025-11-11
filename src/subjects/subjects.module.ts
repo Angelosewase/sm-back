@@ -4,11 +4,12 @@ import { SubjectService } from './subject.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Subject, SubjectSchema } from './schemas/subject.schema';
 import { UsersModule } from 'src/users/users.module';
-import { SchoolModule } from 'src/school-module/school-module.module';
+
 import { ClassesModule } from 'src/classes/classes.module';
 import { Teacher, TeacherSchema } from 'src/teachers/schemas/teacher.schema';
 import { User, UserSchema } from 'src/users/schemas/user.schema';
 import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
+import { SchoolModule } from 'src/school/school.module';
 
 @Module({
   imports: [

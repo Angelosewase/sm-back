@@ -7,8 +7,6 @@ import {
 import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { ClassesService } from 'src/classes/classes.service';
-import { AuditLog } from 'src/school-module/schemas/audit.schema';
-import { Enrollment } from 'src/students/schemas/enrollment.schema';
 import { Marks, MarksDocument } from 'src/marks/schemas/marks.schema';
 import { EnterMarkDto } from './dto/enter-mark.dto';
 import { Subject } from 'src/subjects/schemas/subject.schema';
@@ -22,9 +20,6 @@ export class MarksService {
   constructor(
     @InjectModel(Marks.name) private marksModel: Model<MarksDocument>,
     @InjectModel(Subject.name) private subjectModel: Model<Subject>,
-    @InjectModel(Enrollment.name) private enrollmentModel: Model<Enrollment>,
-    @InjectModel(AuditLog.name) private auditModel: Model<AuditLog>,
-
     private readonly classService: ClassesService,
   ) {}
 
@@ -46,19 +41,7 @@ export class MarksService {
     }
 
     // ensure student is enrolled in the class for academicYear
-    const enrolled = await this.enrollmentModel
-      .findOne({
-        student: dto.studentId,
-        class: dto.classId,
-        academicYear: dto.academicYear,
-        status: 'enrolled',
-      })
-      .exec();
-    if (!enrolled) {
-      throw new BadRequestException(
-        'Student is not enrolled in class for the given academic year',
-      );
-    }
+
 
     const mark = new this.marksModel({
       student: dto.studentId,
@@ -85,15 +68,7 @@ export class MarksService {
     after?: any,
   ) {
     try {
-      const rec = new this.auditModel({
-        user: userId,
-        action,
-        _collection,
-        documentId,
-        before,
-        after,
-      });
-      await rec.save();
+      
     } catch (e) {
       // non-fatal; audit failures shouldn't block the main flow
       // could log to a monitoring system

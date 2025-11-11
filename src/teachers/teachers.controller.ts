@@ -16,8 +16,10 @@ import { QueryTeacherDto } from './dto/query-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
 import { AssignClassesDto } from './dto/assign-classes.dto';
 import { AssignSubjectsDto } from 'src/subjects/dto/assign-subjects.dto';
+import { BulkTeacherActionDto } from './dto/bulk-teacher-action.dto';
 import { Teacher } from './schemas/teacher.schema';
 import { UnassignClassesDto } from './dto/unassign-class.dto';
+import { UnassignSubjectsDto } from './dto/unassign-subjects.dto';
 @ApiTags('teachers')
 @Controller('api/teachers')
 export class TeachersController {
@@ -52,10 +54,22 @@ export class TeachersController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete teacher by ID (deletes user too)' })
-  @ApiResponse({ status: 200, description: 'Teacher deleted', type: Teacher })
+  @ApiOperation({ summary: 'Move teacher to trash' })
+  @ApiResponse({ status: 200, description: 'Teacher moved to trash', type: Teacher })
   remove(@Param('id') id: string) {
     return this.teachersService.delete(id);
+  }
+
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a trashed teacher' })
+  restore(@Param('id') id: string) {
+    return this.teachersService.restore(id);
+  }
+
+  @Delete(':id/permanent')
+  @ApiOperation({ summary: 'Permanently remove a trashed teacher' })
+  removePermanently(@Param('id') id: string) {
+    return this.teachersService.removePermanently(id);
   }
 
   @Post(':id/classes')
@@ -64,11 +78,11 @@ export class TeachersController {
     return this.teachersService.assignClasses(id, body.classIds);
   }
 
-  @Post(':id/subjects')
-  @ApiOperation({ summary: 'Assign subjects to a teacher' })
-  assignSubjects(@Param('id') id: string, @Body() body: AssignSubjectsDto) {
-    return this.teachersService.assignSubjects(id, body.subjectIds);
-  }
+  // @Post(':id/subjects')
+  // @ApiOperation({ summary: 'Assign subjects to a teacher' })
+  // assignSubjects(@Param('id') id: string, @Body() body: AssignSubjectsDto) {
+  //   return this.teachersService.assignSubjects(id, body.subjectIds);
+  // }
 
   @Delete(':id/classes')
   @ApiOperation({ summary: 'Unassign (remove) classes from a teacher' })
@@ -90,5 +104,40 @@ export class TeachersController {
     @Param('subjectId') subjectId: string,
   ) {
     return await this.teachersService.removeSubjectFromTeacher(teacherId, subjectId);
+  }
+  @Post(':id/subjects')
+  @ApiOperation({ summary: 'Assign subjects to a teacher' })
+  assignSubjects(@Param('id') id: string, @Body() body: AssignSubjectsDto) {
+    return this.teachersService.assignSubjects(id, body.subjectIds);
+  }
+
+  @Delete(':id/subjects')
+  @ApiOperation({ summary: 'Unassign (remove) subjects from a teacher' })
+  @ApiResponse({ status: 200, description: 'Subjects unassigned successfully' })
+  @ApiResponse({ status: 404, description: 'Teacher or subjects not found' })
+  @ApiResponse({ status: 400, description: 'Invalid subject IDs' })
+  unassignSubjects(
+    @Param('id') id: string,
+    @Body() body: UnassignSubjectsDto,
+  ) {
+    return this.teachersService.removeSubjects(id, body.subjectIds);
+  }
+
+  @Post('bulk/trash')
+  @ApiOperation({ summary: 'Move multiple teachers to trash' })
+  bulkTrash(@Body() body: BulkTeacherActionDto) {
+    return this.teachersService.bulkTrash(body.ids);
+  }
+
+  @Post('bulk/restore')
+  @ApiOperation({ summary: 'Restore multiple trashed teachers' })
+  bulkRestore(@Body() body: BulkTeacherActionDto) {
+    return this.teachersService.bulkRestore(body.ids);
+  }
+
+  @Post('bulk/permanent')
+  @ApiOperation({ summary: 'Permanently remove multiple trashed teachers' })
+  bulkRemovePermanently(@Body() body: BulkTeacherActionDto) {
+    return this.teachersService.bulkRemovePermanently(body.ids);
   }
 }
