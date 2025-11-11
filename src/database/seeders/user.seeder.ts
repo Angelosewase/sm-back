@@ -100,9 +100,9 @@ export class SeederService {
       { email: 'admin@app.com', name: 'Super Admin', role: Role.ADMIN, passwordRaw: 'Secret@123' },
 
       { email: 'teacher@app.com', name: 'Prof. Example', role: Role.TEACHER, passwordRaw: 'Secret@123' },
-      { email: 'student@app.com', name: 'Student Learner', role: Role.STUDENT, passwordRaw: 'Secret@123' },
+      // { email: 'student@app.com', name: 'Student Learner', role: Role.STUDENT, passwordRaw: 'Secret@123' },
       { email: 'headteacher@app.com', name: 'Head Teacher', role: Role.HEADTeacher, passwordRaw: 'Secret@123' },
-      { email: 'staff@app.com', name: 'Office Staff', role: Role.STAFF, passwordRaw: 'Secret@123' },
+      // { email: 'staff@app.com', name: 'Office Staff', role: Role.STAFF, passwordRaw: 'Secret@123' },
     ];
 
     console.log('--- Starting Remaining Users Seeding ---');

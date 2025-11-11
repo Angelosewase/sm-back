@@ -6,7 +6,14 @@ import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
 import { Teacher, TeacherSchema } from './schemas/teacher.schema';
 import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
-import { SubjectSchema, Subject } from 'src/subjects/schemas/subject.schema';
+import {
+  Subject,
+  SubjectSchema,
+} from 'src/subjects/schemas/subject.schema';
+import {
+  SubjectAssignment,
+  SubjectAssignmentSchema,
+} from 'src/subjects/schemas/subject-assignment.schema';
 
 @Module({
   imports: [UsersModule, AuthModule,
@@ -14,6 +21,7 @@ import { SubjectSchema, Subject } from 'src/subjects/schemas/subject.schema';
       {name: Teacher.name, schema: TeacherSchema},
       {name: Class.name, schema: ClassSchema},
       {name: Subject.name, schema: SubjectSchema},
+      {name: SubjectAssignment.name, schema: SubjectAssignmentSchema},
     ])
   ],
   controllers: [TeachersController],

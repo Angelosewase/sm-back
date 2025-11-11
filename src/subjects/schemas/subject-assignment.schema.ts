@@ -14,7 +14,6 @@ export class SubjectAssignment {
   @Prop({ type: Types.ObjectId, ref: 'User' })
   teacher?: Types.ObjectId;
 
-
   @Prop({ required: true, trim: true, index: true })
   academicYear: string;
 
@@ -32,9 +31,9 @@ export const SubjectAssignmentSchema =
   SchemaFactory.createForClass(SubjectAssignment);
 SubjectAssignmentSchema.index(
   { class: 1, subject: 1, teacher: 1, academicYear: 1 },
-  { 
-    unique: true ,
-    partialFilterExpression: { class: { $exists: true } }
+  {
+    unique: true,
+    partialFilterExpression: { class: { $exists: true } },
   },
 );
 

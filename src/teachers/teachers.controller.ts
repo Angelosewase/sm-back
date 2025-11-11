@@ -14,8 +14,10 @@ import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { QueryTeacherDto } from './dto/query-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
 import { AssignClassesDto } from './dto/assign-classes.dto';
+import { AssignSubjectsDto } from './dto/assign-subjects.dto';
 import { Teacher } from './schemas/teacher.schema';
 import { UnassignClassesDto } from './dto/unassign-class.dto';
+import { UnassignSubjectsDto } from './dto/unassign-subjects.dto';
 @ApiTags('teachers')
 @Controller('api/teachers')
 export class TeachersController {
@@ -72,5 +74,23 @@ export class TeachersController {
     @Body() body: UnassignClassesDto,
   ) {
     return this.teachersService.unassignClasses(id, body.classIds);
+  }
+
+  @Post(':id/subjects')
+  @ApiOperation({ summary: 'Assign subjects to a teacher' })
+  assignSubjects(@Param('id') id: string, @Body() body: AssignSubjectsDto) {
+    return this.teachersService.assignSubjects(id, body.subjectIds);
+  }
+
+  @Delete(':id/subjects')
+  @ApiOperation({ summary: 'Unassign (remove) subjects from a teacher' })
+  @ApiResponse({ status: 200, description: 'Subjects unassigned successfully' })
+  @ApiResponse({ status: 404, description: 'Teacher or subjects not found' })
+  @ApiResponse({ status: 400, description: 'Invalid subject IDs' })
+  unassignSubjects(
+    @Param('id') id: string,
+    @Body() body: UnassignSubjectsDto,
+  ) {
+    return this.teachersService.removeSubjects(id, body.subjectIds);
   }
 }

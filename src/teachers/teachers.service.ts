@@ -9,9 +9,15 @@ import { FilterQuery, Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Teacher, TeacherDocument } from './schemas/teacher.schema';
 import { randomBytes } from 'crypto';
-import { SubjectDocument } from 'src/subjects/schemas/subject.schema';
+import {
+  Subject as SubjectEntity,
+  SubjectDocument,
+} from 'src/subjects/schemas/subject.schema';
 import { Class, ClassDocument } from 'src/classes/schemas/class.schema';
-import { Subject } from 'rxjs';
+import {
+  SubjectAssignment,
+  SubjectAssignmentDocument,
+} from 'src/subjects/schemas/subject-assignment.schema';
 
 @Injectable()
 export class TeachersService {
@@ -20,7 +26,9 @@ export class TeachersService {
     private readonly emailService: EmailService,
    @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>, 
    @InjectModel(Class.name) private classModel: Model<ClassDocument>,
-   @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
+   @InjectModel(SubjectEntity.name) private subjectModel: Model<SubjectDocument>,
+   @InjectModel(SubjectAssignment.name)
+    private readonly subjectAssignmentModel: Model<SubjectAssignmentDocument>,
   ) {}
 async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
   console.log("the create teacher dto is 1: ", createTeacherDto)
@@ -365,6 +373,97 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
     };
   }
 
+  async removeSubjects(teacherId: string, subjectIds: string[]) {
+    const teacher = await this.ensureTeacher(teacherId);
+    const uniqueSubjectIds = Array.from(new Set(subjectIds));
+    if (!uniqueSubjectIds.length) {
+      throw new BadRequestException('No subject ids provided');
+    }
+
+    const subjectObjectIds = uniqueSubjectIds.map((id) => {
+      if (!Types.ObjectId.isValid(id)) {
+        throw new BadRequestException(`Invalid subject id "${id}"`);
+      }
+      return new Types.ObjectId(id);
+    });
+
+    const subjects = await this.subjectModel
+      .find({ _id: { $in: subjectObjectIds } })
+      .select('_id')
+      .lean()
+      .exec();
+
+    const foundIds = new Set(subjects.map((subject) => subject._id.toString()));
+    const missing = uniqueSubjectIds.filter((id) => !foundIds.has(id));
+    if (missing.length) {
+      throw new NotFoundException(
+        `Subjects not found: ${missing.join(', ')}`,
+      );
+    }
+
+    const teacherObjectId = this.getTeacherObjectId(teacher);
+    const teacherProfile = await this.teacherModel
+      .findOne({ user: teacherObjectId })
+      .populate(['assignedClasses', 'subjectsCanTeach'])
+      .exec();
+
+    if (!teacherProfile) {
+      throw new NotFoundException('Teacher profile not found');
+    }
+
+    const assignedSubjectIds = new Set(
+      this.extractObjectIdStrings(teacherProfile.subjectsCanTeach ?? []),
+    );
+    const notAssigned = uniqueSubjectIds.filter(
+      (id) => !assignedSubjectIds.has(id),
+    );
+    if (notAssigned.length) {
+      throw new BadRequestException(
+        `Teacher is not assigned to subjects: ${notAssigned.join(', ')}`,
+      );
+    }
+
+    const updatedTeacherProfile = await this.teacherModel
+      .findOneAndUpdate(
+        { user: teacherObjectId },
+        { $pull: { subjectsCanTeach: { $in: subjectObjectIds } } },
+        { new: true },
+      )
+      .populate(['assignedClasses', 'subjectsCanTeach'])
+      .exec();
+
+    if (!updatedTeacherProfile) {
+      throw new NotFoundException('Teacher profile not found');
+    }
+
+    const remainingSubjectIds = this.extractObjectIdStrings(
+      updatedTeacherProfile.subjectsCanTeach ?? [],
+    );
+
+    const updatedUser = await this.usersService.update(
+      teacherObjectId.toString(),
+      {
+        subjectsCanTeach: remainingSubjectIds,
+      } as any,
+    );
+
+    await this.subjectAssignmentModel
+      .updateMany(
+        {
+          teacher: teacherObjectId,
+          subject: { $in: subjectObjectIds },
+        },
+        { $unset: { teacher: 1 } },
+      )
+      .exec();
+
+    return {
+      message: 'Subjects removed successfully',
+      user: updatedUser,
+      teacherProfile: updatedTeacherProfile,
+    };
+  }
+
   private buildTeacherInsertData(teacher: User) {
     const insert: Record<string, any> = {
       user: this.getTeacherObjectId(teacher),
@@ -398,6 +497,23 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
     return (teacher)._id instanceof Types.ObjectId
       ? teacher._id
       : new Types.ObjectId((teacher as any)._id);
+  }
+
+  private extractObjectIdStrings(values: any[]): string[] {
+    return values
+      .map((value) => {
+        if (!value) return null;
+        if (value instanceof Types.ObjectId) return value.toString();
+        if (typeof value === 'string') return value;
+        if ((value as any)._id instanceof Types.ObjectId) {
+          return (value as any)._id.toString();
+        }
+        if (typeof (value as any)._id === 'string') {
+          return (value as any)._id;
+        }
+        return null;
+      })
+      .filter((val): val is string => Boolean(val));
   }
 }
 
