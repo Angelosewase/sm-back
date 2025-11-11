@@ -264,6 +264,20 @@ export class StudentService {
     return this.updateTrashState(id, false);
   }
 
+  async bulkTrashStudents(ids: string[]): Promise<Student[]> {
+    return Promise.all(ids.map((id) => this.trashStudent(id)));
+  }
+
+  async bulkRestoreStudents(ids: string[]): Promise<Student[]> {
+    return Promise.all(ids.map((id) => this.restoreStudent(id)));
+  }
+
+  async bulkRemoveStudents(ids: string[]): Promise<void> {
+    for (const id of ids) {
+      await this.removeStudent(id);
+    }
+  }
+
   async removeStudent(id: string): Promise<void> {
     const session = await this.studentModel.db.startSession();
     session.startTransaction();

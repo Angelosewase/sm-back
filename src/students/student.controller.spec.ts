@@ -19,8 +19,11 @@ describe('StudentController', () => {
       updateStudent: jest.fn(),
       changeStudentClass: jest.fn(),
       trashStudent: jest.fn(),
+      bulkTrashStudents: jest.fn(),
       restoreStudent: jest.fn(),
+      bulkRestoreStudents: jest.fn(),
       removeStudent: jest.fn(),
+      bulkRemoveStudents: jest.fn(),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -111,6 +114,17 @@ describe('StudentController', () => {
     expect(result).toEqual({ id: '1' });
   });
 
+  it('bulk trashes students', async () => {
+    const dto = { ids: ['1', '2'] };
+    const trashed = [{ id: '1' }, { id: '2' }];
+    service.bulkTrashStudents.mockResolvedValue(trashed as any);
+
+    const result = await controller.bulkTrash(dto as any);
+
+    expect(service.bulkTrashStudents).toHaveBeenCalledWith(dto.ids);
+    expect(result).toEqual(trashed);
+  });
+
   it('restores a student', async () => {
     service.restoreStudent.mockResolvedValue({ id: '1' } as any);
 
@@ -120,6 +134,17 @@ describe('StudentController', () => {
     expect(result).toEqual({ id: '1' });
   });
 
+  it('bulk restores students', async () => {
+    const dto = { ids: ['1', '2'] };
+    const restored = [{ id: '1' }, { id: '2' }];
+    service.bulkRestoreStudents.mockResolvedValue(restored as any);
+
+    const result = await controller.bulkRestore(dto as any);
+
+    expect(service.bulkRestoreStudents).toHaveBeenCalledWith(dto.ids);
+    expect(result).toEqual(restored);
+  });
+
   it('removes a student', async () => {
     service.removeStudent.mockResolvedValue(undefined);
 
@@ -127,6 +152,16 @@ describe('StudentController', () => {
 
     expect(service.removeStudent).toHaveBeenCalledWith('1');
     expect(result).toEqual({ deleted: true });
+  });
+
+  it('bulk removes students', async () => {
+    const dto = { ids: ['1', '2'] };
+    service.bulkRemoveStudents.mockResolvedValue(undefined);
+
+    const result = await controller.bulkRemove(dto as any);
+
+    expect(service.bulkRemoveStudents).toHaveBeenCalledWith(dto.ids);
+    expect(result).toEqual({ deleted: true, count: dto.ids.length });
   });
 });
 

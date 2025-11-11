@@ -94,6 +94,7 @@ describe('StudentService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('registerStudent', () => {
@@ -184,7 +185,7 @@ describe('StudentService', () => {
       expect(filter.district).toBe(query.district);
       expect(filter.province).toBe(query.province);
       expect(filter.gradeLevel).toBe(query.gradeLevel);
-      expect(filter.guardianEmail).toBe(query.guardianEmail.toLowerCase());
+      expect(filter.guardianEmail).toBe(query.guardianEmail?.toLowerCase());
       expect(filter.class).toEqual(new Types.ObjectId(classId));
       expect(filter.school).toEqual(new Types.ObjectId(schoolId));
       expect(filter.isTrashed).toBe(false);
@@ -280,6 +281,54 @@ describe('StudentService', () => {
       expect(studentDoc.class).toEqual(new Types.ObjectId(newClassId));
       expect(studentDoc.save).toHaveBeenCalledWith({ session });
       expect(session.commitTransaction).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('bulkTrashStudents', () => {
+    it('trashes all provided students', async () => {
+      const ids = [new Types.ObjectId().toHexString(), new Types.ObjectId().toHexString()];
+      const trashed = [{ _id: ids[0] }, { _id: ids[1] }];
+      const spy = jest
+        .spyOn(service, 'trashStudent')
+        .mockResolvedValueOnce(trashed[0] as any)
+        .mockResolvedValueOnce(trashed[1] as any);
+
+      const result = await service.bulkTrashStudents(ids);
+
+      expect(spy).toHaveBeenNthCalledWith(1, ids[0]);
+      expect(spy).toHaveBeenNthCalledWith(2, ids[1]);
+      expect(result).toEqual(trashed);
+    });
+  });
+
+  describe('bulkRestoreStudents', () => {
+    it('restores all provided students', async () => {
+      const ids = [new Types.ObjectId().toHexString(), new Types.ObjectId().toHexString()];
+      const restored = [{ _id: ids[0] }, { _id: ids[1] }];
+      const spy = jest
+        .spyOn(service, 'restoreStudent')
+        .mockResolvedValueOnce(restored[0] as any)
+        .mockResolvedValueOnce(restored[1] as any);
+
+      const result = await service.bulkRestoreStudents(ids);
+
+      expect(spy).toHaveBeenNthCalledWith(1, ids[0]);
+      expect(spy).toHaveBeenNthCalledWith(2, ids[1]);
+      expect(result).toEqual(restored);
+    });
+  });
+
+  describe('bulkRemoveStudents', () => {
+    it('removes all provided students', async () => {
+      const ids = [new Types.ObjectId().toHexString(), new Types.ObjectId().toHexString()];
+      const spy = jest
+        .spyOn(service, 'removeStudent')
+        .mockResolvedValue(undefined);
+
+      await service.bulkRemoveStudents(ids);
+
+      expect(spy).toHaveBeenNthCalledWith(1, ids[0]);
+      expect(spy).toHaveBeenNthCalledWith(2, ids[1]);
     });
   });
 });
