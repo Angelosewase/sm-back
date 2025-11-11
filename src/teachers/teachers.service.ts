@@ -170,6 +170,7 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
 
   async assignClasses(teacherId: string, classIds: string[]) {
     const teacher = await this.ensureTeacher(teacherId);
+
     const uniqueClassIds = Array.from(new Set(classIds));
     if (!uniqueClassIds.length) {
       throw new BadRequestException('No class ids provided');
@@ -251,6 +252,39 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
       teacherProfile,
     };
   }
+
+
+  async unassignClasses(teacherId: string, classIds: string[]) {
+  const teacherObjectId = new Types.ObjectId(teacherId);
+
+  const session = await this.teacherModel.db.startSession();
+  session.startTransaction();
+
+  try {
+    // Remove from teacher's assignedClasses
+    await this.teacherModel.findByIdAndUpdate(
+      teacherObjectId,
+      { $pull: { assignedClasses: { $in: classIds.map(id => new Types.ObjectId(id)) } } },
+      { session },
+    );
+
+    // Remove teacher from those classes
+    await this.classModel.updateMany(
+      { _id: { $in: classIds.map(id => new Types.ObjectId(id)) } },
+      { $set: { classTeacher: null } },
+      { session },
+    );
+
+    await session.commitTransaction();
+    return { message: 'Classes unassigned successfully' };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+
 
   async assignSubjects(teacherId: string, subjectIds: string[]) {
     const teacher = await this.ensureTeacher(teacherId);
@@ -360,8 +394,8 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
     return insert;
   }
 
-  private getTeacherObjectId(teacher: User): Types.ObjectId {
-    return teacher._id instanceof Types.ObjectId
+  private getTeacherObjectId(teacher: any): Types.ObjectId {
+    return (teacher)._id instanceof Types.ObjectId
       ? teacher._id
       : new Types.ObjectId((teacher as any)._id);
   }
