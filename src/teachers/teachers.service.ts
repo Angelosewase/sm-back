@@ -190,7 +190,17 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
     }
     // Update user if needed (e.g., phone, experience via usersService)
     if (updateTeacherDto.phone || updateTeacherDto.experience) {
-      await this.usersService.update(teacher.user.toString(), {
+      const userRef = teacher.user as any;
+      const userId =
+        userRef instanceof Types.ObjectId
+          ? userRef.toString()
+          : userRef?._id?.toString();
+
+      if (!userId) {
+        throw new BadRequestException('Unable to determine teacher user id');
+      }
+
+      await this.usersService.update(userId, {
         phone: updateTeacherDto.phone,
         experience: updateTeacherDto.experience,
       });
