@@ -17,6 +17,7 @@ import { UpdateStudentDto } from './dto/update-student.dto';
 import { ChangeStudentClassDto } from './dto/change-student-class.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { UseGuards } from '@nestjs/common';
+import { BulkStudentActionDto } from './dto/bulk-student-action.dto';
 
 @ApiTags('Students')
 @Controller('api/students')
@@ -66,16 +67,35 @@ export class StudentController {
     return this.studentService.changeStudentClass(id, dto);
   }
 
+  @Patch('bulk/trash')
+  @ApiOperation({ summary: 'Bulk move students to trash (soft delete)' })
+  async bulkTrash(@Body() dto: BulkStudentActionDto) {
+    return this.studentService.bulkTrashStudents(dto.ids);
+  }
+
   @Patch(':id/trash')
   @ApiOperation({ summary: 'Move a student to trash (soft delete)' })
   async trash(@Param('id') id: string) {
     return this.studentService.trashStudent(id);
   }
 
+  @Patch('bulk/restore')
+  @ApiOperation({ summary: 'Bulk restore trashed students' })
+  async bulkRestore(@Body() dto: BulkStudentActionDto) {
+    return this.studentService.bulkRestoreStudents(dto.ids);
+  }
+
   @Patch(':id/restore')
   @ApiOperation({ summary: 'Restore a trashed student' })
   async restore(@Param('id') id: string) {
     return this.studentService.restoreStudent(id);
+  }
+
+  @Delete('bulk')
+  @ApiOperation({ summary: 'Bulk permanently delete students' })
+  async bulkRemove(@Body() dto: BulkStudentActionDto) {
+    await this.studentService.bulkRemoveStudents(dto.ids);
+    return { deleted: true, count: dto.ids.length };
   }
 
   @Delete(':id')

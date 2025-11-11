@@ -47,11 +47,23 @@ Students may exist without a class (for example when suspended or trashed). When
 - `PATCH /students/:id/trash`
   - Moves a student to trash, clears their class (if any), and decrements the class count.
 
+- `PATCH /students/bulk/trash`
+  - Body: `BulkStudentActionDto`
+  - Soft deletes multiple students in one request.
+
 - `PATCH /students/:id/restore`
   - Restores a trashed student. No class is assigned automatically.
 
+- `PATCH /students/bulk/restore`
+  - Body: `BulkStudentActionDto`
+  - Restores multiple trashed students. Classes remain unassigned.
+
 - `DELETE /students/:id`
   - Permanently removes the student. If they had a class and were not trashed, the class count is decremented first.
+
+- `DELETE /students/bulk`
+  - Body: `BulkStudentActionDto`
+  - Permanently removes multiple students. Class counts are adjusted for each record.
 
 ## Usage Tips
 
@@ -93,5 +105,8 @@ Students may exist without a class (for example when suspended or trashed). When
 
 ### `ChangeStudentClassDto`
 - `classId` *(string or null, optional)* – new class to assign (capacity checked) or `null` to clear class.
+
+### `BulkStudentActionDto`
+- `ids` *(string[], required)* – array of student ObjectIds to target with the bulk operation.
 
 
