@@ -156,6 +156,10 @@ describe('StudentService', () => {
         search: 'Lisa',
         status: 'active' as any,
         guardianRelationShip: 'mother' as any,
+        district: 'Downtown',
+        province: 'Springfield Province',
+        gradeLevel: 'Grade 4',
+        guardianEmail: 'GUARDIAN@EXAMPLE.COM',
         classId,
         schoolId,
         includeTrashed: false,
@@ -177,6 +181,10 @@ describe('StudentService', () => {
       const filter = mockStudentModel.find.mock.calls[0][0];
       expect(filter.status).toBe(query.status);
       expect(filter.guardianRelationShip).toBe(query.guardianRelationShip);
+      expect(filter.district).toBe(query.district);
+      expect(filter.province).toBe(query.province);
+      expect(filter.gradeLevel).toBe(query.gradeLevel);
+      expect(filter.guardianEmail).toBe(query.guardianEmail.toLowerCase());
       expect(filter.class).toEqual(new Types.ObjectId(classId));
       expect(filter.school).toEqual(new Types.ObjectId(schoolId));
       expect(filter.isTrashed).toBe(false);

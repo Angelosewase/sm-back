@@ -8,6 +8,8 @@ Base path: `/students`
 
 - `studentId` – required, unique per school.
 - `name` – required full name.
+- `district` / `province` – optional location fields.
+- `gradeLevel` – optional grade descriptor.
 - `class` – optional `Class` reference. Counts are incremented/decremented automatically when a class is set or removed.
 - `status` – one of `active | graduated | transferred | suspended` (default `active`).
 - Soft delete is tracked with `isTrashed` and `trashedAt`.
@@ -65,7 +67,8 @@ Students may exist without a class (for example when suspended or trashed). When
 - `name` *(string, required)* – full display name.
 - `classId` *(string, optional)* – `Class` document `_id`; triggers capacity check and student count increment when provided.
 - `email` *(string, optional)* – validated as email and normalised to lowercase.
-- `phoneNumber`, `gender`, `address`, `previousSchool`, `guardianName`, `guardianPhoneNumber`, `guardianEmergencyContact`, `medicalInformation`, `additionalNotes` *(string, optional)*.
+- `phoneNumber`, `gender`, `address`, `district`, `province`, `gradeLevel`, `previousSchool`, `guardianName`, `guardianPhoneNumber`, `guardianEmergencyContact`, `medicalInformation`, `additionalNotes` *(string, optional)*.
+- `guardianEmail` *(string, optional)* – validated as email and normalised to lowercase.
 - `dob`, `enrollmentDate` *(ISO date string, optional)* – converted to `Date`.
 - `guardianRelationShip` *(enum: father|mother|guardian|other, optional)*.
 - `status` *(enum: active|graduated|transferred|suspended, optional, defaults to active)*.
@@ -80,8 +83,9 @@ Students may exist without a class (for example when suspended or trashed). When
 ### `QueryStudentsDto`
 - `page` *(number, optional)* – default 1.
 - `limit` *(number, optional)* – default 25, max 100.
-- `search` *(string, optional)* – fuzzy search across `name`, `studentId`, `email`, `phoneNumber`.
+- `search` *(string, optional)* – fuzzy search across `name`, `studentId`, `email`, `phoneNumber`, `district`, `province`, `gradeLevel`, `guardianEmail`.
 - `status`, `guardianRelationShip` *(enum filters, optional)*.
+- `district`, `province`, `gradeLevel`, `guardianEmail` *(string filters, optional)*.
 - `classId`, `schoolId` *(string ObjectId filters, optional)*.
 - `includeTrashed`, `onlyTrashed` *(boolean flags, optional)* – control soft-delete visibility.
 - `sortBy` *(string, optional)* – `createdAt|updatedAt|name|studentId|status`; default `createdAt`.

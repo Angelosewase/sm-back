@@ -34,6 +34,7 @@ const SORTABLE_FIELDS = new Set([
   'createdAt',
   'updatedAt',
   'status',
+  'gradeLevel',
 ]);
 
 @Injectable()
@@ -82,6 +83,10 @@ export class StudentService {
       classId,
       schoolId,
       guardianRelationShip,
+      district,
+      province,
+      gradeLevel,
+      guardianEmail,
       includeTrashed = false,
       onlyTrashed = false,
       sortBy = 'createdAt',
@@ -97,6 +102,10 @@ export class StudentService {
         { studentId: regex },
         { email: regex },
         { phoneNumber: regex },
+        { district: regex },
+        { province: regex },
+        { gradeLevel: regex },
+        { guardianEmail: regex },
       ];
     }
 
@@ -106,6 +115,22 @@ export class StudentService {
 
     if (guardianRelationShip) {
       filter.guardianRelationShip = guardianRelationShip;
+    }
+
+    if (district) {
+      filter.district = district;
+    }
+
+    if (province) {
+      filter.province = province;
+    }
+
+    if (gradeLevel) {
+      filter.gradeLevel = gradeLevel;
+    }
+
+    if (guardianEmail) {
+      filter.guardianEmail = guardianEmail.toLowerCase();
     }
 
     if (classId && isValidObjectId(classId)) {
@@ -291,6 +316,18 @@ export class StudentService {
       payload.phoneNumber = dto.phoneNumber;
     }
 
+    if (dto.district !== undefined) {
+      payload.district = dto.district;
+    }
+
+    if (dto.province !== undefined) {
+      payload.province = dto.province;
+    }
+
+    if (dto.gradeLevel !== undefined) {
+      payload.gradeLevel = dto.gradeLevel;
+    }
+
     if (dto.gender !== undefined) {
       payload.gender = dto.gender;
     }
@@ -309,6 +346,12 @@ export class StudentService {
 
     if (dto.guardianPhoneNumber !== undefined) {
       payload.guardianPhoneNumber = dto.guardianPhoneNumber;
+    }
+
+    if (dto.guardianEmail !== undefined) {
+      payload.guardianEmail = dto.guardianEmail
+        ? dto.guardianEmail.toLowerCase()
+        : undefined;
     }
 
     if (dto.guardianRelationShip !== undefined) {
@@ -372,6 +415,18 @@ export class StudentService {
       student.phoneNumber = dto.phoneNumber;
     }
 
+    if (dto.district !== undefined) {
+      student.district = dto.district;
+    }
+
+    if (dto.province !== undefined) {
+      student.province = dto.province;
+    }
+
+    if (dto.gradeLevel !== undefined) {
+      student.gradeLevel = dto.gradeLevel;
+    }
+
     if (dto.gender !== undefined) {
       student.gender = dto.gender;
     }
@@ -390,6 +445,12 @@ export class StudentService {
 
     if (dto.guardianPhoneNumber !== undefined) {
       student.guardianPhoneNumber = dto.guardianPhoneNumber;
+    }
+
+    if (dto.guardianEmail !== undefined) {
+      student.guardianEmail = dto.guardianEmail
+        ? dto.guardianEmail.toLowerCase()
+        : undefined;
     }
 
     if (dto.guardianRelationShip !== undefined) {

@@ -43,6 +43,26 @@ export class QueryStudentsDto {
   @IsEnum(GuardianRelationShip)
   guardianRelationShip?: GuardianRelationShip;
 
+  @ApiPropertyOptional({ description: 'Filter by district name' })
+  @IsOptional()
+  @IsString()
+  district?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by province name' })
+  @IsOptional()
+  @IsString()
+  province?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by grade level' })
+  @IsOptional()
+  @IsString()
+  gradeLevel?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by guardian email address' })
+  @IsOptional()
+  @IsString()
+  guardianEmail?: string;
+
   @ApiPropertyOptional({ description: 'Filter by class ObjectId', type: String })
   @IsOptional()
   @IsMongoId()

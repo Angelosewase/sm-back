@@ -57,6 +57,21 @@ export class CreateStudentDto {
   @IsString()
   previousSchool?: string;
 
+  @ApiPropertyOptional({ description: 'District name' })
+  @IsOptional()
+  @IsString()
+  district?: string;
+
+  @ApiPropertyOptional({ description: 'Province or state name' })
+  @IsOptional()
+  @IsString()
+  province?: string;
+
+  @ApiPropertyOptional({ description: 'Grade level label' })
+  @IsOptional()
+  @IsString()
+  gradeLevel?: string;
+
   @ApiPropertyOptional({ description: 'Enrollment date in ISO 8601 format' })
   @IsOptional()
   @IsDateString()
@@ -71,6 +86,11 @@ export class CreateStudentDto {
   @IsOptional()
   @IsString()
   guardianPhoneNumber?: string;
+
+  @ApiPropertyOptional({ description: 'Guardian email address' })
+  @IsOptional()
+  @IsEmail()
+  guardianEmail?: string;
 
   @ApiPropertyOptional({
     enum: GuardianRelationShip,

@@ -40,6 +40,15 @@ export class Student {
   @Prop({ trim: true })
   address?: string;
 
+  @Prop({ trim: true })
+  district?: string;
+
+  @Prop({ trim: true })
+  province?: string;
+
+  @Prop({ trim: true })
+  gradeLevel?: string;
+
   @Prop({ type: Types.ObjectId, ref: 'Class', default: null })
   class?: Types.ObjectId | null;
 
@@ -57,6 +66,9 @@ export class Student {
 
   @Prop({ trim: true })
   guardianPhoneNumber?: string;
+
+  @Prop({ trim: true, lowercase: true })
+  guardianEmail?: string;
 
   @Prop({
     type: String,
