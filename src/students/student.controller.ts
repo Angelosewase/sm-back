@@ -19,7 +19,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { UseGuards } from '@nestjs/common';
 
 @ApiTags('Students')
-@Controller('students')
+@Controller('api/students')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard)
 export class StudentController {

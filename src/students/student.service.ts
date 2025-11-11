@@ -344,9 +344,12 @@ export class StudentService {
     }
 
     if (dto.classId) {
-      await this.ensureClassCapacity(dto.classId, session);
-      payload.class = new Types.ObjectId(dto.classId);
-      await this.incrementClassCount(dto.classId, session);
+      const classObjectId = new Types.ObjectId(dto.classId);
+      payload.class = classObjectId;
+      if (!payload.isTrashed) {
+        await this.ensureClassCapacity(dto.classId, session);
+        await this.incrementClassCount(dto.classId, session);
+      }
     }
 
     return payload;

@@ -22,10 +22,10 @@ export class CreateStudentDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ description: 'Class ObjectId', type: String })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ description: 'Class ObjectId', type: String })
+  @IsOptional()
   @IsMongoId()
-  classId: string;
+  classId?: string;
 
   @ApiPropertyOptional({ example: 'student@example.com' })
   @IsOptional()

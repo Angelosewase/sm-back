@@ -1,13 +1,16 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsMongoId, IsNotEmpty } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsMongoId, IsOptional, ValidateIf } from 'class-validator';
 
 export class ChangeStudentClassDto {
-  @ApiProperty({
-    description: 'New class ObjectId to assign',
+  @ApiPropertyOptional({
+    description:
+      'New class ObjectId to assign. Use null to unassign. Omit to leave unchanged.',
     type: String,
+    nullable: true,
   })
-  @IsNotEmpty()
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null && value !== undefined)
   @IsMongoId()
-  classId: string;
+  classId?: string | null;
 }
 
