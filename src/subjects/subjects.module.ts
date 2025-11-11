@@ -8,8 +8,9 @@ import {
   SubjectAssignmentSchema,
 } from './schemas/subject-assignment.schema';
 import { UsersModule } from 'src/users/users.module';
-import { SchoolModule } from 'src/school-module/school-module.module';
+
 import { ClassesModule } from 'src/classes/classes.module';
+import { SchoolModule } from 'src/school/school.module';
 
 @Module({
   imports: [

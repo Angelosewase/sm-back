@@ -10,46 +10,69 @@ export enum StudentStatus {
   SUSPENDED = 'suspended',
 }
 
+export enum GuardianRelationShip {
+  FATHER = 'father',
+  MOTHER = 'mother',
+  GUARDIAN = 'guardian',
+  OTHER = 'other',
+}
+
 @Schema({ timestamps: true })
 export class Student {
-  @Prop({ type: Types.ObjectId, ref: 'User' })
-  user?: Types.ObjectId;
-
   @Prop({ required: true, trim: true, index: true })
   studentId: string;
 
   @Prop({ required: true, trim: true })
-  firstName: string;
+  name: string;
 
-  @Prop({ required: true, trim: true })
-  lastName: string;
-
-  @Prop({ trim: true })
-  otherNames?: string;
+  @Prop({ trim: true, lowercase: true })
+  email?: string;
 
   @Prop({ trim: true })
-  fullName?: string;
+  phoneNumber?: string;
+
+  @Prop({ type: Date })
+  dob?: Date;
 
   @Prop({ trim: true })
   gender?: string;
 
-  @Prop()
-  dob?: Date;
+  @Prop({ trim: true })
+  address?: string;
 
-  @Prop()
-  admissionDate?: Date;
+  @Prop({ type: Types.ObjectId, ref: 'Class', default: null })
+  class?: Types.ObjectId | null;
 
   @Prop({ type: Types.ObjectId, ref: 'School', index: true })
   school?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Class' })
-  currentClass?: Types.ObjectId;
+  @Prop({ trim: true })
+  previousSchool?: string;
 
-  @Prop({ type: Array, default: [] })
-  enrollments?: any[];
+  @Prop({ type: Date })
+  enrollmentDate?: Date;
 
-  @Prop({ type: Array, default: [] })
-  parentContacts?: any[];
+  @Prop({ trim: true })
+  guardianName?: string;
+
+  @Prop({ trim: true })
+  guardianPhoneNumber?: string;
+
+  @Prop({
+    type: String,
+    enum: Object.values(GuardianRelationShip),
+    default: GuardianRelationShip.GUARDIAN,
+  })
+  guardianRelationShip: GuardianRelationShip;
+
+  @Prop({ trim: true })
+  guardianEmergencyContact?: string;
+
+  @Prop({ trim: true })
+  medicalInformation?: string;
+
+  @Prop({ trim: true })
+  additionalNotes?: string;
 
   @Prop({
     type: String,
@@ -58,8 +81,11 @@ export class Student {
   })
   status: StudentStatus;
 
-  @Prop({ type: Object, default: {} })
-  metadata?: Record<string, any>;
+  @Prop({ default: false })
+  isTrashed: boolean;
+
+  @Prop({ type: Date, default: null })
+  trashedAt?: Date | null;
 }
 
 export const StudentSchema = SchemaFactory.createForClass(Student);

@@ -1,5 +1,4 @@
 import { Controller, Get, Query, Res, Param, UseGuards } from '@nestjs/common';
-import { PdfService } from '../school-module/services/pdf.service';
 import type { Response } from 'express';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
@@ -10,7 +9,6 @@ import { MarksService } from 'src/marks/marks.service';
 export class ReportsController {
   constructor(
     private readonly marksService: MarksService,
-    private readonly pdfService: PdfService,
   ) {}
 
   @ApiBearerAuth('access-token')
@@ -53,24 +51,24 @@ export class ReportsController {
     // attempt to include class avatar if any (not typical, but reuse loadAvatarDataUri)
     const classAvatarUri = null; // optional: if you store class avatars, resolve here
 
-    const html = this.pdfService.buildClassQuarterHtml({
-      schoolName: 'School',
-      className: id,
-      academicYear: academicYear || '',
-      avatarDataUri: classAvatarUri,
-      subjects: qAverages,
-    });
+    // const html = this.pdfService.buildClassQuarterHtml({
+    //   schoolName: 'School',
+    //   className: id,
+    //   academicYear: academicYear || '',
+    //   avatarDataUri: classAvatarUri,
+    //   subjects: qAverages,
+    // });
 
-    const pdf = await this.pdfService.generatePdfFromHtml(html);
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="class-${id}-report.pdf"`,
-    );
-    if (pdf && Buffer.isBuffer(pdf)) {
-      res.setHeader('Content-Length', String(pdf.length));
-    }
-    res.send(pdf);
+    // const pdf = await this.pdfService.generatePdfFromHtml(html);
+    // res.setHeader('Content-Type', 'application/pdf');
+    // res.setHeader(
+    //   'Content-Disposition',
+    //   `attachment; filename="class-${id}-report.pdf"`,
+    // );
+    // if (pdf && Buffer.isBuffer(pdf)) {
+    //   res.setHeader('Content-Length', String(pdf.length));
+    // }
+    // res.send(pdf);
   }
 
   @ApiBearerAuth('access-token')
@@ -91,21 +89,21 @@ export class ReportsController {
       classId,
     );
 
-    const user = await this.pdfService.resolveStudentInfo(id);
-    const avatarUri = await this.pdfService.loadAvatarDataUri(user?.avatar);
-    const html = await this.pdfService.buildStudentReportHtml({
-      ...report,
-      studentName: user?.name || user?.fullName || 'Student',
-      avatarDataUri: avatarUri,
-    });
-    const pdf = await this.pdfService.generatePdfFromHtml(html);
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="student-${id}-report.pdf"`,
-    );
-    if (pdf && Buffer.isBuffer(pdf))
-      res.setHeader('Content-Length', String(pdf.length));
-    res.send(pdf);
+    // const user = await this.pdfService.resolveStudentInfo(id);
+    // const avatarUri = await this.pdfService.loadAvatarDataUri(user?.avatar);
+    // const html = await this.pdfService.buildStudentReportHtml({
+    //   ...report,
+    //   studentName: user?.name || user?.fullName || 'Student',
+    //   avatarDataUri: avatarUri,
+    // });
+    // const pdf = await this.pdfService.generatePdfFromHtml(html);
+    // res.setHeader('Content-Type', 'application/pdf');
+    // res.setHeader(
+    //   'Content-Disposition',
+    //   `attachment; filename="student-${id}-report.pdf"`,
+    // );
+    // if (pdf && Buffer.isBuffer(pdf))
+    //   res.setHeader('Content-Length', String(pdf.length));
+    // res.send(pdf);
   }
 }
