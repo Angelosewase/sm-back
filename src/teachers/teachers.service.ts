@@ -406,12 +406,49 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
   }
 
 
-  private async ensureTeacher(id: string): Promise<User> {
-    const teacher = await this.usersService.findById(id);
-    if (!teacher || teacher.role !== Role.TEACHER) {
+  private async ensureTeacher(
+    id: string,
+  ): Promise<{ user: User; teacher: TeacherDocument | null }> {
+    let teacherDocument: (TeacherDocument & { user: any }) | null = null;
+
+    if (Types.ObjectId.isValid(id)) {
+      teacherDocument = await this.teacherModel
+        .findById(id)
+        .populate('user')
+        .exec();
+
+      if (!teacherDocument) {
+        teacherDocument = await this.teacherModel
+          .findOne({ user: new Types.ObjectId(id) })
+          .populate('user')
+          .exec();
+      }
+    }
+
+    if (teacherDocument) {
+      const linkedUser = teacherDocument.user as any;
+      const user =
+        linkedUser instanceof Types.ObjectId
+          ? await this.usersService.findById(linkedUser.toString())
+          : (linkedUser as User);
+
+      if (!user || user.role !== Role.TEACHER) {
+        throw new NotFoundException('Teacher not found');
+      }
+
+      return { user, teacher: teacherDocument };
+    }
+
+    const user = await this.usersService.findById(id);
+    if (!user || user.role !== Role.TEACHER) {
       throw new NotFoundException('Teacher not found');
     }
-    return teacher;
+
+    const fallbackTeacherDocument = await this.teacherModel
+      .findOne({ user: user._id })
+      .exec();
+
+    return { user, teacher: fallbackTeacherDocument };
   }
 
   private async sendWelcomeEmailSafely(teacher: User, temporaryPassword: string) {
@@ -437,7 +474,12 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
   }
 
   async assignClasses(teacherId: string, classIds: string[]) {
-    const teacher = await this.ensureTeacher(teacherId);
+    const { user: teacher, teacher: teacherDocument } =
+      await this.ensureTeacher(teacherId);
+
+    if (teacherDocument?.isTrashed) {
+      throw new BadRequestException('Teacher is in the trash');
+    }
 
     const uniqueClassIds = Array.from(new Set(classIds));
     if (!uniqueClassIds.length) {
@@ -486,7 +528,7 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
       { $addToSet: { assignedTeachers: teacherObjectId } },
     );
 
-    const teacherProfile = await this.teacherModel
+    const updatedTeacherProfile = await this.teacherModel
       .findOneAndUpdate(
         { user: teacherObjectId },
         {
@@ -518,7 +560,7 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
 
     return {
       user: updatedUser,
-      teacherProfile,
+      teacherProfile: updatedTeacherProfile,
     };
   }
 
@@ -556,7 +598,13 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
 
 
   async assignSubjects(teacherId: string, subjectIds: string[]) {
-    const teacher = await this.ensureTeacher(teacherId);
+    const { user: teacher, teacher: teacherDocument } =
+      await this.ensureTeacher(teacherId);
+
+    if (teacherDocument?.isTrashed) {
+      throw new BadRequestException('Teacher is in the trash');
+    }
+
     const uniqueSubjectIds = Array.from(new Set(subjectIds));
     if (!uniqueSubjectIds.length) {
       throw new BadRequestException('No subject ids provided');
@@ -636,7 +684,13 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
   }
 
   async removeSubjects(teacherId: string, subjectIds: string[]) {
-    const teacher = await this.ensureTeacher(teacherId);
+    const { user: teacher, teacher: teacherDocument } =
+      await this.ensureTeacher(teacherId);
+
+    if (teacherDocument?.isTrashed) {
+      throw new BadRequestException('Teacher is in the trash');
+    }
+
     const uniqueSubjectIds = Array.from(new Set(subjectIds));
     if (!uniqueSubjectIds.length) {
       throw new BadRequestException('No subject ids provided');
@@ -664,21 +718,21 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
     }
 
     const teacherObjectId = this.getTeacherObjectId(teacher);
-    const teacherProfile = await this.teacherModel
+    const existingTeacherProfile = await this.teacherModel
       .findOne({ user: teacherObjectId })
       .populate(['assignedClasses', 'subjectsCanTeach'])
       .exec();
 
-    if (!teacherProfile) {
+    if (!existingTeacherProfile) {
       throw new NotFoundException('Teacher profile not found');
     }
 
-    if (teacherProfile.isTrashed) {
+    if (existingTeacherProfile.isTrashed) {
       throw new BadRequestException('Teacher is in the trash');
     }
 
     const assignedSubjectIds = new Set(
-      this.extractObjectIdStrings(teacherProfile.subjectsCanTeach ?? []),
+      this.extractObjectIdStrings(existingTeacherProfile.subjectsCanTeach ?? []),
     );
     const notAssigned = uniqueSubjectIds.filter(
       (id) => !assignedSubjectIds.has(id),
