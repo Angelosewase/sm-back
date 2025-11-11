@@ -18,6 +18,7 @@ import { HeadTeachersModule } from './head-teacher/head-teachers.module';
 import { MarksModule } from './marks/marks.module';
 import { StudentsModule } from './students/students.module';
 import { ReportsModule } from './reports/reports.module';
+import { AssessmentModule } from './assessments/assessment.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { ReportsModule } from './reports/reports.module';
     MarksModule,
     StaffModule,
     SchoolModuleOperations,
+    AssessmentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -45,6 +45,9 @@ export class Class extends Document {
 
   @Prop({ type: Date, default: null })
   trashedAt?: Date | null;
+
+   @Prop({ type: [Types.ObjectId], ref: 'Subject', default: [] })
+  assignedSubjects?: Types.ObjectId[];
 }
 
 export const ClassSchema = SchemaFactory.createForClass(Class);

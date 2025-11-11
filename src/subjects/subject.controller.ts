@@ -78,94 +78,6 @@ export class SubjectController {
     return this.subjectService.deleteSubject(id);
   }
 
-  @ApiOperation({
-    summary: 'Assign a subject to a class (optionally with teacher)',
-  })
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.STAFF, Role.HEADTeacher)
-  @Post(':id/assign-to-class')
-  async assignSubject(
-    @Param('id') id: string,
-    @Body() dto: AssignSubjecctToClassDto,
-    @Req() req: any,
-  ) {
-    return this.subjectService.assignSubjectToClass(
-      id,
-      dto.classId,
-      dto.academicYear,
-      dto.term,
-    );
-  }
-
-  @ApiOperation({
-    summary: 'Assign a subject to a class (optionally with teacher)',
-  })
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.STAFF, Role.HEADTeacher)
-  @Post(':id/assign-to-teacher')
-  async assignSubjectToTeacher(
-    @Param('id') id: string,
-    @Body() dto: AssignSubjectToTeacherDto,
-    @Req() req: any,
-  ) {
-    return this.subjectService.assignSubjectToTeacher(
-      id,
-      dto.teacherId,
-      dto.academicYear,
-      dto.term,
-    );
-  }
-
-  @ApiOperation({
-    summary: 'Assign a subject to a class (optionally with teacher)',
-  })
-  @ApiBearerAuth('access-token')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.STAFF, Role.HEADTeacher)
-  @Post(':id/assign-to-class-with-teacher')
-  async assignSubjectToClassWithTeacher(
-    @Param('id') id: string,
-    @Body() dto: AssignSubjectToClassWithTeacherDto,
-    @Req() req: any,
-  ) {
-    return this.subjectService.assignSubjectToClassWithTeacher(
-      id,
-      dto.classId,
-      dto.teacherId,
-      dto.academicYear,
-      dto.term,
-    );
-  }
-
-  // Assignment endpoints
-  @Post('assign/class')
-  async assignToClass(
-    @Body()
-    body: {
-      subjectId: string;
-      classId: string;
-      academicYear: string;
-      teacherId?: string;
-      term?: string;
-      hoursPerWeek?: number;
-    },
-  ) {
-    return this.subjectService.assignSubjectToClass(
-      body.subjectId,
-      body.classId,
-      body.academicYear,
-      body.teacherId,
-      body.term,
-      body.hoursPerWeek,
-    );
-  }
-
-  @Delete('assignments/:assignmentId')
-  async deleteAssignment(@Param('assignmentId') assignmentId: string) {
-    return this.subjectService.deleteAssignment(assignmentId);
-  }
 
   @Delete('remove-from-class')
   async removeFromClass(
@@ -180,153 +92,31 @@ export class SubjectController {
     return this.subjectService.removeSubjectFromClass(
       body.subjectId,
       body.classId,
-      body.academicYear,
-      body.term,
     );
   }
 
-  @Patch('assignments/:assignmentId')
-  async updateAssignment(
-    @Param('assignmentId') assignmentId: string,
-    @Body()
-    body: {
-      teacherId?: string;
-      term?: string;
-      hoursPerWeek?: number;
-    },
-  ) {
-    return this.subjectService.updateAssignment(assignmentId, body);
-  }
 
   // Query endpoints
   @Get('class/:classId/subjects')
   async getClassSubjects(
     @Param('classId') classId: string,
-    @Query('academicYear') academicYear?: string,
-    @Query('term') term?: string,
   ) {
-    return this.subjectService.getClassSubjects(classId, {
-      academicYear,
-      term,
-    });
+    return this.subjectService.listClassSubjects(classId)
   }
 
-  @Get(':subjectId/classes')
-  async getSubjectClasses(
-    @Param('subjectId') subjectId: string,
-    @Query('academicYear') academicYear?: string,
-    @Query('term') term?: string,
-  ) {
-    return this.subjectService.getSubjectClasses_Teachers_Students(subjectId, {
-      academicYear,
-      term,
-    });
-  }
 
-  @Get('all-assignments/subjects')
-  async getAllAssignedSubjects(
-    @Query('academicYear') academicYear?: string | undefined,
-    @Query('term') term?: string | undefined,
-  ) {
-    return this.subjectService.getAllAssignments({
-      academicYear,
-      term,
-    });
-  }
   @Get('teacher/:teacherId/subjects')
   async getTeacherSubjects(
     @Param('teacherId') teacherId: string,
-    @Query('academicYear') academicYear?: string,
-    @Query('term') term?: string,
+    @Query() query: QuerySubjectDto
   ) {
-    return this.subjectService.getTeacherSubjects(teacherId, {
-      academicYear,
-      term,
-    });
+    return this.subjectService.listTeacherSubjects(teacherId, query);
+  }
+  @Get('all-assignments/subjects')
+  async getAllAssignedSubjects(
+   @Query() query: QuerySubjectDto
+  ) {
+    return this.subjectService.findAll(query);
   }
 
-  @Get('teacher/:teacherId/classes')
-  async getTeacherClasses(
-    @Param('teacherId') teacherId: string,
-    @Query('academicYear') academicYear?: string,
-    @Query('term') term?: string,
-  ) {
-    return this.subjectService.getTeacherClasses(teacherId, {
-      academicYear,
-      term,
-    });
-  }
-
-  @Get('teacher/:teacherId/schedule')
-  async getTeacherSchedule(
-    @Param('teacherId') teacherId: string,
-    @Query('academicYear') academicYear: string,
-    @Query('term') term?: string,
-  ) {
-    return this.subjectService.getTeacherSchedule(
-      teacherId,
-      academicYear,
-      term,
-    );
-  }
-
-  // Analytics endpoints
-  @Get('analytics/school/:schoolId')
-  async getSchoolStats(
-    @Param('schoolId') schoolId: string,
-    @Query('academicYear') academicYear?: string,
-  ) {
-    return this.subjectService.getSchoolAssignmentStats(schoolId, academicYear);
-  }
-
-  @Get('analytics/teacher/:teacherId/workload')
-  async getTeacherWorkload(
-    @Param('teacherId') teacherId: string,
-    @Query('academicYear') academicYear?: string,
-  ) {
-    return this.subjectService.getTeacherWorkload(teacherId, academicYear);
-  }
-
-  @Get('analytics/class/:classId/coverage')
-  async getClassCoverage(
-    @Param('classId') classId: string,
-    @Query('academicYear') academicYear: string,
-  ) {
-    return this.subjectService.getClassCoverage(classId, academicYear);
-  }
-
-  @Post('assignments/:assignmentId/co-teachers')
-  async addCoTeacher(
-    @Param('assignmentId') assignmentId: string,
-    @Body('coTeacherId') coTeacherId: string,
-  ) {
-    return this.subjectService.addCoTeacher(assignmentId, coTeacherId);
-  }
-
-  @Delete('assignments/:assignmentId/co-teachers/:coTeacherId')
-  async removeCoTeacher(
-    @Param('assignmentId') assignmentId: string,
-    @Param('coTeacherId') coTeacherId: string,
-  ) {
-    return this.subjectService.removeCoTeacher(assignmentId, coTeacherId);
-  }
-
-  @Post(':subjectId/assign-multiple')
-  async assignBulk(
-    @Param('subjectId') subjectId: string,
-    @Body()
-    bulk: {
-      assignments: Array<{
-        classId: string;
-        teacherId: string;
-        academicYear: string;
-        term?: string;
-      }>;
-    },
-  ) {
-    return await this.subjectService.assignMultipleToClasses(
-      subjectId,
-      bulk.assignments,
-    );
-  }
 }

@@ -6,14 +6,16 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { TeachersService } from './teachers.service';
 import { CreateTeacherDto } from './dto/create-teacher.dto';
 import { QueryTeacherDto } from './dto/query-teacher.dto';
 import { UpdateTeacherDto } from './dto/update-teacher.dto';
 import { AssignClassesDto } from './dto/assign-classes.dto';
+import { AssignSubjectsDto } from 'src/subjects/dto/assign-subjects.dto';
 import { Teacher } from './schemas/teacher.schema';
 import { UnassignClassesDto } from './dto/unassign-class.dto';
 @ApiTags('teachers')
@@ -62,15 +64,31 @@ export class TeachersController {
     return this.teachersService.assignClasses(id, body.classIds);
   }
 
+  @Post(':id/subjects')
+  @ApiOperation({ summary: 'Assign subjects to a teacher' })
+  assignSubjects(@Param('id') id: string, @Body() body: AssignSubjectsDto) {
+    return this.teachersService.assignSubjects(id, body.subjectIds);
+  }
+
   @Delete(':id/classes')
   @ApiOperation({ summary: 'Unassign (remove) classes from a teacher' })
   @ApiResponse({ status: 200, description: 'Classes unassigned successfully' })
   @ApiResponse({ status: 404, description: 'Teacher not found' })
   @ApiResponse({ status: 400, description: 'Invalid class IDs' })
-  unassignClasses(
-    @Param('id') id: string,
-    @Body() body: UnassignClassesDto,
-  ) {
+  unassignClasses(@Param('id') id: string, @Body() body: UnassignClassesDto) {
     return this.teachersService.unassignClasses(id, body.classIds);
+  }
+
+
+  @Put(':id/remove-subject/:subjectId')
+  @ApiOperation({ summary: 'Remove subject from teacher' })
+  @ApiParam({ name: 'id', description: 'Teacher ID' })
+  @ApiParam({ name: 'subjectId', description: 'Subject ID' })
+  @ApiResponse({ status: 200, description: 'Subject removed.' })
+  async removeSubjectFromTeacher(
+    @Param('id') teacherId: string,
+    @Param('subjectId') subjectId: string,
+  ) {
+    return await this.teachersService.removeSubjectFromTeacher(teacherId, subjectId);
   }
 }

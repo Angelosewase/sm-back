@@ -13,10 +13,6 @@ import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { QueryClassesDto } from './dto/query-classes.dto';
 import { Teacher, TeacherDocument } from '../teachers/schemas/teacher.schema';
-import {
-  SubjectAssignment,
-  SubjectAssignmentDocument,
-} from '../subjects/schemas/subject-assignment.schema';
 
 @Injectable()
 export class ClassesService {
@@ -26,8 +22,7 @@ export class ClassesService {
     private readonly usersService: UsersService,
     @InjectModel(Teacher.name)
     private readonly teacherModel: Model<TeacherDocument>,
-    @InjectModel(SubjectAssignment.name)
-    private readonly subjectAssignmentModel: Model<SubjectAssignmentDocument>,
+   
   ) {}
 
   async create(createClassDto: CreateClassDto): Promise<Class> {
@@ -36,7 +31,10 @@ export class ClassesService {
     let teacherId: Types.ObjectId | undefined;
     if (classTeacher) {
       teacherId = new Types.ObjectId(classTeacher);
-      await this.ensureTeacherExists(teacherId);
+      let teacher = await this.teacherModel.findById(teacherId);
+      if (!teacher) {
+        throw new BadRequestException('Class teacher not found');
+      }
     }
 
     const createdClass = new this.classModel({
@@ -51,7 +49,18 @@ export class ClassesService {
       createdClass.classTeacher = teacherId;
     }
 
-    return createdClass.save();
+    // Save the class first to get its _id
+  const savedClass = await createdClass.save();
+
+  // If there is a classTeacher, add this class to their assignedClasses array
+  if (teacherId) {
+    await this.teacherModel.updateOne(
+      { _id: teacherId },
+      { $addToSet: { assignedClasses: savedClass._id } }
+    );
+  }
+
+  return savedClass;
   }
 
   async findAll(query: QueryClassesDto) {
@@ -135,36 +144,6 @@ export class ClassesService {
       }
     }
 
-    if (includeSubjects) {
-      const classIds = enhancedItems.map((c: any) => c._id.toString());
-      if (classIds.length) {
-        const assignments = await this.subjectAssignmentModel
-          .find({
-            class: { $in: classIds.map((id) => new Types.ObjectId(id)) },
-          })
-          .populate('subject')
-          .populate('teacher', '-password')
-          .lean()
-          .exec();
-
-        const byClass: Record<string, any[]> = {};
-        assignments.forEach((a: any) => {
-          const cid = a.class?.toString();
-          if (!cid) return;
-          byClass[cid] = byClass[cid] || [];
-          byClass[cid].push(a);
-        });
-
-        enhancedItems = enhancedItems.map((c: any) => ({
-          ...c,
-          subjectAssignments: byClass[c._id.toString()] || [],
-          subjects: (byClass[c._id.toString()] || [])
-            .map((a) => a.subject)
-            .filter(Boolean),
-        }));
-      }
-    }
-
     return {
       data: enhancedItems,
       total,
@@ -222,16 +201,7 @@ export class ClassesService {
 
       result.teacherProfile = teacherProfile || null;
 
-      // Fetch subject assignments for this class
-      const assignments = await this.subjectAssignmentModel
-        .find({ class: new Types.ObjectId(result._id) })
-        .populate('subject')
-        .populate('teacher', '-password')
-        .lean()
-        .exec();
-
-      result.subjectAssignments = assignments;
-      result.subjects = assignments.map((a) => a.subject).filter(Boolean);
+    
     } catch (err) {
       // Non-blocking – return what we have
       this.logger.warn(
@@ -294,6 +264,44 @@ export class ClassesService {
       .populate('classTeacher')
       .exec() as Promise<Class>;
   }
+
+
+    /** Assign teacher to class as classTeacher */
+  async assignClassTeacher(classId: string, teacherId: string) {
+    // Validate existence
+    const teacher = await this.teacherModel.findById(teacherId);
+    if (!teacher) throw new BadRequestException('Teacher not found');
+    const classDoc = await this.classModel.findById(classId);
+    if (!classDoc) throw new BadRequestException('Class not found');
+
+    // Set the teacher as classTeacher for the class
+    await this.classModel.updateOne(
+      { _id: classId },
+      { classTeacher: teacherId }
+    );
+
+    // Optionally, keep teacher's assignedClasses up-to-date
+    await this.teacherModel.updateOne(
+      { _id: teacherId },
+      { $addToSet: { assignedClasses: classId } }
+    );
+
+    this.logger.log(`Assigned teacher ${teacherId} as classTeacher for class ${classId}`);
+    return await this.classModel.findById(classId).populate('classTeacher');
+  }
+
+  /** Remove teacher from class and update teacher's assignedClasses */
+  async removeClassTeacher(classId: string) {
+    // Unset classTeacher in class
+    await this.classModel.updateOne(
+      { _id: classId },
+      { classTeacher: null }
+    );
+    this.logger.log(`Removed class teacher for class ${classId}`);
+    return await this.classModel.findById(classId);
+  }
+
+
 
   async remove(id: string): Promise<void> {
     const classEntity = await this.classModel.findById(id).exec();
