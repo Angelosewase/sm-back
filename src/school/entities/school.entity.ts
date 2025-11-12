@@ -1,6 +1,15 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
+export enum SchoolType {
+  PRIMARY = 'Primary',
+  SECONDARY = 'Secondary',
+  HIGHER_SECONDARY = 'Higher Secondary',
+  UNIVERSITY = 'University',
+  VOCATIONAL = 'Vocational',
+  COLLEGE = 'College',
+  OTHER = 'Other',
+}
 @Schema({ timestamps: true })
 export class School extends Document {
   @Prop({ required: true, trim: true })
@@ -12,7 +21,7 @@ export class School extends Document {
   @Prop({ trim: true })
   establishedYear?: number;
 
-  @Prop({ required: true, min: 0 })
+  @Prop({ required: false, min: 0 })
   studentCapacity: number;
 
   @Prop({ trim: true })
@@ -43,3 +52,5 @@ export class School extends Document {
 export const SchoolSchema = SchemaFactory.createForClass(School);
 SchoolSchema.set('toJSON', { versionKey: false });
 SchoolSchema.set('toObject', { versionKey: false });
+SchoolSchema.index({ email: 1 }, { unique: true, sparse: true });
+SchoolSchema.index({ name: 1, city: 1, district: 1 }, { unique: true, sparse: true });

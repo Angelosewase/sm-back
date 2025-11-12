@@ -78,7 +78,7 @@ export class ClassesController {
   }
 
 
-  @Put(':id/assign-subjects')
+  @Post(':id/assign-subjects')
   @ApiOperation({ summary: 'Assign subjects to class' })
   async assignSubjects(@Param('id') classId: string, @Body('subjectIds') subjectIds: string[]) {
     return this.subjectService.assignSubjectsToClass(classId, subjectIds);

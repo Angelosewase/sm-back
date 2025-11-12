@@ -28,14 +28,22 @@ export class SeederService {
     // ---- 1. Ensure the school exists ---------------------------------
     const schoolData = {
       name: 'Demo Academy',
-      location: 'Kigali',
+      schoolType: 'Secondary',
+      establishedYear: 2012,
+      studentCapacity: 800,
+      description:
+        'Demo Academy is a top-tier secondary school focused on academic excellence and holistic development.',
       address: '123 Main Street, Kigali, Rwanda',
-      contactPhone: '+250 788 123 456',
-      contactEmail: 'info@demoacademy.rw',
+      city: 'Kigali',
+      district: 'Gasabo',
+      phoneNumber: '+250 788 123 456',
+      email: 'info@demoacademy.rw', // Ensure this is unique across your db
+      website: 'https://www.demoacademy.rw',
+      users: [], // Optionally, you can leave this out; it's handled by population logic
     };
 
     let school = await this.schoolModel.findOne({
-      contactEmail: schoolData.contactEmail,
+      email: schoolData.email,
     });
 
     if (!school) {
@@ -63,7 +71,7 @@ export class SeederService {
         password: hashed,
         name: adminData.name,
         role: adminData.role,
-        school: school._id,               // <-- link to school
+        school: school._id, // <-- link to school
       });
       await admin.save();
       console.log('Admin user created:', admin.email);
@@ -97,23 +105,42 @@ export class SeederService {
 
     const allUsers: SeedUser[] = [
       // admin is already seeded above – we keep it here only for completeness
-      { email: 'admin@app.com', name: 'Super Admin', role: Role.ADMIN, passwordRaw: 'Secret@123' },
+      {
+        email: 'admin@app.com',
+        name: 'Super Admin',
+        role: Role.ADMIN,
+        passwordRaw: 'Secret@123',
+      },
 
-      { email: 'teacher@app.com', name: 'Prof. Example', role: Role.TEACHER, passwordRaw: 'Secret@123' },
+      {
+        email: 'teacher@app.com',
+        name: 'Prof. Example',
+        role: Role.TEACHER,
+        passwordRaw: 'Secret@123',
+      },
       // { email: 'student@app.com', name: 'Student Learner', role: Role.STUDENT, passwordRaw: 'Secret@123' },
-      { email: 'headteacher@app.com', name: 'Head Teacher', role: Role.HEADTeacher, passwordRaw: 'Secret@123' },
+      {
+        email: 'headteacher@app.com',
+        name: 'Head Teacher',
+        role: Role.HEADTeacher,
+        passwordRaw: 'Secret@123',
+      },
       // { email: 'staff@app.com', name: 'Office Staff', role: Role.STAFF, passwordRaw: 'Secret@123' },
     ];
 
     console.log('--- Starting Remaining Users Seeding ---');
 
     // Grab the school we created above
-    const school = await this.schoolModel.findOne({ contactEmail: 'info@demoacademy.rw' });
+    const school = await this.schoolModel.findOne({
+      email: 'info@demoacademy.rw',
+    });
 
     for (const userData of allUsers) {
       const existing = await this.userModel.findOne({ email: userData.email });
       if (existing) {
-        console.log(`User ${userData.email} (${userData.role}) already exists, skipping.`);
+        console.log(
+          `User ${userData.email} (${userData.role}) already exists, skipping.`,
+        );
         continue;
       }
 
@@ -126,7 +153,8 @@ export class SeederService {
           name: userData.name,
           role: userData.role,
           // Non-admin users belong to the demo school
-          school: userData.role !== Role.ADMIN ? (school as any)._id : undefined,
+          school:
+            userData.role !== Role.ADMIN ? (school as any)._id : undefined,
         });
 
         await newUser.save();

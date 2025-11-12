@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { User } from '../../users/schemas/user.schema';
+import { Teacher } from 'src/teachers/schemas/teacher.schema';
 
 export enum ClassStatus {
   ACTIVE = 'active',
@@ -35,7 +36,7 @@ export class Class extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: User.name,
+    ref: Teacher.name,
     default: null,
   })
   classTeacher?: Types.ObjectId | null;

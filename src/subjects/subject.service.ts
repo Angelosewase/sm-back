@@ -24,12 +24,6 @@ interface ResultInterface {
   teacher?: User | null;
 }
 
-interface AssignmentQueryOptions {
-  academicYear?: string;
-  term?: string;
-  populate?: boolean;
-}
-
 @Injectable()
 export class SubjectService {
   private logger = new Logger(SubjectService.name);
@@ -43,7 +37,6 @@ export class SubjectService {
     private readonly classService: ClassesService,
   ) {}
 
-  // ============= ASSIGNMENT METHODS =============
   async assignSubjectsToClass(classId: string, subjectIds: string[]) {
     // Validate class exists
     const classDoc = await this.classModel.findById(classId);
