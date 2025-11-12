@@ -251,4 +251,46 @@ export class UsersService {
       .exec();
     return await this.findById(userId);
   }
+
+
+ async assignSchoolToUser(userId: string, schoolId: string): Promise<User> {
+  const session = await this.userModel.db.startSession();
+  session.startTransaction();
+  try {
+    const user = await this.userModel.findById(userId).session(session).exec();
+    if (!user) throw new NotFoundException('User not found');
+
+    const school = await this.schoolModel.findById(schoolId).session(session).exec();
+    if (!school) throw new NotFoundException('School not found');
+
+    // Remove user from previous school's users array
+    if (user.school) {
+      await this.schoolModel.findByIdAndUpdate(
+        user.school,
+        { $pull: { users: user._id } },
+        { session }
+      );
+    }
+
+    // Add user to the new school's users array (if not already present)
+    await this.schoolModel.findByIdAndUpdate(
+      schoolId,
+      { $addToSet: { users: user._id } },
+      { session }
+    );
+
+    // Update user's school field
+    user.school = new Types.ObjectId(schoolId);
+    await user.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return user;
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+}
 }

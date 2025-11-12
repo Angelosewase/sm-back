@@ -24,12 +24,6 @@ interface ResultInterface {
   teacher?: User | null;
 }
 
-interface AssignmentQueryOptions {
-  academicYear?: string;
-  term?: string;
-  populate?: boolean;
-}
-
 @Injectable()
 export class SubjectService {
   private logger = new Logger(SubjectService.name);

@@ -165,6 +165,8 @@ async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
       this.teacherModel.countDocuments(filter).exec(),
     ]);
 
+    console.log("items are: ", items)
+
     const totalPages = Math.ceil(total / paginationLimit) || 1;
 
     return {
