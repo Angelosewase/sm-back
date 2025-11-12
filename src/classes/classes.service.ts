@@ -13,7 +13,7 @@ import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { QueryClassesDto } from './dto/query-classes.dto';
 import { Teacher, TeacherDocument } from '../teachers/schemas/teacher.schema';
-
+import moment from 'moment';
 @Injectable()
 export class ClassesService {
   private readonly logger = new Logger('ClassesService');
@@ -97,7 +97,7 @@ export class ClassesService {
     const [items, total] = await Promise.all([
       this.classModel
         .find(filter)
-        .populate('classTeacher')
+        .populate('classTeacher assignedSubjects')
         .skip(skip)
         .limit(paginationLimit)
         .exec(),
@@ -115,7 +115,6 @@ export class ClassesService {
         : it,
     );
     if (includeTeacherProfile) {
-      console.log('including teacher profiles');
       const userIds = enhancedItems
         .map((c: any) => {
           if (!c.classTeacher) return null;
@@ -543,5 +542,202 @@ export class ClassesService {
         'Assigned class teacher must have teacher role',
       );
     }
+  }
+
+  // Dashoard method for returning the total number of classes
+
+  async getClassStats(schoolId?: string) {
+    const match: any = {};
+    // Adjust this line if your schema uses school as a ref or just its _id, not a populated object
+    // if (schoolId) match.school = new Types.ObjectId(schoolId);
+
+    const now = new Date();
+    const weeks = Array.from({ length: 8 }, (_, i) => {
+      const startOfWeek = moment(now)
+        .subtract(8 - i, 'weeks')
+        .startOf('isoWeek')
+        .toDate();
+      return { label: `Week ${i + 1}`, start: startOfWeek };
+    });
+
+    const pipeline = [
+      { $match: match },
+      {
+        $facet: {
+          totalEnrollment: [
+            { $group: { _id: null, value: { $sum: '$studentCount' } } },
+          ],
+          activeClasses: [
+            { $match: { status: 'active' } },
+            { $count: 'value' },
+          ],
+          averageCapacity: [
+            { $group: { _id: null, value: { $avg: '$capacity' } } },
+          ],
+          totalCapacity: [
+            { $group: { _id: null, value: { $sum: '$capacity' } } },
+          ],
+          utilizationRate: [
+            {
+              $group: {
+                _id: null,
+                studentCount: { $sum: '$studentCount' },
+                totalCapacity: { $sum: '$capacity' },
+              },
+            },
+          ],
+          enrollmentTrend: [
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: weeks.map((w) => w.start).concat([now]),
+                default: 'Other',
+                output: { value: { $sum: '$studentCount' } },
+              },
+            },
+          ],
+          activeTrend: [
+            { $match: { status: 'active' } },
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: weeks.map((w) => w.start).concat([now]),
+                default: 'Other',
+                output: { value: { $sum: 1 } },
+              },
+            },
+          ],
+          capacityTrend: [
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: weeks.map((w) => w.start).concat([now]),
+                default: 'Other',
+                output: { value: { $sum: '$capacity' } },
+              },
+            },
+          ],
+          utilizationTrend: [
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: weeks.map((w) => w.start).concat([now]),
+                default: 'Other',
+                output: {
+                  enrolled: { $sum: '$studentCount' },
+                  capacity: { $sum: '$capacity' },
+                },
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    const result = await this.classModel.aggregate(pipeline).exec();
+    const stats = result[0] || {};
+
+    // Helper functions
+    const safeVal = (arr) => (arr && arr.length ? arr[0].value : 0);
+    const safeRate = (arr) =>
+      arr && arr.length
+        ? Math.round((100 * arr[0].studentCount) / (arr[0].totalCapacity || 1))
+        : 0;
+
+    const buildTrend = (trendArr, key) =>
+      weeks.map((w, i) => ({
+        date: w.label,
+        [key]: trendArr?.[i]?.value || 0,
+      }));
+
+    const buildUtilTrend = (utilArr) =>
+      weeks.map((w, i) => ({
+        date: w.label,
+        'Utilization Rate':
+          utilArr?.[i] && utilArr[i].capacity > 0
+            ? Math.round((utilArr[i].enrolled / utilArr[i].capacity) * 100)
+            : 0,
+      }));
+
+    function computeChange(trendArr, key = 'value') {
+      if (!Array.isArray(trendArr) || trendArr.length < 2) {
+        return { change: '—', percentageChange: '—', changeType: 'neutral' };
+      }
+      const last = trendArr[trendArr.length - 1]?.[key] ?? 0;
+      const prev = trendArr[trendArr.length - 2]?.[key] ?? 0;
+      const diff = last - prev;
+      const percent = prev === 0 ? (last === 0 ? 0 : 100) : (diff / prev) * 100;
+      const change = (diff >= 0 ? '+' : '') + diff.toString();
+      const percentageChange =
+        (diff >= 0 ? '+' : '') + percent.toFixed(1) + '%';
+      let changeType = 'neutral';
+      if (diff > 0) changeType = 'positive';
+      else if (diff < 0) changeType = 'negative';
+      return { change, percentageChange, changeType };
+    }
+
+    function computeUtilRateChange(utilArr) {
+      if (!Array.isArray(utilArr) || utilArr.length < 2) {
+        return { change: '—', percentageChange: '—', changeType: 'neutral' };
+      }
+      const last = utilArr[utilArr.length - 1]?.['Utilization Rate'] ?? 0;
+      const prev = utilArr[utilArr.length - 2]?.['Utilization Rate'] ?? 0;
+      const diff = last - prev;
+      const percent = prev === 0 ? (last === 0 ? 0 : 100) : (diff / prev) * 100;
+      const change = (diff >= 0 ? '+' : '') + diff.toString() + '%';
+      const percentageChange =
+        (diff >= 0 ? '+' : '') + percent.toFixed(1) + '%';
+      let changeType = 'neutral';
+      if (last >= 80) changeType = 'positive';
+      else if (last > 0) changeType = 'negative';
+      return { change, percentageChange, changeType };
+    }
+
+    // Trends and computed changes
+    const enrollmentTrend = buildTrend(
+      stats.enrollmentTrend,
+      'Total Enrollment',
+    );
+    const activeClassesTrend = buildTrend(stats.activeTrend, 'Active Classes');
+    const avgCapTrend = buildTrend(stats.capacityTrend, 'Average Capacity');
+    const utilData = buildUtilTrend(stats.utilizationTrend);
+
+    const enrollmentChange = computeChange(stats.enrollmentTrend || []);
+    const activeChange = computeChange(stats.activeTrend || []);
+    const avgCapChange = computeChange(stats.capacityTrend || []);
+    const utilChange = computeUtilRateChange(utilData);
+
+    return {
+      cards: [
+        {
+          name: 'Total Enrollment',
+          value: safeVal(stats.totalEnrollment),
+          ...enrollmentChange,
+          dataKey: 'Total Enrollment',
+          data: enrollmentTrend,
+        },
+        {
+          name: 'Active Classes',
+          value: safeVal(stats.activeClasses),
+          ...activeChange,
+          dataKey: 'Active Classes',
+          data: activeClassesTrend,
+        },
+        {
+          name: 'Average Capacity',
+          value: Math.round(safeVal(stats.averageCapacity) * 10) / 10,
+          ...avgCapChange,
+          dataKey: 'Average Capacity',
+          data: avgCapTrend,
+        },
+        {
+          name: 'Utilization Rate',
+          value: safeRate(stats.utilizationRate) + '%',
+          ...utilChange,
+          dataKey: 'Utilization Rate',
+          data: utilData,
+        },
+      ],
+    };
   }
 }

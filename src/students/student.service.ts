@@ -18,6 +18,8 @@ import { QueryStudentsDto } from './dto/query-students.dto';
 import { ChangeStudentClassDto } from './dto/change-student-class.dto';
 import { Class, ClassDocument } from '../classes/schemas/class.schema';
 
+import moment from 'moment';
+
 type PaginatedStudents = {
   data: Student[];
   meta: {
@@ -50,7 +52,7 @@ export class StudentService {
     session.startTransaction();
 
     try {
-      const student = new this.studentModel(
+      const student: any = new this.studentModel(
         await this.mapDtoToStudentDocument(dto, session),
       );
 
@@ -58,9 +60,19 @@ export class StudentService {
 
       await session.commitTransaction();
 
-      return (await this.getStudentById(
+      const student_ = (await this.getStudentById(
         (student as any)._id.toString(),
       )) as Student;
+
+      if (!dto.isTrashed && dto.classId) {
+        await this.ensureClassCapacity(dto.classId, session);
+        await this.incrementClassCount(
+          dto.classId,
+          session,
+          (student_ as any).id,
+        );
+      }
+      return student_;
     } catch (error: any) {
       await session.abortTransaction();
 
@@ -403,10 +415,6 @@ export class StudentService {
     if (dto.classId) {
       const classObjectId = new Types.ObjectId(dto.classId);
       payload.class = classObjectId;
-      if (!payload.isTrashed) {
-        await this.ensureClassCapacity(dto.classId, session);
-        await this.incrementClassCount(dto.classId, session);
-      }
     }
 
     return payload;
@@ -548,13 +556,21 @@ export class StudentService {
     }
 
     if (student.class) {
-      await this.decrementClassCount(student.class.toString(), session);
+      await this.decrementClassCount(
+        student.class.toString(),
+        session,
+        (student as any)._id,
+      );
       student.class = undefined;
     }
 
     if (normalizedClassId) {
       await this.ensureClassCapacity(normalizedClassId, session);
-      await this.incrementClassCount(normalizedClassId, session);
+      await this.incrementClassCount(
+        normalizedClassId,
+        session,
+        (student as any)._id,
+      );
       student.class = new Types.ObjectId(normalizedClassId);
     }
   }
@@ -581,9 +597,16 @@ export class StudentService {
   private async incrementClassCount(
     classId: string,
     session: ClientSession,
+    studentId: string,
   ): Promise<void> {
     await this.classModel
-      .updateOne({ _id: classId }, { $inc: { studentCount: 1 } })
+      .updateOne(
+        { _id: classId },
+        {
+          $inc: { studentCount: 1 },
+          $addToSet: { students: new Types.ObjectId(studentId) },
+        },
+      )
       .session(session)
       .exec();
   }
@@ -591,11 +614,16 @@ export class StudentService {
   private async decrementClassCount(
     classId: string,
     session: ClientSession,
+    studentId: string,
   ): Promise<void> {
     await this.classModel
       .updateOne(
         { _id: classId, studentCount: { $gt: 0 } },
-        { $inc: { studentCount: -1 } },
+
+        {
+          $pull: { students: new Types.ObjectId(studentId) },
+          $inc: { studentCount: -1 },
+        },
       )
       .session(session)
       .exec();
@@ -655,5 +683,174 @@ export class StudentService {
     } finally {
       session.endSession();
     }
+  }
+
+  async getStudentStats(schoolId?: string) {
+    // flexible filtering
+    const match: any = {};
+    if (schoolId) match.school = new Types.ObjectId(schoolId);
+
+    const now = new Date();
+    const periods = Array.from({ length: 6 }, (_, i) => {
+      const startOfWeek = moment(now)
+        .subtract(6 - i, 'weeks')
+        .startOf('isoWeek')
+        .toDate();
+      const endOfWeek = moment(startOfWeek).endOf('isoWeek').toDate();
+      return { label: `W${i + 1}`, start: startOfWeek, end: endOfWeek };
+    });
+
+    // Build aggregation for each status & total
+    const pipeline = [
+      { $match: match },
+      {
+        $facet: {
+          // Headline totals
+          total: [{ $count: 'value' }],
+          active: [{ $match: { status: 'active' } }, { $count: 'value' }],
+          suspended: [{ $match: { status: 'suspended' } }, { $count: 'value' }],
+          trashed: [{ $match: { isTrashed: true } }, { $count: 'value' }],
+
+          // Time series (trend per week)
+          totalTrend: [
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: periods.map((p) => p.start).concat([now]),
+                default: 'Other',
+                output: { count: { $sum: 1 } },
+              },
+            },
+          ],
+          activeTrend: [
+            { $match: { status: 'active' } },
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: periods.map((p) => p.start).concat([now]),
+                default: 'Other',
+                output: { count: { $sum: 1 } },
+              },
+            },
+          ],
+          suspendedTrend: [
+            { $match: { status: 'suspended' } },
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: periods.map((p) => p.start).concat([now]),
+                default: 'Other',
+                output: { count: { $sum: 1 } },
+              },
+            },
+          ],
+          trashedTrend: [
+            { $match: { isTrashed: true } },
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: periods.map((p) => p.start).concat([now]),
+                default: 'Other',
+                output: { count: { $sum: 1 } },
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    const result = await this.studentModel.aggregate(pipeline).exec();
+    const stats = result[0] || {};
+
+    // Helper to extract count from [ { value: N } ] facet result
+    const safeCount = (arr) => (arr && arr.length ? arr[0].value : 0);
+
+    // Format trend data for frontend charts
+    const makeTrend = (bucketArr, key) =>
+      periods.map((period, i) => ({
+        date: period.label,
+        [key]: bucketArr && bucketArr[i] ? bucketArr[i].count : 0,
+      }));
+
+   
+    const cards = [
+      {
+        name: 'Total Students',
+        value: safeCount(stats.total),
+        change: '—',
+        percentageChange: '—',
+        changeType: 'neutral',
+        dataKey: 'Total',
+        data: makeTrend(stats.totalTrend, 'Total Students'),
+      },
+      {
+        name: 'Active Students',
+        value: safeCount(stats.active),
+        change: '—',
+        percentageChange: '—',
+        changeType: 'neutral',
+        dataKey: 'Active',
+        data: makeTrend(stats.activeTrend, 'Active Students'),
+      },
+      {
+        name: 'Suspended',
+        value: safeCount(stats.suspended),
+        change: '—',
+        percentageChange: '—',
+        changeType: 'neutral',
+        dataKey: 'Suspended',
+        data: makeTrend(stats.suspendedTrend, 'Suspended'),
+      },
+      {
+        name: 'In Trash',
+        value: safeCount(stats.trashed),
+        change: '—',
+        percentageChange: '—',
+        changeType: safeCount(stats.trashed) > 0 ? 'negative' : 'neutral',
+        dataKey: 'Trashed',
+        data: makeTrend(stats.trashedTrend, 'In Trash'),
+      },
+    ];
+
+    cards.forEach(async(card) => {
+      const trend = card.data;
+      const { change, percentageChange, changeType } =
+        await this.getChangeParams(trend);
+      card.change = change;
+      card.percentageChange = percentageChange;
+      card.changeType = changeType;
+      return card;
+    });
+
+    return {cards: cards};
+  }
+
+  async getChangeParams(dataArr) {
+    if (!Array.isArray(dataArr) || dataArr.length < 2) {
+      return {
+        change: '—',
+        percentageChange: '—',
+        changeType: 'neutral',
+      };
+    }
+    const current = dataArr[dataArr.length - 1]?.value ?? 0;
+    const previous = dataArr[dataArr.length - 2]?.value ?? 0;
+    const rawChange = current - previous;
+    // Compute percentage change
+    let percent = 0;
+    if (previous === 0) {
+      percent = current === 0 ? 0 : 100;
+    } else {
+      percent = (rawChange / previous) * 100;
+    }
+    // Format values
+    const change = (rawChange >= 0 ? '+' : '') + rawChange.toString();
+    const percentageChange =
+      (rawChange >= 0 ? '+' : '') + percent.toFixed(1) + '%';
+    let changeType = 'neutral';
+    if (rawChange > 0) changeType = 'positive';
+    else if (rawChange < 0) changeType = 'negative';
+
+    return { change, percentageChange, changeType };
   }
 }
