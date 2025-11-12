@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { School, SchoolDocument, SchoolSchema } from 'src/school-module/schemas/school.schema';
 import { Role, User, UserDocument } from 'src/users/schemas/user.schema';
+import { School } from 'src/school/entities/school.entity';
 
 interface SeedUser {
   email: string;
@@ -15,8 +15,8 @@ interface SeedUser {
 @Injectable()
 export class SeederService {
   constructor(
-    @InjectModel(School.name) private schoolModel: Model<SchoolDocument>,
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(School.name) private schoolModel: Model<School>,
+    @InjectModel(User.name) private userModel: Model<User>,
   ) {}
 
   /** --------------------------------------------------------------
@@ -100,9 +100,9 @@ export class SeederService {
       { email: 'admin@app.com', name: 'Super Admin', role: Role.ADMIN, passwordRaw: 'Secret@123' },
 
       { email: 'teacher@app.com', name: 'Prof. Example', role: Role.TEACHER, passwordRaw: 'Secret@123' },
-      { email: 'student@app.com', name: 'Student Learner', role: Role.STUDENT, passwordRaw: 'Secret@123' },
+      // { email: 'student@app.com', name: 'Student Learner', role: Role.STUDENT, passwordRaw: 'Secret@123' },
       { email: 'headteacher@app.com', name: 'Head Teacher', role: Role.HEADTeacher, passwordRaw: 'Secret@123' },
-      { email: 'staff@app.com', name: 'Office Staff', role: Role.STAFF, passwordRaw: 'Secret@123' },
+      // { email: 'staff@app.com', name: 'Office Staff', role: Role.STAFF, passwordRaw: 'Secret@123' },
     ];
 
     console.log('--- Starting Remaining Users Seeding ---');

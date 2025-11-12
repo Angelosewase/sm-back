@@ -47,6 +47,11 @@ export class CreateTeacherDto {
   @IsString({ each: true })
   subjectsCanTeach?: string[];
 
+  @ApiProperty({ example: 'Science Department', required: false })
+  @IsOptional()
+  @IsString()
+  department?: string;
+
   @ApiProperty({ example: ['classId1'], required: false })
   @IsOptional()
   @IsArray()

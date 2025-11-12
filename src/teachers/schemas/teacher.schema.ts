@@ -10,6 +10,9 @@ export class Teacher {
   @Prop({ trim: true })
   teacherId?: string;
 
+  @Prop({ trim: true })
+  department?: string;
+
   @Prop({ type: [Types.ObjectId], ref: 'Subject', default: [] })
   subjectsCanTeach?: Types.ObjectId[];
 
@@ -52,6 +55,12 @@ export class Teacher {
 
   @Prop({ trim: true })
   experience?: string;
+
+  @Prop({ default: false })
+  isTrashed?: boolean;
+
+  @Prop({ type: Date, default: null })
+  trashedAt?: Date | null;
 }
 
 export const TeacherSchema = SchemaFactory.createForClass(Teacher);

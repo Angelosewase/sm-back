@@ -6,8 +6,15 @@ import { UsersModule } from '../users/users.module';
 import { AuthModule } from '../auth/auth.module';
 import { Teacher, TeacherSchema } from './schemas/teacher.schema';
 import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
-import { SubjectSchema, Subject } from 'src/subjects/schemas/subject.schema';
-import {User, UserSchema } from 'src/users/schemas/user.schema';
+import {
+  Subject,
+  SubjectSchema,
+} from 'src/subjects/schemas/subject.schema';
+import {
+  SubjectAssignment,
+  SubjectAssignmentSchema,
+} from 'src/subjects/schemas/subject-assignment.schema';
+import { User, UserSchema } from 'src/users/schemas/user.schema';
 
 @Module({
   imports: [UsersModule, AuthModule,
@@ -16,6 +23,7 @@ import {User, UserSchema } from 'src/users/schemas/user.schema';
       {name: User.name, schema: UserSchema},
       {name: Class.name, schema: ClassSchema},
       {name: Subject.name, schema: SubjectSchema},
+      {name: SubjectAssignment.name, schema: SubjectAssignmentSchema},
     ])
   ],
   controllers: [TeachersController],

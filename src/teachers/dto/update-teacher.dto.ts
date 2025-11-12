@@ -23,6 +23,11 @@ export class UpdateTeacherDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
+  @IsString()
+  department?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   assignedClasses?: string[];

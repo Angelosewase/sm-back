@@ -11,12 +11,12 @@ import { Subject } from './schemas/subject.schema';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
 import { UsersService } from 'src/users/users.service';
-import { SchoolModuleService } from '../school-module/school-module.service';
 import { QuerySubjectDto } from './dto/query-subject.dto';
 import { Role, User, UserDocument } from 'src/users/schemas/user.schema';
 import { Class, ClassDocument } from 'src/classes/schemas/class.schema';
 import { ClassesService } from 'src/classes/classes.service';
 import { Teacher, TeacherDocument } from 'src/teachers/schemas/teacher.schema';
+import { SchoolService } from 'src/school/school.service';
 
 interface ResultInterface {
   class?: Class | null;
@@ -39,7 +39,7 @@ export class SubjectService {
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private readonly usersService: UsersService,
-    private readonly schoolService: SchoolModuleService,
+    private readonly schoolService: SchoolService,
     private readonly classService: ClassesService,
   ) {}
 
