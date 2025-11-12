@@ -7,6 +7,8 @@ export enum AssessmentStatus {
   TRASHED = 'trashed',
   DELETED = 'deleted',
   LOCKED = 'locked',
+  COMPLETED = 'completed',
+  PENDING = 'pending',
 }
 
 export enum AssessmentType {
@@ -26,9 +28,6 @@ export class Assessment extends Document {
   @Prop({ required: true, trim: true, index: true })
   term: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Teacher', required: true, index: true })
-  teacher: Types.ObjectId;
-
   @Prop({ type: Types.ObjectId, ref: 'Subject', required: true, index: true })
   subject: Types.ObjectId;
 
@@ -37,6 +36,9 @@ export class Assessment extends Document {
 
   @Prop({ required: true, trim: true, index: true })
   title: string;
+
+  @Prop({required: false })
+  weight?: number;
 
   @Prop({ trim: true })
   description?: string;
@@ -53,15 +55,15 @@ export class Assessment extends Document {
   @Prop({
     type: String,
     enum: Object.values(AssessmentStatus),
-    default: AssessmentStatus.ACTIVE,
+    default: AssessmentStatus.PENDING,
     index: true,
   })
   status: AssessmentStatus;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: 'Teacher' })
   createdBy?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: 'Teacher' })
   updatedBy?: Types.ObjectId;
 
   @Prop({ type: Number, default: 0 })
@@ -71,7 +73,7 @@ export class Assessment extends Document {
   averageScore?: number; // For analytics
 
   @Prop({ type: [Types.ObjectId], ref: 'Marks', default: [] })
-  marks?: Types.ObjectId[]; // Link to marks related to this Assessment
+  marks?: Types.ObjectId[]; 
 }
 
 export const AssessmentSchema = SchemaFactory.createForClass(Assessment);

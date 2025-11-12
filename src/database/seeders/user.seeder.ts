@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { Role, User, UserDocument } from 'src/users/schemas/user.schema';
 import { School } from 'src/school/entities/school.entity';
+import { Teacher, TeacherDocument } from 'src/teachers/schemas/teacher.schema';
+import { UsersService } from 'src/users/users.service';
 
 interface SeedUser {
   email: string;
@@ -17,6 +19,8 @@ export class SeederService {
   constructor(
     @InjectModel(School.name) private schoolModel: Model<School>,
     @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
+    private userService: UsersService,
   ) {}
 
   /** --------------------------------------------------------------
@@ -103,6 +107,27 @@ export class SeederService {
     // First make sure the school exists (so other users can reference it)
     await this.seedSchoolAndAdmin();
 
+    const createTeacherDto = {
+      teacherId: 'TCH001',
+      name: 'Dr. Alice Mukandori',
+      email: 'alice.mukandori@school.rw',
+      password: 'Secret@123',
+      phone: '+250788123456',
+      experience: 8,
+      subjectsCanTeach: [],
+      department: 'Science Department',
+      assignedClasses: ['507f1f77bcf86cd799439013'], // Grade 10A
+      qualification: 'PhD in Mathematics Education',
+      hireDate: '2020-01-15',
+      status: 'Active',
+      address: '45 KG 15 Ave',
+      city: 'Kigali',
+      state: 'Kigali City',
+      zip: '00100',
+      emergencyContact: 'Peter Mukandori - +250788654321',
+      notes: 'Experienced in IB curriculum, specializes in calculus',
+    };
+
     const allUsers: SeedUser[] = [
       // admin is already seeded above – we keep it here only for completeness
       {
@@ -135,6 +160,46 @@ export class SeederService {
       email: 'info@demoacademy.rw',
     });
 
+    const userDto = {
+      email: createTeacherDto.email,
+      password: createTeacherDto.password,
+      name: createTeacherDto.name,
+      phone: createTeacherDto.phone,
+      experience: createTeacherDto.experience,
+      role: Role.TEACHER,
+      school: (school as any)._id,
+    };
+    const user_ = await this.userModel.findOne({ email: userDto.email });
+    if (user_) {
+      console.log(
+        `User ${userDto.email} already exists, skipping teacher creation.`,
+      );
+    } else {
+     const user = await this.userService.createUser(userDto);
+      // Create teacher document
+      const teacher = new this.teacherModel({
+        user: (user as any)._id,
+        teacherId: createTeacherDto.teacherId,
+        department: createTeacherDto.department,
+        assignedClasses: createTeacherDto.assignedClasses?.map(
+          (id) => new Types.ObjectId(id),
+        ),
+        phone: createTeacherDto.phone, // Override if needed
+        qualification: createTeacherDto.qualification,
+        hireDate: createTeacherDto.hireDate,
+        school: new Types.ObjectId((school as any)._id as string),
+        status: createTeacherDto.status,
+        address: createTeacherDto.address,
+        city: createTeacherDto.city,
+        state: createTeacherDto.state,
+        zip: createTeacherDto.zip,
+        emergencyContact: createTeacherDto.emergencyContact,
+        notes: createTeacherDto.notes,
+      });
+
+      await teacher.save();
+      console.log(`Teacher document created for ${userDto.email}`);
+    }
     for (const userData of allUsers) {
       const existing = await this.userModel.findOne({ email: userData.email });
       if (existing) {

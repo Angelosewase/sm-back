@@ -15,6 +15,7 @@ import {
   SubjectAssignmentSchema,
 } from 'src/subjects/schemas/subject-assignment.schema';
 import { User, UserSchema } from 'src/users/schemas/user.schema';
+import { Assessment, AssessmentSchema } from 'src/assessments/schemas/assessment-schema';
 
 @Module({
   imports: [UsersModule, AuthModule,
@@ -24,6 +25,7 @@ import { User, UserSchema } from 'src/users/schemas/user.schema';
       {name: Class.name, schema: ClassSchema},
       {name: Subject.name, schema: SubjectSchema},
       {name: SubjectAssignment.name, schema: SubjectAssignmentSchema},
+      {name: Assessment.name, schema: AssessmentSchema},
     ])
   ],
   controllers: [TeachersController],

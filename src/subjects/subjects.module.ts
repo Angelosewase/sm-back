@@ -10,6 +10,8 @@ import { Teacher, TeacherSchema } from 'src/teachers/schemas/teacher.schema';
 import { User, UserSchema } from 'src/users/schemas/user.schema';
 import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
 import { SchoolModule } from 'src/school/school.module';
+import { Marks, MarksSchema } from 'src/marks/schemas/marks.schema';
+import { Assessment, AssessmentSchema } from 'src/assessments/schemas/assessment-schema';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { SchoolModule } from 'src/school/school.module';
       { name: Teacher.name, schema: TeacherSchema },
       { name: User.name, schema: UserSchema },
       { name: Class.name, schema: ClassSchema },
+      { name: Marks.name, schema: MarksSchema },
+      { name:Assessment.name, schema:AssessmentSchema },
     ]),
     UsersModule,
     forwardRef(() => SchoolModule),

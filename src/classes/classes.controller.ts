@@ -9,7 +9,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiOkResponse, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ClassesService } from './classes.service';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
@@ -112,6 +112,26 @@ export class ClassesController {
     @Body() assignDto: AssignTeacherDto,
   ) {
     return await this.classesService.assignClassTeacher(classId, assignDto.teacherId);
+  }
+
+
+  // DASHBOARD ENDPOINTS
+  /**Class stats endpoints for returning average, class capacities */
+
+   @Get('class-stats')
+  @ApiOperation({ summary: 'Get class statistics for dashboard' })
+  @ApiOkResponse({
+    schema: {
+      example: {
+        totalEnrollment: 0,
+        activeClasses: 0,
+        averageCapacity: 0,
+        utilizationRate: 0,
+      }
+    }
+  })
+  async getClassStats(@Query('schoolId') schoolId?: string) {
+    return this.classesService.getClassStats(schoolId);
   }
 }
 
