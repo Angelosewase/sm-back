@@ -55,7 +55,11 @@ export class TeachersController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Move teacher to trash' })
-  @ApiResponse({ status: 200, description: 'Teacher moved to trash', type: Teacher })
+  @ApiResponse({
+    status: 200,
+    description: 'Teacher moved to trash',
+    type: Teacher,
+  })
   remove(@Param('id') id: string) {
     return this.teachersService.delete(id);
   }
@@ -93,7 +97,6 @@ export class TeachersController {
     return this.teachersService.unassignClasses(id, body.classIds);
   }
 
-
   @Put(':id/remove-subject/:subjectId')
   @ApiOperation({ summary: 'Remove subject from teacher' })
   @ApiParam({ name: 'id', description: 'Teacher ID' })
@@ -103,7 +106,10 @@ export class TeachersController {
     @Param('id') teacherId: string,
     @Param('subjectId') subjectId: string,
   ) {
-    return await this.teachersService.removeSubjectFromTeacher(teacherId, subjectId);
+    return await this.teachersService.removeSubjectFromTeacher(
+      teacherId,
+      subjectId,
+    );
   }
   @Post(':id/subjects')
   @ApiOperation({ summary: 'Assign subjects to a teacher' })
@@ -116,10 +122,7 @@ export class TeachersController {
   @ApiResponse({ status: 200, description: 'Subjects unassigned successfully' })
   @ApiResponse({ status: 404, description: 'Teacher or subjects not found' })
   @ApiResponse({ status: 400, description: 'Invalid subject IDs' })
-  unassignSubjects(
-    @Param('id') id: string,
-    @Body() body: UnassignSubjectsDto,
-  ) {
+  unassignSubjects(@Param('id') id: string, @Body() body: UnassignSubjectsDto) {
     return this.teachersService.removeSubjects(id, body.subjectIds);
   }
 
@@ -139,5 +142,173 @@ export class TeachersController {
   @ApiOperation({ summary: 'Permanently remove multiple trashed teachers' })
   bulkRemovePermanently(@Body() body: BulkTeacherActionDto) {
     return this.teachersService.bulkRemovePermanently(body.ids);
+  }
+
+  // ============= ANALYTICS ENDPOINTS =============
+
+  /**
+   * Get teacher dashboard welcome stats
+   * Returns: total students, total subjects, total classes, total assessments with status breakdown
+   * @param teacherId Teacher ID (UUID or ObjectId)
+   * @example GET /api/teachers/:id/dashboard-stats
+   */
+  @Get(':id/dashboard-stats')
+  @ApiOperation({
+    summary: 'Get teacher dashboard welcome stats',
+    description:
+      'Returns total classes, students, subjects, and assessments (active/pending/completed) for the teacher dashboard.',
+  })
+  @ApiParam({ name: 'id', description: 'Teacher ID' })
+  @ApiResponse({ status: 200, description: 'Dashboard stats retrieved' })
+  @ApiResponse({ status: 404, description: 'Teacher not found' })
+  async getDashboardStats(@Param('id') teacherId: string) {
+    return this.teachersService.getTeacherDashboardStats(teacherId);
+  }
+
+  /**
+   * Get all students assigned to teacher's classes
+   * @param teacherId Teacher ID
+   * @param classId Optional: filter by specific class
+   * @param status Optional: filter by status (active, inactive, etc)
+   * @param q Optional: search query (name, email, studentId)
+   * @param page Pagination page (default: 1)
+   * @param limit Pagination limit (default: 20)
+   * @example GET /api/teachers/:id/students?classId=xxx&status=active&page=1&limit=20
+   */
+  @Get(':id/students')
+  @ApiOperation({
+    summary: 'Get all students assigned to teacher',
+    description:
+      'Returns list of students across all classes the teacher is assigned to, with optional filters and pagination.',
+  })
+  @ApiParam({ name: 'id', description: 'Teacher ID' })
+  @ApiResponse({ status: 200, description: 'Students retrieved' })
+  @ApiResponse({ status: 404, description: 'Teacher not found' })
+  async getStudents(
+    @Param('id') teacherId: string,
+    @Query('classId') classId?: string,
+    @Query('status') status?: string,
+    @Query('q') q?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.teachersService.getTeacherStudents(teacherId, {
+      classId,
+      status,
+      q,
+      page: page || 1,
+      limit: limit || 20,
+    });
+  }
+
+  /**
+   * Get all subjects taught by teacher
+   * @param teacherId Teacher ID
+   * @example GET /api/teachers/:id/subjects
+   */
+  @Get(':id/subjects-taught')
+  @ApiOperation({
+    summary: 'Get all subjects taught by teacher',
+    description:
+      'Returns list of all subjects the teacher is assigned to teach.',
+  })
+  @ApiParam({ name: 'id', description: 'Teacher ID' })
+  @ApiResponse({ status: 200, description: 'Subjects retrieved' })
+  @ApiResponse({ status: 404, description: 'Teacher not found' })
+  async getSubjects(@Param('id') teacherId: string) {
+    return this.teachersService.getTeacherSubjects(teacherId);
+  }
+
+  /**
+   * Get all classes assigned to teacher
+   * @param teacherId Teacher ID
+   * @example GET /api/teachers/:id/classes-assigned
+   */
+  @Get(':id/classes-assigned')
+  @ApiOperation({
+    summary: 'Get all classes assigned to teacher',
+    description:
+      'Returns list of all classes the teacher is assigned to (as primary teacher or general teacher), including student counts and assigned subjects.',
+  })
+  @ApiParam({ name: 'id', description: 'Teacher ID' })
+  @ApiResponse({ status: 200, description: 'Classes retrieved' })
+  @ApiResponse({ status: 404, description: 'Teacher not found' })
+  async getClasses(@Param('id') teacherId: string) {
+    return this.teachersService.getTeacherClasses(teacherId);
+  }
+
+  /**
+   * Get all assessments created by teacher
+   * @param teacherId Teacher ID
+   * @param subjectId Optional: filter by subject
+   * @param classId Optional: filter by class
+   * @param status Optional: filter by status (active, pending, completed, trashed)
+   * @param page Pagination page (default: 1)
+   * @param limit Pagination limit (default: 20)
+   * @example GET /api/teachers/:id/assessments?subjectId=xxx&classId=yyy&status=active&page=1&limit=20
+   */
+  @Get(':id/assessments')
+  @ApiOperation({
+    summary: 'Get all assessments created by teacher',
+    description:
+      'Returns list of assessments created by the teacher with optional filters for subject, class, and status. Includes status summary (active, pending, completed, trashed).',
+  })
+  @ApiParam({ name: 'id', description: 'Teacher ID' })
+  @ApiResponse({ status: 200, description: 'Assessments retrieved' })
+  @ApiResponse({ status: 404, description: 'Teacher not found' })
+  async getAssessments(
+    @Param('id') teacherId: string,
+    @Query('subjectId') subjectId?: string,
+    @Query('classId') classId?: string,
+    @Query('status') status?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.teachersService.getTeacherAssessments(teacherId, {
+      subjectId,
+      classId,
+      status,
+      page: page || 1,
+      limit: limit || 20,
+    });
+  }
+
+  /**
+   * Get all assignments created by teacher
+   * @param teacherId Teacher ID
+   * @param subjectId Optional: filter by subject
+   * @param classId Optional: filter by class
+   * @param academicYear Optional: filter by academic year
+   * @param term Optional: filter by term
+   * @param page Pagination page (default: 1)
+   * @param limit Pagination limit (default: 20)
+   * @example GET /api/teachers/:id/assignments?subjectId=xxx&classId=yyy&academicYear=2024/2025&term=1&page=1&limit=20
+   */
+  @Get(':id/assignments')
+  @ApiOperation({
+    summary: 'Get all assignments created by teacher',
+    description:
+      'Returns list of assignments created by the teacher with optional filters for subject, class, academic year, and term. Includes status summary (pending, submitted, graded, late).',
+  })
+  @ApiParam({ name: 'id', description: 'Teacher ID' })
+  @ApiResponse({ status: 200, description: 'Assignments retrieved' })
+  @ApiResponse({ status: 404, description: 'Teacher not found' })
+  async getAssignments(
+    @Param('id') teacherId: string,
+    @Query('subjectId') subjectId?: string,
+    @Query('classId') classId?: string,
+    @Query('academicYear') academicYear?: string,
+    @Query('term') term?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.teachersService.getTeacherAssignments(teacherId, {
+      subjectId,
+      classId,
+      academicYear,
+      term,
+      page: page || 1,
+      limit: limit || 20,
+    });
   }
 }

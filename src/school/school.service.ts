@@ -23,18 +23,21 @@ export class SchoolService {
     createSchoolDto: CreateSchoolDto,
     ownerId: string,
   ): Promise<School> {
+
+    console.log("the school dto is: ", createSchoolDto);
     if (!ownerId) {
       throw new BadRequestException('Owner id is required to create a school');
     }
 
     try {
-      const school = await this.schoolModel.create(createSchoolDto);
+      const school:any = await this.schoolModel.create(createSchoolDto);
       await this.usersService.assignSchoolToUser(
         ownerId,
-        school._id as unknown as Types.ObjectId,
+        school._id.toString(),
       );
       return school;
     } catch (error: any) {
+      console.log("the error is: ", error);
       if (error?.code === 11000) {
         throw new ConflictException(
           'A school with the provided unique details already exists',

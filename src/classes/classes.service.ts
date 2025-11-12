@@ -8,12 +8,13 @@ import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
 import { UsersService } from '../users/users.service';
 import { Role } from '../users/schemas/user.schema';
-import { Class, ClassStatus } from './schemas/class.schema';
+import { Class, ClassDocument, ClassStatus } from './schemas/class.schema';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { QueryClassesDto } from './dto/query-classes.dto';
 import { Teacher, TeacherDocument } from '../teachers/schemas/teacher.schema';
-
+import moment from 'moment';
+import { StudentDocument } from 'src/students/schemas/student.schema';
 @Injectable()
 export class ClassesService {
   private readonly logger = new Logger('ClassesService');
@@ -22,7 +23,6 @@ export class ClassesService {
     private readonly usersService: UsersService,
     @InjectModel(Teacher.name)
     private readonly teacherModel: Model<TeacherDocument>,
-   
   ) {}
 
   async create(createClassDto: CreateClassDto): Promise<Class> {
@@ -50,17 +50,17 @@ export class ClassesService {
     }
 
     // Save the class first to get its _id
-  const savedClass = await createdClass.save();
+    const savedClass = await createdClass.save();
 
-  // If there is a classTeacher, add this class to their assignedClasses array
-  if (teacherId) {
-    await this.teacherModel.updateOne(
-      { _id: teacherId },
-      { $addToSet: { assignedClasses: savedClass._id } }
-    );
-  }
+    // If there is a classTeacher, add this class to their assignedClasses array
+    if (teacherId) {
+      await this.teacherModel.updateOne(
+        { _id: teacherId },
+        { $addToSet: { assignedClasses: savedClass._id } },
+      );
+    }
 
-  return savedClass;
+    return savedClass;
   }
 
   async findAll(query: QueryClassesDto) {
@@ -98,16 +98,15 @@ export class ClassesService {
     const [items, total] = await Promise.all([
       this.classModel
         .find(filter)
+        .populate('classTeacher assignedSubjects')
         .skip(skip)
         .limit(paginationLimit)
-        .populate('classTeacher')
         .exec(),
       this.classModel.countDocuments(filter).exec(),
     ]);
 
     const totalPages = Math.ceil(total / paginationLimit) || 1;
 
-    // Optionally include teacher profile and subjects per class
     const includeTeacherProfile = (query as any).includeTeacherProfile;
     const includeSubjects = (query as any).includeSubjects;
 
@@ -116,12 +115,17 @@ export class ClassesService {
         ? (it as any).toObject()
         : it,
     );
-
     if (includeTeacherProfile) {
       const userIds = enhancedItems
-        .map((c: any) => c.classTeacher)
-        .filter(Boolean)
-        .map((id: any) => id.toString());
+        .map((c: any) => {
+          if (!c.classTeacher) return null;
+          if (typeof c.classTeacher === 'object' && c.classTeacher.user) {
+            return c.classTeacher.user; // Use user id inside populated classTeacher
+          }
+          return c.classTeacher; // If it's already an ObjectId or string
+        })
+        .filter((id) => id && Types.ObjectId.isValid(id))
+        .map((id) => id.toString());
 
       if (userIds.length) {
         const teacherProfiles = await this.teacherModel
@@ -132,15 +136,42 @@ export class ClassesService {
 
         const mapByUser: Record<string, any> = {};
         teacherProfiles.forEach((tp: any) => {
-          mapByUser[(tp.user as any).toString()] = tp;
+          let userIdKey = null;
+          if (tp.user) {
+            if (typeof tp.user === 'object' && tp.user._id) {
+              userIdKey = tp.user._id.toString();
+            } else {
+              userIdKey = tp.user.toString();
+            }
+          }
+          if (userIdKey) {
+            mapByUser[userIdKey] = tp;
+          }
         });
 
-        enhancedItems = enhancedItems.map((c: any) => ({
-          ...c,
-          teacherProfile: c.classTeacher
-            ? mapByUser[c.classTeacher.toString()] || null
-            : null,
-        }));
+        enhancedItems = enhancedItems.map((c: any) => {
+          let userIdForLookup: string | null = null;
+
+          if (!c.classTeacher) {
+            userIdForLookup = null;
+          } else if (
+            typeof c.classTeacher === 'object' &&
+            c.classTeacher.user
+          ) {
+            userIdForLookup = c.classTeacher.user.toString();
+          } else {
+            // If classTeacher is directly a user id or ObjectId (less likely if populated)
+            userIdForLookup = c.classTeacher.toString();
+          }
+
+          // Return the item augmented with teacherProfile or null if no match
+          return {
+            ...c,
+            teacherProfile: userIdForLookup
+              ? mapByUser[userIdForLookup] || null
+              : null,
+          };
+        });
       }
     }
 
@@ -152,7 +183,6 @@ export class ClassesService {
       totalPages,
     };
   }
-
   async findOne(id: string): Promise<Class> {
     const classEntity = await this.classModel
       .findById(id)
@@ -200,8 +230,6 @@ export class ClassesService {
         : null;
 
       result.teacherProfile = teacherProfile || null;
-
-    
     } catch (err) {
       // Non-blocking – return what we have
       this.logger.warn(
@@ -265,8 +293,7 @@ export class ClassesService {
       .exec() as Promise<Class>;
   }
 
-
-    /** Assign teacher to class as classTeacher */
+  /** Assign teacher to class as classTeacher */
   async assignClassTeacher(classId: string, teacherId: string) {
     // Validate existence
     const teacher = await this.teacherModel.findById(teacherId);
@@ -277,31 +304,28 @@ export class ClassesService {
     // Set the teacher as classTeacher for the class
     await this.classModel.updateOne(
       { _id: classId },
-      { classTeacher: teacherId }
+      { classTeacher: teacherId },
     );
 
     // Optionally, keep teacher's assignedClasses up-to-date
     await this.teacherModel.updateOne(
       { _id: teacherId },
-      { $addToSet: { assignedClasses: classId } }
+      { $addToSet: { assignedClasses: classId } },
     );
 
-    this.logger.log(`Assigned teacher ${teacherId} as classTeacher for class ${classId}`);
+    this.logger.log(
+      `Assigned teacher ${teacherId} as classTeacher for class ${classId}`,
+    );
     return await this.classModel.findById(classId).populate('classTeacher');
   }
 
   /** Remove teacher from class and update teacher's assignedClasses */
   async removeClassTeacher(classId: string) {
     // Unset classTeacher in class
-    await this.classModel.updateOne(
-      { _id: classId },
-      { classTeacher: null }
-    );
+    await this.classModel.updateOne({ _id: classId }, { classTeacher: null });
     this.logger.log(`Removed class teacher for class ${classId}`);
     return await this.classModel.findById(classId);
   }
-
-
 
   async remove(id: string): Promise<void> {
     const classEntity = await this.classModel.findById(id).exec();
@@ -520,4 +544,235 @@ export class ClassesService {
       );
     }
   }
+
+  // Dashoard method for returning the total number of classes
+
+  async getClassStats(schoolId?: string) {
+    const match: any = {};
+    // Adjust this line if your schema uses school as a ref or just its _id, not a populated object
+    // if (schoolId) match.school = new Types.ObjectId(schoolId);
+
+    const now = new Date();
+    const weeks = Array.from({ length: 8 }, (_, i) => {
+      const startOfWeek = moment(now)
+        .subtract(8 - i, 'weeks')
+        .startOf('isoWeek')
+        .toDate();
+      return { label: `Week ${i + 1}`, start: startOfWeek };
+    });
+
+    const pipeline = [
+      { $match: match },
+      {
+        $facet: {
+          totalEnrollment: [
+            { $group: { _id: null, value: { $sum: '$studentCount' } } },
+          ],
+          activeClasses: [
+            { $match: { status: 'active' } },
+            { $count: 'value' },
+          ],
+          averageCapacity: [
+            { $group: { _id: null, value: { $avg: '$capacity' } } },
+          ],
+          totalCapacity: [
+            { $group: { _id: null, value: { $sum: '$capacity' } } },
+          ],
+          utilizationRate: [
+            {
+              $group: {
+                _id: null,
+                studentCount: { $sum: '$studentCount' },
+                totalCapacity: { $sum: '$capacity' },
+              },
+            },
+          ],
+          enrollmentTrend: [
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: weeks.map((w) => w.start).concat([now]),
+                default: 'Other',
+                output: { value: { $sum: '$studentCount' } },
+              },
+            },
+          ],
+          activeTrend: [
+            { $match: { status: 'active' } },
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: weeks.map((w) => w.start).concat([now]),
+                default: 'Other',
+                output: { value: { $sum: 1 } },
+              },
+            },
+          ],
+          capacityTrend: [
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: weeks.map((w) => w.start).concat([now]),
+                default: 'Other',
+                output: { value: { $sum: '$capacity' } },
+              },
+            },
+          ],
+          utilizationTrend: [
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: weeks.map((w) => w.start).concat([now]),
+                default: 'Other',
+                output: {
+                  enrolled: { $sum: '$studentCount' },
+                  capacity: { $sum: '$capacity' },
+                },
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    const result = await this.classModel.aggregate(pipeline).exec();
+    const stats = result[0] || {};
+
+    // Helper functions
+    const safeVal = (arr) => (arr && arr.length ? arr[0].value : 0);
+    const safeRate = (arr) =>
+      arr && arr.length
+        ? Math.round((100 * arr[0].studentCount) / (arr[0].totalCapacity || 1))
+        : 0;
+
+    const buildTrend = (trendArr, key) =>
+      weeks.map((w, i) => ({
+        date: w.label,
+        [key]: trendArr?.[i]?.value || 0,
+      }));
+
+    const buildUtilTrend = (utilArr) =>
+      weeks.map((w, i) => ({
+        date: w.label,
+        'Utilization Rate':
+          utilArr?.[i] && utilArr[i].capacity > 0
+            ? Math.round((utilArr[i].enrolled / utilArr[i].capacity) * 100)
+            : 0,
+      }));
+
+    function computeChange(trendArr, key = 'value') {
+      if (!Array.isArray(trendArr) || trendArr.length < 2) {
+        return { change: '—', percentageChange: '—', changeType: 'neutral' };
+      }
+      const last = trendArr[trendArr.length - 1]?.[key] ?? 0;
+      const prev = trendArr[trendArr.length - 2]?.[key] ?? 0;
+      const diff = last - prev;
+      const percent = prev === 0 ? (last === 0 ? 0 : 100) : (diff / prev) * 100;
+      const change = (diff >= 0 ? '+' : '') + diff.toString();
+      const percentageChange =
+        (diff >= 0 ? '+' : '') + percent.toFixed(1) + '%';
+      let changeType = 'neutral';
+      if (diff > 0) changeType = 'positive';
+      else if (diff < 0) changeType = 'negative';
+      return { change, percentageChange, changeType };
+    }
+
+    function computeUtilRateChange(utilArr) {
+      if (!Array.isArray(utilArr) || utilArr.length < 2) {
+        return { change: '—', percentageChange: '—', changeType: 'neutral' };
+      }
+      const last = utilArr[utilArr.length - 1]?.['Utilization Rate'] ?? 0;
+      const prev = utilArr[utilArr.length - 2]?.['Utilization Rate'] ?? 0;
+      const diff = last - prev;
+      const percent = prev === 0 ? (last === 0 ? 0 : 100) : (diff / prev) * 100;
+      const change = (diff >= 0 ? '+' : '') + diff.toString() + '%';
+      const percentageChange =
+        (diff >= 0 ? '+' : '') + percent.toFixed(1) + '%';
+      let changeType = 'neutral';
+      if (last >= 80) changeType = 'positive';
+      else if (last > 0) changeType = 'negative';
+      return { change, percentageChange, changeType };
+    }
+
+    // Trends and computed changes
+    const enrollmentTrend = buildTrend(
+      stats.enrollmentTrend,
+      'Total Enrollment',
+    );
+    const activeClassesTrend = buildTrend(stats.activeTrend, 'Active Classes');
+    const avgCapTrend = buildTrend(stats.capacityTrend, 'Average Capacity');
+    const utilData = buildUtilTrend(stats.utilizationTrend);
+
+    const enrollmentChange = computeChange(stats.enrollmentTrend || []);
+    const activeChange = computeChange(stats.activeTrend || []);
+    const avgCapChange = computeChange(stats.capacityTrend || []);
+    const utilChange = computeUtilRateChange(utilData);
+
+    return {
+      cards: [
+        {
+          name: 'Total Enrollment',
+          value: safeVal(stats.totalEnrollment),
+          ...enrollmentChange,
+          dataKey: 'Total Enrollment',
+          data: enrollmentTrend,
+        },
+        {
+          name: 'Active Classes',
+          value: safeVal(stats.activeClasses),
+          ...activeChange,
+          dataKey: 'Active Classes',
+          data: activeClassesTrend,
+        },
+        {
+          name: 'Average Capacity',
+          value: Math.round(safeVal(stats.averageCapacity) * 10) / 10,
+          ...avgCapChange,
+          dataKey: 'Average Capacity',
+          data: avgCapTrend,
+        },
+        {
+          name: 'Utilization Rate',
+          value: safeRate(stats.utilizationRate) + '%',
+          ...utilChange,
+          dataKey: 'Utilization Rate',
+          data: utilData,
+        },
+      ],
+    };
+  }
+
+  // Method 2: Get students using virtual populate
+  async getClassWithStudents(classId: string) {
+    return await this.classModel
+      .findById(classId)
+      .populate({
+        path: 'studentList',
+        match: { isTrashed: false },
+        select: 'studentId name email phoneNumber gradeLevel status',
+        options: { sort: { name: 1 } },
+      })
+      .exec();
+  }
+  // Method 5: Get class with populated student details and teacher
+  async getClassFullDetails(classId: string) {
+    return await this.classModel
+      .findById(classId)
+      .populate({
+        path: 'studentList',
+        match: { isTrashed: false, status: 'active' },
+        select: 'studentId name email phoneNumber gradeLevel',
+      })
+      .populate({
+        path: 'classTeacher',
+        select: 'name email phoneNumber',
+      })
+      .populate({
+        path: 'assignedSubjects',
+        select: 'name code',
+      })
+      .exec();
+  }
+
+
 }

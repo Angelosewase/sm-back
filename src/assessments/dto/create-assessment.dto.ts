@@ -1,5 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsEnum, IsMongoId, IsDate } from 'class-validator';
+
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsOptional,
+  IsString,
+  IsEnum,
+  IsMongoId,
+  IsDate,
+  IsNumber,
+} from 'class-validator';
 import { AssessmentType } from '../schemas/assessment-schema';
 
 export class CreateAssessmentDto {
@@ -10,10 +18,6 @@ export class CreateAssessmentDto {
   @ApiProperty({ type: String, description: 'Term ID' })
   @IsMongoId()
   term: string;
-
-  @ApiProperty({ type: String, description: 'Teacher ID' })
-  @IsMongoId()
-  teacher: string;
 
   @ApiProperty({ type: String, description: 'Subject ID' })
   @IsMongoId()
@@ -31,6 +35,14 @@ export class CreateAssessmentDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({
+    example: 10,
+    description: 'Number of questions in the assessment',
+  })
+  @IsNumber()
+  @IsOptional()
+  weight?: number;
 
   @ApiProperty({
     enum: Object.values(AssessmentType),

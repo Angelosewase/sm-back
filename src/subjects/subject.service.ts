@@ -17,17 +17,13 @@ import { Class, ClassDocument } from 'src/classes/schemas/class.schema';
 import { ClassesService } from 'src/classes/classes.service';
 import { Teacher, TeacherDocument } from 'src/teachers/schemas/teacher.schema';
 import { SchoolService } from 'src/school/school.service';
+import { Marks, MarksDocument } from 'src/marks/schemas/marks.schema';
+import { Assessment, AssessmentDocument, AssessmentStatus } from 'src/assessments/schemas/assessment-schema';
 
 interface ResultInterface {
   class?: Class | null;
   subject?: Subject | null;
   teacher?: User | null;
-}
-
-interface AssignmentQueryOptions {
-  academicYear?: string;
-  term?: string;
-  populate?: boolean;
 }
 
 @Injectable()
@@ -38,12 +34,13 @@ export class SubjectService {
     @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Marks.name) private marksModel: Model<MarksDocument>,
+    @InjectModel(Assessment.name) private assessmentModel: Model<AssessmentDocument>,
     private readonly usersService: UsersService,
     private readonly schoolService: SchoolService,
     private readonly classService: ClassesService,
   ) {}
 
-  // ============= ASSIGNMENT METHODS =============
   async assignSubjectsToClass(classId: string, subjectIds: string[]) {
     // Validate class exists
     const classDoc = await this.classModel.findById(classId);
@@ -80,14 +77,58 @@ export class SubjectService {
   }
 
   /** List subjects assigned to a class */
-  async listClassSubjects(classId: string) {
+async listClassSubjects(classId: string) {
+    // Step 1: Get the class and its subjects
     const classDoc = await this.classModel
       .findById(classId)
-      .populate('assignedSubjects');
-    if (!classDoc) throw new BadRequestException('Class not found');
-    return classDoc.assignedSubjects;
-  }
+      .populate('assignedSubjects')
+      .lean();
 
+    if (!classDoc) throw new BadRequestException('Class not found');
+    if(!classDoc.assignedSubjects) return [];
+    const assignedSubjectIds = classDoc.assignedSubjects.map((sub: any) => sub._id);
+
+    // Step 2: Get assessments for class and its subjects
+    const assessments = await this.assessmentModel
+      .find({ class: classId, subject: { $in: assignedSubjectIds } })
+      .lean();
+
+    const marks = await this.marksModel
+      .find({ class: classId, subject: { $in: assignedSubjectIds } })
+      .lean();
+
+    // Step 3: Map subjects to stats
+    return classDoc.assignedSubjects.map((subject: any) => {
+      // Assessments for this subject/class
+      const subjectAssessments = assessments.filter(a => a.subject.toString() === subject._id.toString());
+      const doneAssessments = subjectAssessments.filter(a => a.status === AssessmentStatus.COMPLETED);
+      const totalAssessments = subjectAssessments.length;
+
+      // Marks for this subject/class
+      const subjectMarks = marks.filter(m => m.subject.toString() === subject._id.toString());
+
+      let averageMark: number | null = null;
+      let latestMarkDate: Date | null = null;
+      if (subjectMarks.length) {
+        const totalScores = subjectMarks.reduce((acc, m) => acc + m.score, 0);
+        averageMark = +(totalScores / subjectMarks.length).toFixed(2);
+
+        // Get latest mark date
+        latestMarkDate = subjectMarks
+          .map((m) => (m as any).updatedAt ? (m as any).updatedAt : (m as any).createdAt)
+          .sort()
+          .reverse()[0];
+      }
+
+      return {
+        ...subject,
+        assessmentsDone: doneAssessments.length,
+        totalAssessments,
+        averageMark,
+        latestMarkDate,
+      };
+    });
+  }
   /**/
 
   async assignSubjectsToTeacher(teacherId: string, subjectIds: string[]) {
@@ -327,4 +368,118 @@ export class SubjectService {
     if (!teacher) throw new BadRequestException('Teacher not found');
     return teacher.subjectsCanTeach;
   }
+
+
+  async getSubjectStats(subjectId: string, classId?: string, term?: string) {
+  // Filter by subject, optionally by class/term
+  const assessmentFilter: any = { subject: subjectId };
+  if (classId) assessmentFilter.class = classId;
+  if (term) assessmentFilter.term = term;
+
+  // 1. Assessments for this subject
+  const assessments = await this.assessmentModel.find(assessmentFilter).lean();
+
+  const totalAssessments = assessments.length;
+  const completedAssessments = assessments.filter(a => 
+    ['active', 'published'].includes(a.status)
+  ).length;
+  const totalWeight = assessments.reduce((sum, a) => sum + (a.weight ?? 0), 0);
+
+  // 2. All marks for assessments in this subject/class/term
+  const assessmentIds = assessments.map(a => a._id);
+  const marks = await this.marksModel.find({ assessment: { $in: assessmentIds } }).lean();
+
+  const averageScore = marks.length
+    ? +(marks.reduce((sum, m) => sum + m.score, 0) / marks.length).toFixed(2)
+    : null;
+
+  const latestMarkDate = marks.length
+    ? marks.map(m =>  (m as any).updatedAt ? (m as any).updatedAt : (m as any).createdAt).sort().reverse()[0]
+    : null;
+
+  // 3. Completion Rate
+  const completionRate = totalAssessments === 0
+    ? 0
+    : Math.round((completedAssessments / totalAssessments) * 100);
+
+  return {
+    totalAssessments,
+    completedAssessments,
+    totalWeight, // as percent or fraction
+    averageScore,
+    completionRate, // in percent
+    latestMarkDate
+  };
+}
+
+
+  async getSubjectAssessments(
+  subjectId: string, 
+  classId?: string, 
+  term?: string
+) {
+  const filter: any = { subject: subjectId };
+  if (classId) filter.class = classId;
+  if (term) filter.term = term;
+
+  // Fetch assessments for this subject/class/term
+  const assessments = await this.assessmentModel
+    .find(filter)
+    .populate('class', 'name') // optionally
+    .lean();
+
+  // For completion/submission stats
+  // Fetch marks per assessment, calculate completion rates per assessment
+  // Assume studentCount can be obtained from Class
+  let studentCountPerAssessment: Record<string, number> = {};
+  if (classId && assessments.length) {
+    // Get student count for this class
+    const classDoc = await this.classModel.findById(classId).lean();
+    if (classDoc) {
+      assessments.forEach(a => studentCountPerAssessment[(a as any)._id] = classDoc.studentCount || 0);
+    }
+  }
+
+  // Fetch all marks for the assessments
+  const assessmentIds = assessments.map(a => a._id);
+  const marks = await this.marksModel
+    .find({ assessment: { $in: assessmentIds } })
+    .lean();
+
+  // Make a lookup for marks per assessment
+  const marksByAssessment: Record<string, any[]> = {};
+  for (const m of marks) {
+    const id = m.assessment?.toString();
+    if (!marksByAssessment[id]) marksByAssessment[id] = [];
+    marksByAssessment[id].push(m);
+  }
+
+  // Build summary for each assessment
+  return assessments.map((a) => {
+    const marksForThis = marksByAssessment[a._id.toString()] || [];
+    const totalScore = marksForThis.reduce((sum, m) => sum + m.score, 0);
+    const averageScore = marksForThis.length ? +(totalScore / marksForThis.length).toFixed(2) : null;
+    const max = a.maxScore ?? 100;
+    const submissionRate = studentCountPerAssessment[a._id.toString()]
+      ? Math.round((marksForThis.length / studentCountPerAssessment[a._id.toString()]) * 100)
+      : null;
+
+    return {
+      assessmentId: a._id,
+      title: a.title,
+      assessmentType: a.AssessmentType,
+      weight: a.weight ?? 0,
+      createdAt: (a as any).createdAt,
+      maxScore: max,
+      class: a.class ?? null,
+      completedCount: marksForThis.length,
+      totalCount: studentCountPerAssessment[a._id.toString()] || null,
+      completionRate: submissionRate,
+      averageScore: averageScore,
+      status: a.status,
+      // You can add more such as: description, term, etc
+    };
+  });
+}
+
 }

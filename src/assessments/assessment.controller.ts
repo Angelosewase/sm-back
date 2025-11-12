@@ -15,7 +15,7 @@ import { CreateAssessmentDto } from './dto/create-assessment.dto';
 import { UpdateAssessmentDto } from './dto/update-assessment.dto';
 
 @ApiTags('Assessments')
-@Controller('assessments')
+@Controller('api/assessments')
 export class AssessmentController {
   constructor(private readonly service: AssessmentService) {}
 
@@ -29,6 +29,7 @@ export class AssessmentController {
   @Put(':id')
   @ApiOperation({ summary: 'Update assessment' })
   @ApiResponse({ status: 200, description: 'Assessment updated.' })
+
   async update(@Param('id') id: string, @Body() dto: UpdateAssessmentDto) {
     return this.service.update(id, dto);
   }
