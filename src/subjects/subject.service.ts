@@ -43,7 +43,6 @@ export class SubjectService {
     private readonly classService: ClassesService,
   ) {}
 
-  // ============= ASSIGNMENT METHODS =============
   async assignSubjectsToClass(classId: string, subjectIds: string[]) {
     // Validate class exists
     const classDoc = await this.classModel.findById(classId);
