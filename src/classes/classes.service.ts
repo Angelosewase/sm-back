@@ -8,12 +8,13 @@ import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
 import { UsersService } from '../users/users.service';
 import { Role } from '../users/schemas/user.schema';
-import { Class, ClassStatus } from './schemas/class.schema';
+import { Class, ClassDocument, ClassStatus } from './schemas/class.schema';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { QueryClassesDto } from './dto/query-classes.dto';
 import { Teacher, TeacherDocument } from '../teachers/schemas/teacher.schema';
 import moment from 'moment';
+import { StudentDocument } from 'src/students/schemas/student.schema';
 @Injectable()
 export class ClassesService {
   private readonly logger = new Logger('ClassesService');
@@ -740,4 +741,38 @@ export class ClassesService {
       ],
     };
   }
+
+  // Method 2: Get students using virtual populate
+  async getClassWithStudents(classId: string) {
+    return await this.classModel
+      .findById(classId)
+      .populate({
+        path: 'studentList',
+        match: { isTrashed: false },
+        select: 'studentId name email phoneNumber gradeLevel status',
+        options: { sort: { name: 1 } },
+      })
+      .exec();
+  }
+  // Method 5: Get class with populated student details and teacher
+  async getClassFullDetails(classId: string) {
+    return await this.classModel
+      .findById(classId)
+      .populate({
+        path: 'studentList',
+        match: { isTrashed: false, status: 'active' },
+        select: 'studentId name email phoneNumber gradeLevel',
+      })
+      .populate({
+        path: 'classTeacher',
+        select: 'name email phoneNumber',
+      })
+      .populate({
+        path: 'assignedSubjects',
+        select: 'name code',
+      })
+      .exec();
+  }
+
+
 }

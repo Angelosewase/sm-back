@@ -152,11 +152,6 @@ export class MarksService {
     // only allow edit if status is draft or submitted by teacher and user is owner or admin
     if (m.status === 'locked')
       throw new ForbiddenException('Mark is locked and cannot be edited');
-    if (patch.score !== undefined) {
-      if (patch.score < 0 || patch.score > (m.maxScore ?? 100))
-        throw new BadRequestException('score out of range');
-      m.score = patch.score;
-    }
     if (patch.comment !== undefined) m.comment = patch.comment;
     m.updatedBy = user?.id;
     await m.save();

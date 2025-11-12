@@ -18,26 +18,17 @@ export class Marks {
   @Prop({ type: Types.ObjectId, ref: 'Subject', required: true, index: true })
   subject: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Class', index: true })
-  class?: Types.ObjectId;
-
-  @Prop({ type: Types.ObjectId, ref: 'User' })
-  teacher?: Types.ObjectId;
-
   @Prop({ required: true, trim: true, index: true })
   academicYear: string;
 
   @Prop({ required: true, trim: true, index: true })
   term: string;
 
-  @Prop({ trim: true })
-  assessmentType?: string;
+  @Prop({ type: Types.ObjectId, ref: 'Assessment', required: true, trim: true })
+  assessment: string;
 
   @Prop({ type: Number, required: true })
   score: number;
-
-  @Prop({ type: Number })
-  maxScore?: number;
 
   @Prop({ type: Number, default: 1 })
   weight?: number;
@@ -53,10 +44,10 @@ export class Marks {
   })
   status: MarkStatus;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: 'Teacher' })
   createdBy?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User' })
+  @Prop({ type: Types.ObjectId, ref: 'Teacher' })
   updatedBy?: Types.ObjectId;
 }
 

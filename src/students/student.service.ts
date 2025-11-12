@@ -853,4 +853,62 @@ export class StudentService {
 
     return { change, percentageChange, changeType };
   }
+
+
+
+  
+  // Method 6: Get students with pagination
+  async getStudentsByClassPaginated(
+    classId: string,
+    page: number = 1,
+    limit: number = 10,
+  ) {
+    const skip = (page - 1) * limit;
+    
+    const [students, total] = await Promise.all([
+      this.studentModel
+        .find({ class: new Types.ObjectId(classId), isTrashed: false })
+        .select('studentId name email phoneNumber gradeLevel status')
+        .sort({ name: 1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.studentModel.countDocuments({ class: new Types.ObjectId(classId), isTrashed: false }),
+    ]);
+
+    return {
+      students,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+
+    // Method 4: Get active students only
+  async getActiveStudentsByClass(classId: string) {
+    return await this.studentModel
+      .find({ 
+        class: classId, 
+        status: 'active',
+        isTrashed: false 
+      })
+      .select('studentId name email phoneNumber gradeLevel status')
+      .sort({ name: 1 })
+      .exec();
+  }
+
+
+    // Method 3: Get students directly from Student collection
+  async getStudentsByClass(classId: string) {
+    return await this.studentModel
+      .find({ 
+        class: classId, 
+        isTrashed: false 
+      })
+      .select('studentId name email phoneNumber gradeLevel status')
+      .sort({ name: 1 })
+      .exec();
+  }
+
 }
