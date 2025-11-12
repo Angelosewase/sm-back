@@ -41,6 +41,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     MarksModule,
     StaffModule,
     AnalyticsModule,
+    AssessmentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

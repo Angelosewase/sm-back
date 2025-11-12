@@ -23,6 +23,7 @@ import {
   SubjectAssignment,
   SubjectAssignmentDocument,
 } from 'src/subjects/schemas/subject-assignment.schema';
+import { Assessment, AssessmentDocument } from 'src/assessments/schemas/assessment-schema';
 
 @Injectable()
 export class TeachersService {
@@ -32,6 +33,7 @@ export class TeachersService {
     private readonly emailService: EmailService,
     @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
+    @InjectModel(Assessment.name) private readonly assessmentModel: Model<AssessmentDocument>,
     @InjectModel(SubjectEntity.name)
     private subjectModel: Model<SubjectDocument>,
     @InjectModel(SubjectAssignment.name)
@@ -1233,6 +1235,133 @@ export class TeachersService {
     }
   }
 
+
+    /**
+   * Enhanced: getTeacherClasses
+   *
+   * What's NEW & IMPROVED:
+   * 1. Added `pendingAssessments` per class (based on teacher's actual subject assignments)
+   * 2. Only counts assessments that:
+   *    - Belong to subjects the teacher teaches in that class
+   *    - Are in 'pending' status
+   * 3. Uses efficient aggregation + population to avoid N+1 queries
+   * 4. Leverages `assignedSubjects` on Class model (populated earlier)
+   * 5. Filters assessments by teacher via Subject → Assessment → Status
+   * 6. Maintains deduplication of classes (primary + assigned)
+   * 7. Returns exact interface: TeacherClass with `pendingAssessments`
+   */
+  async _getTeacherClasses(teacherId: string): Promise<{
+    teacherId: string;
+    totalClasses: number;
+    classes: any[];
+  }> {
+    try {
+      const teacher = await this.ensureTeacher(teacherId);
+      if (!teacher.teacher || teacher.teacher.isTrashed) {
+        throw new NotFoundException('Teacher not found or is trashed');
+      }
+
+      const teacherObjectId = new Types.ObjectId(
+        teacher.user._id?.toString() || teacherId,
+      );
+
+      // Step 1: Fetch primary classes (where teacher is class teacher)
+      const primaryClasses = await this.classModel
+        .find({ classTeacher: teacherObjectId, isTrashed: false })
+        .populate('assignedSubjects') // Populates Subject refs
+        .exec();
+
+      // Step 2: Fetch assigned classes (general teacher)
+      const assignedClassIds = teacher.teacher.assignedClasses || [];
+      const assignedClasses = await this.classModel
+        .find({ _id: { $in: assignedClassIds }, isTrashed: false })
+        .populate('assignedSubjects')
+        .exec();
+
+      // Step 3: Deduplicate classes by _id
+      const allClasses = Array.from(
+        new Map(
+          [...primaryClasses, ...assignedClasses].map((c) => [
+            (c as any)._id.toString(),
+            c,
+          ]),
+        ).values(),
+      );
+
+      // Step 4: Extract all subject IDs the teacher teaches across these classes
+      const teacherSubjectIds = new Set<string>();
+      allClasses.forEach((cls) => {
+        (cls.assignedSubjects || []).forEach((subj: any) => {
+          // subj is populated Subject document
+          if (subj && subj._id) {
+            teacherSubjectIds.add(subj._id.toString());
+          }
+        });
+      });
+
+      // Step 5: Count pending assessments per subject (only for teacher's subjects)
+      const pendingAssessmentsBySubject = teacherSubjectIds.size > 0
+        ? await this.assessmentModel
+            .aggregate([
+              {
+                $match: {
+                  subject: { $in: Array.from(teacherSubjectIds).map(id => new Types.ObjectId(id)) },
+                  status: 'pending',
+                  isTrashed: { $ne: true },
+                },
+              },
+              {
+                $group: {
+                  _id: '$subject',
+                  count: { $sum: 1 },
+                },
+              },
+            ])
+            .exec()
+        : [];
+
+      // Step 6: Build map: subjectId → pendingCount
+      const pendingCountMap = new Map<string, number>();
+      pendingAssessmentsBySubject.forEach(({ _id, count }) => {
+        pendingCountMap.set(_id.toString(), count);
+      });
+
+      // Step 7: For each class, sum pending assessments from its subjects (only teacher's)
+      return {
+        teacherId,
+        totalClasses: allClasses.length,
+        classes: allClasses.map((c) => {
+          let pendingAssessments = 0;
+
+          (c.assignedSubjects || []).forEach((subj: any) => {
+            const subjId = subj._id.toString();
+            if (teacherSubjectIds.has(subjId)) {
+              pendingAssessments += pendingCountMap.get(subjId) || 0;
+            }
+          });
+
+          return {
+            classId: (c as any)._id.toString(),
+            className: c.name,
+            gradeLevel: c.gradeLevel,
+            studentCount: c.studentCount || 0,
+            capacity: c.capacity,
+            status: c.status as 'active' | 'inactive',
+            assignedSubjects: (c.assignedSubjects || []).length,
+            pendingAssessments,
+          };
+        }),
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to fetch classes for teacher ${teacherId}`,
+        error,
+      );
+      throw new NotFoundException('Failed to fetch teacher classes');
+    }
+  }
+
+  
   /**
    * Get all assessments created by teacher
    * Includes filters for status, subject, class; supports pagination

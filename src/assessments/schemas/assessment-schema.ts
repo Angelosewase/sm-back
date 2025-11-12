@@ -7,6 +7,8 @@ export enum AssessmentStatus {
   TRASHED = 'trashed',
   DELETED = 'deleted',
   LOCKED = 'locked',
+  COMPLETED = 'completed',
+  PENDING = 'pending',
 }
 
 export enum AssessmentType {
@@ -35,6 +37,9 @@ export class Assessment extends Document {
   @Prop({ required: true, trim: true, index: true })
   title: string;
 
+  @Prop({required: false })
+  weight?: number;
+
   @Prop({ trim: true })
   description?: string;
 
@@ -50,7 +55,7 @@ export class Assessment extends Document {
   @Prop({
     type: String,
     enum: Object.values(AssessmentStatus),
-    default: AssessmentStatus.ACTIVE,
+    default: AssessmentStatus.PENDING,
     index: true,
   })
   status: AssessmentStatus;
