@@ -39,6 +39,7 @@ import { AssessmentModule } from './assessments/assessment.module';
     ReportsModule,
     MarksModule,
     StaffModule,
+    AssessmentModule
   ],
   controllers: [AppController],
   providers: [AppService],
