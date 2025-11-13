@@ -13,6 +13,8 @@ import {
 import { Subject, SubjectSchema } from 'src/subjects/schemas/subject.schema';
 import { StudentPerformanceController } from './student-performance.controller';
 import { StudentPerformanceService } from './student-performance.service';
+import { AcademicYear, AcademicYearSchema } from 'src/academic-year/schemas/academic-year.schema';
+import { Term, TermSchema } from 'src/terms/schemas/term.schema';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { StudentPerformanceService } from './student-performance.service';
       { name: Marks.name, schema: MarksSchema },
       { name: Assessment.name, schema: AssessmentSchema },
       { name: Subject.name, schema: SubjectSchema },
+      { name: AcademicYear.name, schema: AcademicYearSchema },
+      { name: Term.name, schema: TermSchema },
     ]),
   ],
   controllers: [StudentController, StudentPerformanceController],
