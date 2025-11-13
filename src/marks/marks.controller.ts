@@ -12,7 +12,7 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Role } from 'src/users/schemas/user.schema';
-import { BulkMarksDto, BulkSubmitMarksDto, BulkApproveMarksDto } from './dto/bulk-marks.dto';
+import { BulkMarksDto } from './dto/bulk-marks.dto';
 import { EnterMarkDto } from './dto/enter-mark.dto';
 import { MarksService } from './marks.service';
 @ApiBearerAuth('access-token')
@@ -50,113 +50,6 @@ export class MarksController {
     return { results };
   }
 
-  @ApiOperation({
-    summary: 'Submit marks (teacher) — move drafts to submitted',
-  })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.TEACHER, Role.ADMIN)
-  @Post('submit')
-  async submit(
-    @Req() req: any,
-    @Body()
-    body: {
-      classId: string;
-      subjectId: string;
-      academicYear: string;
-      term?: string;
-    },
-  ) {
-    return this.marksService.submitMarks(
-      req.user,
-      body.classId,
-      body.subjectId,
-      body.academicYear,
-      body.term,
-    );
-  }
-
-  @ApiOperation({
-    summary: 'Submit marks (teacher) — move drafts to submitted',
-  })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.TEACHER, Role.ADMIN)
-  @Post('submit/bulk')
-  async submitBulk(
-    @Req() req: any,
-    @Body()
-    dto: BulkSubmitMarksDto,
-  ) {
-    const results = [] as any[];
-    for (const m of dto.marks) {
-      try {
-        const res = await this.marksService.submitMarks(
-          req.user,
-          m.classId,
-          m.subjectId,
-          m.academicYear,
-          m.term,
-        );
-        results.push({ ok: true });
-      } catch (e: any) {
-        results.push({ ok: false, error: e?.message || String(e), mark: m });
-      }
-    }
-    return { results };
-  }
-
-  @ApiOperation({ summary: 'Approve marks (admin) — lock submitted marks' })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  @Post('approve')
-  async approve(
-    @Req() req: any,
-    @Body()
-    body: {
-      classId: string;
-      subjectId: string;
-      academicYear: string;
-      term?: string;
-    },
-  ) {
-    return this.marksService.approveMarks(
-      req.user,
-      body.classId,
-      body.subjectId,
-      body.academicYear,
-      body.term,
-    );
-  }
-  @ApiOperation({ summary: 'Approve marks (admin) — lock submitted marks' })
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  @Post('approve/bulk')
-  async approveBulk(
-    @Req() req: any,
-    @Body()
-    dto: BulkApproveMarksDto,
-  ) {
-    const results = [] as any[];
-    for (const m of dto.marks) {
-      try {
-        const res = await this.marksService.approveMarks(
-          req.user,
-          m.classId,
-          m.subjectId,
-          m.academicYear,
-          m.term,
-        );
-        results.push({ ok: true });
-      } catch (e: any) {
-        results.push({ ok: false, error: e?.message || String(e), mark: m });
-      }
-    }
-    return { results };
-  }
-
   @ApiOperation({ summary: 'Update a mark (teacher/admin)' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -170,8 +63,19 @@ export class MarksController {
     return this.marksService.updateMark(req.user, id, body);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.TEACHER, Role.ADMIN)
   @Get()
   async list() {
     return this.marksService.getAllMarksRecords();
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.TEACHER, Role.ADMIN)
+  @Get('assessments/:assessmentId')
+  async getAssessmentMarks(@Param('assessmentId') assessmentId: string) {
+    return this.marksService.getAssessmentMarks(assessmentId);
   }
 }

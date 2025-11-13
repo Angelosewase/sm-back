@@ -1,7 +1,6 @@
 import {
   Injectable,
   BadRequestException,
-  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { Model, Types } from 'mongoose';
@@ -42,13 +41,13 @@ export class MarksService {
 
     // ensure student is enrolled in the class for academicYear
 
-
     const mark = new this.marksModel({
       student: dto.studentId,
       subject: dto.subjectId,
       class: dto.classId,
       academicYear: dto.academicYear,
       term: dto.term,
+      assessment: dto.assessmentId,
       assessmentType: dto.assessmentType,
       score: dto.score,
       maxScore: max,
@@ -59,89 +58,6 @@ export class MarksService {
     return mark.save();
   }
 
-  private async writeAudit(
-    userId: any,
-    action: string,
-    _collection: string,
-    documentId: string,
-    before?: any,
-    after?: any,
-  ) {
-    try {
-      
-    } catch (e) {
-      // non-fatal; audit failures shouldn't block the main flow
-      // could log to a monitoring system
-    }
-  }
-
-  async submitMarks(
-    teacherUser: any,
-    classId: string,
-    subjectId: string,
-    academicYear: string,
-    term?: string,
-  ) {
-    // teachers can submit marks for their class/subject; admin can submit for any
-    const filter: any = {
-      class: classId,
-      subject: subjectId,
-      academicYear,
-      status: 'draft',
-    };
-    if (term) filter.term = term;
-    const res = await this.marksModel
-      .updateMany(filter, {
-        $set: { status: 'submitted', updatedBy: teacherUser?.id },
-      })
-      .exec();
-    await this.writeAudit(
-      teacherUser?.id,
-      'submitMarks',
-      'marks',
-      `${classId}:${subjectId}:${academicYear}:${term}`,
-      null,
-      { matched: res.matchedCount, modified: res.modifiedCount },
-    );
-    return res;
-  }
-
-  async approveMarks(
-    adminUser: any,
-    classId: string,
-    subjectId: string,
-    academicYear: string,
-    term?: string,
-  ) {
-    // only admin should call this in controllers (guarded)
-    const filter: any = {
-      class: classId,
-      subject: subjectId,
-      academicYear,
-      status: 'submitted',
-    };
-    if (term) filter.term = term;
-    const before = await this.marksModel.find(filter).lean().exec();
-    const res = await this.marksModel
-      .updateMany(filter, {
-        $set: { status: 'locked', updatedBy: adminUser?.id },
-      })
-      .exec();
-    const after = await this.marksModel
-      .find({ class: classId, subject: subjectId, academicYear, term })
-      .lean()
-      .exec();
-    await this.writeAudit(
-      adminUser?.id,
-      'approveMarks',
-      'marks',
-      `${classId}:${subjectId}:${academicYear}:${term}`,
-      before,
-      after,
-    );
-    return res;
-  }
-
   async updateMark(
     user: any,
     markId: string,
@@ -149,20 +65,19 @@ export class MarksService {
   ) {
     const m = await this.marksModel.findById(markId).exec();
     if (!m) throw new NotFoundException('Mark not found');
-    // only allow edit if status is draft or submitted by teacher and user is owner or admin
-    if (m.status === 'locked')
-      throw new ForbiddenException('Mark is locked and cannot be edited');
+    if (patch.score !== undefined) {
+      if (patch.score < 0)
+        throw new BadRequestException('score must be a positive number');
+      const subject = await this.subjectModel.findById(m.subject).exec();
+      const max = subject?.maxScore ?? 100;
+      if (patch.score > max) {
+        throw new BadRequestException(`score must be between 0 and ${max}`);
+      }
+      m.score = patch.score;
+    }
     if (patch.comment !== undefined) m.comment = patch.comment;
     m.updatedBy = user?.id;
     await m.save();
-    await this.writeAudit(
-      user?.id,
-      'updateMark',
-      'marks',
-      markId,
-      null,
-      m.toObject(),
-    );
     return m;
   }
 
@@ -543,5 +458,14 @@ export class MarksService {
 
   async getAllMarksRecords() {
     return this.marksModel.find().exec();
+  }
+
+  async getAssessmentMarks(assessmentId: string) {
+    return this.marksModel
+      .find({ assessment: assessmentId })
+      .populate('student', '_id')
+      .populate('subject', '_id')
+      .populate('assessment', '_id')
+      .exec();
   }
 }
