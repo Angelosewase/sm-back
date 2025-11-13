@@ -4,45 +4,30 @@ import { BadRequestException } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { StudentPerformanceService } from './student-performance.service';
 import { Marks } from 'src/marks/schemas/marks.schema';
-import { Assessment } from 'src/assessments/schemas/assessment-schema';
-import { Subject } from 'src/subjects/schemas/subject.schema';
-import { Class } from 'src/classes/schemas/class.schema';
 
 describe('StudentPerformanceService', () => {
   let service: StudentPerformanceService;
-  let marksAggregate: jest.Mock;
+  let marksModel: { find: jest.Mock };
 
-  const createAggregateReturn = (payload: any) => ({
-    exec: jest.fn().mockResolvedValue(payload),
-  });
+  const setupFindMock = (result: any[]) => {
+    const execMock = jest.fn().mockResolvedValue(result);
+    const leanMock = jest.fn().mockReturnValue({ exec: execMock });
+    const populateMock = jest.fn().mockReturnValue({ lean: leanMock });
+    marksModel.find.mockImplementationOnce(() => ({
+      populate: populateMock,
+    }));
+    return { execMock, leanMock, populateMock };
+  };
 
   beforeEach(async () => {
-    marksAggregate = jest.fn();
-
-    const assessmentsModelMock = { collection: { name: 'assessments' } };
-    const subjectsModelMock = { collection: { name: 'subjects' } };
-    const classesModelMock = { collection: { name: 'classes' } };
+    marksModel = { find: jest.fn() as any };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StudentPerformanceService,
         {
           provide: getModelToken(Marks.name),
-          useValue: {
-            aggregate: marksAggregate,
-          },
-        },
-        {
-          provide: getModelToken(Assessment.name),
-          useValue: assessmentsModelMock,
-        },
-        {
-          provide: getModelToken(Subject.name),
-          useValue: subjectsModelMock,
-        },
-        {
-          provide: getModelToken(Class.name),
-          useValue: classesModelMock,
+          useValue: marksModel,
         },
       ],
     }).compile();
@@ -55,37 +40,55 @@ describe('StudentPerformanceService', () => {
   });
 
   it('returns subject summaries with overall percentages', async () => {
-    const studentId = new Types.ObjectId().toHexString();
-    const summaryRows = [
+    const studentObjectId = new Types.ObjectId();
+    const studentId = studentObjectId.toHexString();
+    const subjectId = new Types.ObjectId();
+    const summaryMarks = [
       {
         _id: new Types.ObjectId(),
-        subjectName: 'Mathematics',
-        totalScore: 180,
-        totalMax: 200,
-        terms: [
-          { term: 'Term 1', totalScore: 90, totalMax: 100 },
-          { term: 'Term 2', totalScore: 90, totalMax: 100 },
-        ],
+        student: studentObjectId,
+        subject: { _id: subjectId, name: 'Mathematics', code: 'MATH', maxScore: 100 },
+        academicYear: '2024/2025',
+        term: 'Term 1',
+        score: 90,
+        assessment: {
+          _id: new Types.ObjectId(),
+          title: 'Midterm',
+          AssessmentType: 'Exam',
+          maxScore: 100,
+        },
+      },
+      {
+        _id: new Types.ObjectId(),
+        student: studentObjectId,
+        subject: { _id: subjectId, name: 'Mathematics', code: 'MATH', maxScore: 100 },
+        academicYear: '2024/2025',
+        term: 'Term 2',
+        score: 90,
+        assessment: {
+          _id: new Types.ObjectId(),
+          title: 'Final',
+          AssessmentType: 'Exam',
+          maxScore: 100,
+        },
       },
     ];
 
-    const execMock = createAggregateReturn(summaryRows);
-    marksAggregate.mockReturnValueOnce(execMock);
+    const { populateMock } = setupFindMock(summaryMarks);
 
     const result = await service.getStudentPerformanceSummary(studentId, {
       academicYear: '2024/2025',
-      term: 'Term 1',
     });
 
-    expect(marksAggregate).toHaveBeenCalledTimes(1);
-    const pipeline = marksAggregate.mock.calls[0][0];
-    expect(pipeline[0]).toMatchObject({
-      $match: expect.objectContaining({
-        student: new Types.ObjectId(studentId),
-        academicYear: '2024/2025',
-        term: 'Term 1',
-      }),
-    });
+    expect(marksModel.find).toHaveBeenCalled();
+    const matchArgs = marksModel.find.mock.calls[0][0];
+    expect(String(matchArgs.student)).toEqual(studentId);
+    expect(matchArgs.academicYear).toEqual('2024/2025');
+    expect(populateMock).toHaveBeenCalledWith([
+      { path: 'assessment', select: 'title AssessmentType maxScore deadline' },
+      { path: 'subject', select: 'name code maxScore' },
+      { path: 'class', select: 'name' },
+    ]);
 
     expect(result.subjects).toHaveLength(1);
     expect(result.subjects[0]).toMatchObject({
@@ -106,51 +109,46 @@ describe('StudentPerformanceService', () => {
   });
 
   it('returns assignment breakdown grouped by academic year and subject', async () => {
-    const studentId = new Types.ObjectId().toHexString();
-    const assignmentRows = [
+    const studentObjectId = new Types.ObjectId();
+    const studentId = studentObjectId.toHexString();
+    const subjectId = new Types.ObjectId();
+    const classId = new Types.ObjectId();
+    const assessmentId = new Types.ObjectId();
+    const assignmentMarks = [
       {
-        _id: '2024/2025',
+        _id: new Types.ObjectId(),
+        student: studentObjectId,
+        subject: { _id: subjectId, name: 'Science', code: 'SCI', maxScore: 100 },
+        class: { _id: classId, name: 'Class A' },
         academicYear: '2024/2025',
-        subjects: [
-          {
-            subjectId: new Types.ObjectId(),
-            subjectName: 'Science',
-            subjectCode: 'SCI',
-            classId: new Types.ObjectId(),
-            className: 'Class A',
-            totalScore: 85,
-            totalMax: 100,
-            assignments: [
-              {
-                assessmentId: new Types.ObjectId(),
-                title: 'Midterm',
-                term: 'Term 1',
-                assessmentType: 'Exam',
-                score: 85,
-                maxScore: 100,
-                deadline: new Date('2024-02-01'),
-              },
-            ],
-          },
-        ],
+        term: 'Term 1',
+        score: 85,
+        assessmentType: 'Exam',
+        assessment: {
+          _id: assessmentId,
+          title: 'Midterm',
+          AssessmentType: 'Exam',
+          maxScore: 100,
+          deadline: new Date('2024-02-01'),
+        },
       },
     ];
 
-    const execMock = createAggregateReturn(assignmentRows);
-    marksAggregate.mockReturnValueOnce(execMock);
+    const { populateMock } = setupFindMock(assignmentMarks);
 
     const result = await service.getStudentAssignmentsBreakdown(studentId, {
-      subjectId: assignmentRows[0].subjects[0].subjectId.toHexString(),
+      subjectId: subjectId.toHexString(),
     });
 
-    expect(marksAggregate).toHaveBeenCalledTimes(1);
-    const pipeline = marksAggregate.mock.calls[0][0];
-    expect(pipeline[0]).toMatchObject({
-      $match: expect.objectContaining({
-        student: new Types.ObjectId(studentId),
-        subject: assignmentRows[0].subjects[0].subjectId,
-      }),
-    });
+    expect(marksModel.find).toHaveBeenCalled();
+    const matchArgs = marksModel.find.mock.calls[0][0];
+    expect(String(matchArgs.student)).toEqual(studentId);
+    expect(String(matchArgs.subject)).toEqual(subjectId.toHexString());
+    expect(populateMock).toHaveBeenCalledWith([
+      { path: 'assessment', select: 'title AssessmentType maxScore deadline' },
+      { path: 'subject', select: 'name code maxScore' },
+      { path: 'class', select: 'name' },
+    ]);
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -163,6 +161,7 @@ describe('StudentPerformanceService', () => {
           percentage: 85,
           assignments: [
             {
+              assessmentId: assessmentId.toHexString(),
               title: 'Midterm',
               term: 'Term 1',
               assessmentType: 'Exam',
@@ -185,7 +184,6 @@ describe('StudentPerformanceService', () => {
       }),
     ).rejects.toThrow(BadRequestException);
 
-    expect(marksAggregate).not.toHaveBeenCalled();
+    expect(marksModel.find).not.toHaveBeenCalled();
   });
 });
-
