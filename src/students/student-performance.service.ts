@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, PipelineStage, Types } from 'mongoose';
 import {
   Marks,
   MarksDocument,
@@ -31,7 +31,7 @@ interface SubjectTermBreakdown {
   percentage: number | null;
 }
 
-interface SubjectPerformanceSummary {
+export interface SubjectPerformanceSummary {
   subjectId: string | null;
   subjectName: string;
   totalScore: number;
@@ -40,7 +40,7 @@ interface SubjectPerformanceSummary {
   terms: SubjectTermBreakdown[];
 }
 
-interface AssignmentsBreakdown {
+export interface AssignmentsBreakdown {
   academicYear: string | null;
   subjects: Array<{
     subjectId: string | null;
@@ -86,7 +86,7 @@ export class StudentPerformanceService {
   }> {
     const matchStage = this.buildMatchStage(studentId, filters);
 
-    const pipeline = [
+    const pipeline: PipelineStage[] = [
       { $match: matchStage },
       ...this.lookupStages(),
       {
@@ -178,7 +178,7 @@ export class StudentPerformanceService {
   ): Promise<AssignmentsBreakdown[]> {
     const matchStage = this.buildMatchStage(studentId, filters);
 
-    const pipeline = [
+    const pipeline: PipelineStage[] = [
       { $match: matchStage },
       ...this.lookupStages(),
       {
