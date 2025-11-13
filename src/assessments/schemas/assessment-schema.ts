@@ -80,4 +80,3 @@ export const AssessmentSchema = SchemaFactory.createForClass(Assessment);
 
 // Composite indexes for faster analytics and search
 AssessmentSchema.index({ class: 1, subject: 1, assessmentType: 1, status: 1 });
-AssessmentSchema.index({ teacher: 1, subject: 1, class: 1 });

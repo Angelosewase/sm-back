@@ -52,26 +52,29 @@ export class StudentService {
     session.startTransaction();
 
     try {
+      if (!dto.isTrashed && dto.classId) {
+        await this.ensureClassCapacity(dto.classId, session);
+      }
+
       const student: any = new this.studentModel(
         await this.mapDtoToStudentDocument(dto, session),
       );
 
       await student.save({ session });
 
+      if (!dto.isTrashed && dto.classId) {
+        await this.incrementClassCount(
+          dto.classId,
+          session,
+          (student as any)._id,
+        );
+      }
+
       await session.commitTransaction();
 
       const student_ = (await this.getStudentById(
         (student as any)._id.toString(),
       )) as Student;
-
-      if (!dto.isTrashed && dto.classId) {
-        await this.ensureClassCapacity(dto.classId, session);
-        await this.incrementClassCount(
-          dto.classId,
-          session,
-          (student_ as any).id,
-        );
-      }
       return student_;
     } catch (error: any) {
       await session.abortTransaction();
@@ -595,38 +598,45 @@ export class StudentService {
   }
 
   private async incrementClassCount(
-    classId: string,
+    classId: string | Types.ObjectId,
     session: ClientSession,
-    studentId: string,
+    studentId: string | Types.ObjectId,
   ): Promise<void> {
-    await this.classModel
+    const classObjectId = this.normalizeObjectId(classId, 'classId');
+    const studentObjectId = this.normalizeObjectId(studentId, 'studentId');
+
+    const query = this.classModel
       .updateOne(
-        { _id: classId },
+        { _id: classObjectId },
         {
           $inc: { studentCount: 1 },
-          $addToSet: { students: new Types.ObjectId(studentId) },
+          $addToSet: { students: studentObjectId },
         },
       )
-      .session(session)
-      .exec();
+      .session(session);
+
+    await query.exec();
   }
 
   private async decrementClassCount(
-    classId: string,
+    classId: string | Types.ObjectId,
     session: ClientSession,
-    studentId: string,
+    studentId: string | Types.ObjectId,
   ): Promise<void> {
-    await this.classModel
-      .updateOne(
-        { _id: classId, studentCount: { $gt: 0 } },
+    const classObjectId = this.normalizeObjectId(classId, 'classId');
+    const studentObjectId = this.normalizeObjectId(studentId, 'studentId');
 
+    const query = this.classModel
+      .updateOne(
+        { _id: classObjectId, studentCount: { $gt: 0 }, students: studentObjectId },
         {
-          $pull: { students: new Types.ObjectId(studentId) },
+          $pull: { students: studentObjectId },
           $inc: { studentCount: -1 },
         },
       )
-      .session(session)
-      .exec();
+      .session(session);
+
+    await query.exec();
   }
 
   private async applyTrashState(
@@ -650,6 +660,21 @@ export class StudentService {
 
     student.isTrashed = false;
     student.trashedAt = null;
+  }
+
+  private normalizeObjectId(
+    value: string | Types.ObjectId,
+    field: string,
+  ): Types.ObjectId {
+    if (value instanceof Types.ObjectId) {
+      return value;
+    }
+
+    if (typeof value === 'string' && Types.ObjectId.isValid(value)) {
+      return new Types.ObjectId(value);
+    }
+
+    throw new BadRequestException(`Invalid ${field} provided`);
   }
 
   private async updateTrashState(id: string, trash: boolean): Promise<Student> {

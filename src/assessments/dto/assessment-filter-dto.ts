@@ -13,10 +13,6 @@ export class AssessmentFilterDto {
   @ApiPropertyOptional({ type: String })
   @IsString()
   @IsOptional()
-  teacher?: string;
-  @ApiPropertyOptional({ type: String })
-  @IsString()
-  @IsOptional()
   subject?: string;
   @ApiPropertyOptional({ type: String })
   @IsString()

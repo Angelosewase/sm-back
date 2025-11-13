@@ -40,7 +40,6 @@ export class AssessmentController {
   })
   @ApiQuery({ name: 'academicYear', required: false })
   @ApiQuery({ name: 'term', required: false })
-  @ApiQuery({ name: 'teacher', required: false })
   @ApiQuery({ name: 'subject', required: false })
   @ApiQuery({ name: 'class', required: false })
   @ApiQuery({ name: 'status', required: false })
