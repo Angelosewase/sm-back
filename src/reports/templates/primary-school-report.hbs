@@ -195,15 +195,31 @@
 
         <!-- Student Info -->
         <div class="student-info">
-            <div><strong>Nom et Prenom:</strong> Niyigaba Beni Noriah</div>
-            <div><strong>Mi-trimestre, 2025-26</strong></div>
+            <div><strong>Nom et Prenom:</strong> {{student.fullName}}</div>
+            <div>
+                {{#if report.period}}
+                    {{#if report.periodLabel}}
+                        <strong>{{report.periodLabel}}:</strong>
+                    {{/if}}
+                    {{report.period}}
+                {{/if}}
+            </div>
         </div>
         <div class="student-info" style="border-bottom: none;">
-            <div><strong>Classe:</strong> GRANDE SECTION (GS)</div>
+            <div><strong>Classe:</strong> {{student.class}}</div>
+            {{#if student.additionalInfo}}
+                <div>{{student.additionalInfo}}</div>
+            {{/if}}
         </div>
 
         <!-- Title -->
-        <div class="bulletin-title">BULLETIN DU MI-TRIMESTRE</div>
+        <div class="bulletin-title">
+            {{#if report.title}}
+                {{report.title}}
+            {{else}}
+                BULLETIN DU MI-TRIMESTRE
+            {{/if}}
+        </div>
 
         <!-- Grades Table -->
         <table>
@@ -217,67 +233,40 @@
                 </tr>
             </thead>
             <tbody>
-                <tr class="subject-row">
-                    <td>Apprendre à vivre ensemble</td>
-                    <td style="text-align: center;">10</td>
-                    <td style="text-align: center;">5</td>
-                    <td style="text-align: center;">C</td>
-                    <td>BIEN</td>
-                </tr>
-                <tr class="subject-row">
-                    <td>Mobiliser le langage oral</td>
-                    <td style="text-align: center;">10</td>
-                    <td style="text-align: center;">7</td>
-                    <td style="text-align: center;">B</td>
-                    <td>TRÈS BIEN</td>
-                </tr>
-                <tr class="subject-row">
-                    <td>Mobiliser le langage écrit</td>
-                    <td style="text-align: center;">10</td>
-                    <td style="text-align: center;">4</td>
-                    <td style="text-align: center;">D</td>
-                    <td>PASSABLE</td>
-                </tr>
-                <tr class="subject-row">
-                    <td>Outils Mathématiques</td>
-                    <td style="text-align: center;">10</td>
-                    <td style="text-align: center;">9</td>
-                    <td style="text-align: center;">A</td>
-                    <td>EXCELLENT</td>
-                </tr>
-                <tr class="subject-row">
-                    <td>Explorer le monde</td>
-                    <td style="text-align: center;">10</td>
-                    <td style="text-align: center;">5</td>
-                    <td style="text-align: center;">C</td>
-                    <td>BIEN</td>
-                </tr>
-                <tr class="subject-row">
-                    <td>Activités Physiques</td>
-                    <td style="text-align: center;">10</td>
-                    <td style="text-align: center;">4</td>
-                    <td style="text-align: center;">D</td>
-                    <td>PASSABLE</td>
-                </tr>
-                <tr class="subject-row">
-                    <td>Activités Artistiques</td>
-                    <td style="text-align: center;">10</td>
-                    <td style="text-align: center;">3</td>
-                    <td style="text-align: center;">D</td>
-                    <td>PASSABLE</td>
-                </tr>
-                <tr class="subject-row">
-                    <td>Anglais</td>
-                    <td style="text-align: center;">10</td>
-                    <td style="text-align: center;">8</td>
-                    <td style="text-align: center;">B</td>
-                    <td>TRÈS BIEN</td>
-                </tr>
-                <tr class="percentage-row">
-                    <td><strong>Percentage</strong></td>
-                    <td style="text-align: center;"><strong>56.2%</strong></td>
-                    <td colspan="3"></td>
-                </tr>
+                {{#if subjects}}
+                    {{#each subjects}}
+                        <tr class="subject-row">
+                            <td>{{name}}</td>
+                            <td style="text-align: center;">{{maximum}}</td>
+                            <td style="text-align: center;">{{obtained}}</td>
+                            <td style="text-align: center;">{{grade}}</td>
+                            <td>{{comment}}</td>
+                        </tr>
+                    {{/each}}
+                {{else}}
+                    <tr class="subject-row">
+                        <td colspan="5" style="text-align: center;">Aucun cours disponible</td>
+                    </tr>
+                {{/if}}
+                {{#if summary.percentage}}
+                    <tr class="percentage-row">
+                        <td>
+                            <strong>
+                                {{#if summary.percentageLabel}}
+                                    {{summary.percentageLabel}}
+                                {{else}}
+                                    Percentage
+                                {{/if}}
+                            </strong>
+                        </td>
+                        <td style="text-align: center;"><strong>{{summary.percentage}}</strong></td>
+                        <td colspan="3">
+                            {{#if summary.notes}}
+                                {{summary.notes}}
+                            {{/if}}
+                        </td>
+                    </tr>
+                {{/if}}
             </tbody>
         </table>
 
@@ -298,7 +287,16 @@
 
         <!-- Teacher Section -->
         <div class="teacher-section">
-            <div class="teacher-name">Titulaire de la classe: MAPENDO MIRINDI PASCALINE</div>
+            <div class="teacher-name">
+                {{#if teacher.name}}
+                    Titulaire de la classe: {{teacher.name}}
+                {{else}}
+                    Titulaire de la classe
+                {{/if}}
+            </div>
+            {{#if teacher.additionalNotes}}
+                <div class="teacher-name">{{teacher.additionalNotes}}</div>
+            {{/if}}
             <div class="signature-placeholder">Signature</div>
         </div>
 
