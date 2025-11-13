@@ -11,6 +11,9 @@ export class Marks {
   @Prop({ type: Types.ObjectId, ref: 'Subject', required: true, index: true })
   subject: Types.ObjectId;
 
+  @Prop({ type: Types.ObjectId, ref: 'Class', index: true })
+  class?: Types.ObjectId;
+
   @Prop({ required: true, trim: true, index: true })
   academicYear: string; // e.g. "2023/2024"
 
@@ -25,6 +28,12 @@ export class Marks {
 
   @Prop({ type: Number, default: 1 })
   weight?: number;
+
+  @Prop({ type: Number })
+  maxScore?: number;
+
+  @Prop({ trim: true })
+  assessmentType?: string;
 
   @Prop({ trim: true })
   comment?: string;
@@ -46,4 +55,8 @@ MarksSchema.index(
 
 // ⚡ Query optimization index (non-unique)
 MarksSchema.index({ academicYear: 1, term: 1, subject: 1 });
+
+// 📊 Performance analytics helper indexes
+MarksSchema.index({ student: 1, academicYear: 1, term: 1 });
+MarksSchema.index({ class: 1, academicYear: 1, term: 1 });
 
