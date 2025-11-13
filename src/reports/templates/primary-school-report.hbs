@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulletin Scolaire</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .report-card {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border: 3px solid #000;
+            padding: 0;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 2px solid #000;
+        }
+
+        .logo-placeholder {
+            width: 150px;
+            height: 80px;
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .school-info {
+            text-align: center;
+            flex: 1;
+            margin: 0 20px;
+        }
+
+        .school-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #8B4513;
+            margin-bottom: 5px;
+        }
+
+        .school-details {
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .student-info {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 20px;
+            background-color: #f9f9f9;
+            border-bottom: 2px solid #000;
+        }
+
+        .student-info div {
+            font-size: 13px;
+        }
+
+        .bulletin-title {
+            text-align: center;
+            padding: 10px;
+            font-weight: bold;
+            border-bottom: 2px solid #000;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background-color: #D2B48C;
+            padding: 12px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: bold;
+            border: 1px solid #000;
+        }
+
+        td {
+            padding: 12px;
+            border: 1px solid #000;
+            font-size: 13px;
+            background-color: white;
+        }
+
+        .subject-row td:first-child {
+            font-weight: normal;
+        }
+
+        .percentage-row {
+            background-color: #f9f9f9;
+            font-weight: bold;
+        }
+
+        .code-section {
+            padding: 15px 20px;
+            border-top: 2px solid #000;
+            display: flex;
+            gap: 40px;
+        }
+
+        .code-section div {
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .teacher-section {
+            padding: 20px;
+            border-top: 2px solid #000;
+        }
+
+        .teacher-name {
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .signature-placeholder {
+            width: 200px;
+            height: 60px;
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #999;
+            margin-top: 10px;
+        }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 20px;
+            border-top: 2px solid #000;
+        }
+
+        .director-section {
+            flex: 1;
+        }
+
+        .school-stamp {
+            width: 150px;
+            height: 100px;
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #999;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .director-title {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="report-card">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo-placeholder">Logo</div>
+            <div class="school-info">
+                <div class="school-name">MALAIKA INTERNATIONAL SCHOOL</div>
+                <div class="school-details">
+                    CAMBRIDGE AND PURE FRENCH PROGRAMS<br>
+                    malaika.int.school@gmail.com<br>
+                    Phone: +250 788 532 632
+                </div>
+            </div>
+            <div class="logo-placeholder">Cambridge Assessment</div>
+        </div>
+
+        <!-- Student Info -->
+        <div class="student-info">
+            <div><strong>Nom et Prenom:</strong> Niyigaba Beni Noriah</div>
+            <div><strong>Mi-trimestre, 2025-26</strong></div>
+        </div>
+        <div class="student-info" style="border-bottom: none;">
+            <div><strong>Classe:</strong> GRANDE SECTION (GS)</div>
+        </div>
+
+        <!-- Title -->
+        <div class="bulletin-title">BULLETIN DU MI-TRIMESTRE</div>
+
+        <!-- Grades Table -->
+        <table>
+            <thead>
+                <tr>
+                    <th>COURS</th>
+                    <th style="text-align: center;">MAXIMUM</th>
+                    <th style="text-align: center;">POINTS OBTENUS</th>
+                    <th style="text-align: center;">MENTION</th>
+                    <th>COMMENTAIRES</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="subject-row">
+                    <td>Apprendre à vivre ensemble</td>
+                    <td style="text-align: center;">10</td>
+                    <td style="text-align: center;">5</td>
+                    <td style="text-align: center;">C</td>
+                    <td>BIEN</td>
+                </tr>
+                <tr class="subject-row">
+                    <td>Mobiliser le langage oral</td>
+                    <td style="text-align: center;">10</td>
+                    <td style="text-align: center;">7</td>
+                    <td style="text-align: center;">B</td>
+                    <td>TRÈS BIEN</td>
+                </tr>
+                <tr class="subject-row">
+                    <td>Mobiliser le langage écrit</td>
+                    <td style="text-align: center;">10</td>
+                    <td style="text-align: center;">4</td>
+                    <td style="text-align: center;">D</td>
+                    <td>PASSABLE</td>
+                </tr>
+                <tr class="subject-row">
+                    <td>Outils Mathématiques</td>
+                    <td style="text-align: center;">10</td>
+                    <td style="text-align: center;">9</td>
+                    <td style="text-align: center;">A</td>
+                    <td>EXCELLENT</td>
+                </tr>
+                <tr class="subject-row">
+                    <td>Explorer le monde</td>
+                    <td style="text-align: center;">10</td>
+                    <td style="text-align: center;">5</td>
+                    <td style="text-align: center;">C</td>
+                    <td>BIEN</td>
+                </tr>
+                <tr class="subject-row">
+                    <td>Activités Physiques</td>
+                    <td style="text-align: center;">10</td>
+                    <td style="text-align: center;">4</td>
+                    <td style="text-align: center;">D</td>
+                    <td>PASSABLE</td>
+                </tr>
+                <tr class="subject-row">
+                    <td>Activités Artistiques</td>
+                    <td style="text-align: center;">10</td>
+                    <td style="text-align: center;">3</td>
+                    <td style="text-align: center;">D</td>
+                    <td>PASSABLE</td>
+                </tr>
+                <tr class="subject-row">
+                    <td>Anglais</td>
+                    <td style="text-align: center;">10</td>
+                    <td style="text-align: center;">8</td>
+                    <td style="text-align: center;">B</td>
+                    <td>TRÈS BIEN</td>
+                </tr>
+                <tr class="percentage-row">
+                    <td><strong>Percentage</strong></td>
+                    <td style="text-align: center;"><strong>56.2%</strong></td>
+                    <td colspan="3"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Code Section -->
+        <div class="code-section">
+            <div>
+                <strong>Code</strong>
+            </div>
+            <div>
+                A: EXCELLENT (9-10)<br>
+                B: TRÈS BIEN (7-8)
+            </div>
+            <div>
+                C: BIEN (5-6)<br>
+                D: PASSABLE (0-4)
+            </div>
+        </div>
+
+        <!-- Teacher Section -->
+        <div class="teacher-section">
+            <div class="teacher-name">Titulaire de la classe: MAPENDO MIRINDI PASCALINE</div>
+            <div class="signature-placeholder">Signature</div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="director-section">
+                <div class="director-title">DIRECTEUR: UGIRAMAHORO ISSA</div>
+                <div class="director-title">SIGNATURE ET CACHET DE L'ÉCOLE</div>
+                <div class="signature-placeholder">Signature</div>
+            </div>
+            <div class="school-stamp">
+                MALAIKA INTERNATIONAL SCHOOL<br>
+                TEL: 0788532632<br>
+                B.P 7483<br>
+                KIGALI - RWANDA
+            </div>
+        </div>
+    </div>
+</body>
+</html>

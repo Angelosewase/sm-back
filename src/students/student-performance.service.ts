@@ -2,6 +2,11 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Marks, MarksDocument } from 'src/marks/schemas/marks.schema';
+import {
+  AcademicYear,
+  AcademicYearDocument,
+} from 'src/academic-year/schemas/academic-year.schema';
+import { Term, TermDocument } from 'src/terms/schemas/term.schema';
 
 export interface StudentPerformanceFilters {
   academicYear?: string;
@@ -71,6 +76,10 @@ export class StudentPerformanceService {
   constructor(
     @InjectModel(Marks.name)
     private readonly marksModel: Model<MarksDocument>,
+    @InjectModel(AcademicYear.name)
+    private readonly academicYearModel: Model<AcademicYearDocument>,
+    @InjectModel(Term.name)
+    private readonly termModel: Model<TermDocument>,
   ) {}
 
   async getStudentPerformanceSummary(
@@ -239,13 +248,20 @@ export class StudentPerformanceService {
       .populate([
         {
           path: 'assessment',
-          select: 'title AssessmentType maxScore deadline',
+          select: 'title AssessmentType maxScore deadline academicYear term',
+          populate: [
+            { path: 'academicYear', select: 'label' },
+            { path: 'term', select: 'name' },
+          ],
         },
         { path: 'subject', select: 'name code' },
         { path: 'student', select: '_id' },
       ])
       .lean()
       .exec();
+
+    const { termNameById, academicYearLabelById } =
+      await this.resolveTermAndAcademicYearNames(marks);
 
     const details: StudentAssessmentDetail[] = [];
 
@@ -258,15 +274,25 @@ export class StudentPerformanceService {
       const { subjectName } = this.extractSubjectInfo(mark);
       const studentId = this.extractObjectId(mark.student);
       const score = this.toNumber(mark.score);
+      const rawTerm =
+        mark.term ?? this.getProp<any>(mark.assessment, 'term') ?? null;
+      const rawAcademicYear =
+        mark.academicYear ??
+        this.getProp<any>(mark.assessment, 'academicYear') ??
+        null;
 
       details.push({
         assessmentId,
         assessmentTitle:
-          this.getProp<string>(mark.assessment, 'title') ?? 'Unknown Assessment',
+          this.getProp<string>(mark.assessment, 'title') ??
+          'Unknown Assessment',
         subject: subjectName,
         studentId,
-        academicYear: mark.academicYear ?? '',
-        term: mark.term ?? '',
+        academicYear: this.resolveAcademicYearLabel(
+          rawAcademicYear,
+          academicYearLabelById,
+        ),
+        term: this.resolveTermName(rawTerm, termNameById),
         score: score ?? null,
         maxScore: this.resolveMaxScore(mark),
         assessmentType:
@@ -388,11 +414,124 @@ export class StudentPerformanceService {
     return null;
   }
 
-  private toObjectId(id: string, fieldName: string) {
+  private toObjectId(id: string, fieldName: string): string {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException(`Invalid ${fieldName}: ${id}`);
     }
-    return new Types.ObjectId(id);
+    return id;
+  }
+
+  private async resolveTermAndAcademicYearNames(marks: PopulatedMark[]) {
+    const termIds = new Set<string>();
+    const academicYearIds = new Set<string>();
+
+    for (const mark of marks) {
+      const rawTerm =
+        mark.term ?? this.getProp<any>(mark.assessment, 'term') ?? null;
+      const rawAcademicYear =
+        mark.academicYear ??
+        this.getProp<any>(mark.assessment, 'academicYear') ??
+        null;
+
+      const termId = this.extractObjectId(rawTerm);
+      if (termId) {
+        termIds.add(termId);
+      }
+
+      const academicYearId = this.extractObjectId(rawAcademicYear);
+      if (academicYearId) {
+        academicYearIds.add(academicYearId);
+      }
+    }
+
+    const termsPromise = termIds.size
+      ? this.termModel
+          .find({ _id: { $in: Array.from(termIds) } })
+          .select('name')
+          .lean()
+          .exec()
+      : Promise.resolve<unknown[]>([]);
+
+    const academicYearsPromise = academicYearIds.size
+      ? this.academicYearModel
+          .find({ _id: { $in: Array.from(academicYearIds) } })
+          .select('label')
+          .lean()
+          .exec()
+      : Promise.resolve<unknown[]>([]);
+
+    const [terms, academicYears] = await Promise.all([
+      termsPromise as Promise<Array<Record<string, unknown>>>,
+      academicYearsPromise as Promise<Array<Record<string, unknown>>>,
+    ]);
+
+    const termNameById = new Map<string, string>();
+    for (const term of terms) {
+      const termId = this.extractObjectId(term);
+      const termName = this.getProp<string>(term, 'name');
+      if (termId && termName) {
+        termNameById.set(termId, termName);
+      }
+    }
+
+    const academicYearLabelById = new Map<string, string>();
+    for (const academicYear of academicYears) {
+      const academicYearId = this.extractObjectId(academicYear);
+      const academicYearLabel = this.getProp<string>(academicYear, 'label');
+      if (academicYearId && academicYearLabel) {
+        academicYearLabelById.set(academicYearId, academicYearLabel);
+      }
+    }
+
+    return { termNameById, academicYearLabelById };
+  }
+
+  private resolveTermName(
+    rawTerm: unknown,
+    termNameById: Map<string, string>,
+  ): string {
+    const populatedName = this.getProp<string>(rawTerm, 'name');
+    if (populatedName) {
+      return populatedName;
+    }
+
+    const termId = this.extractObjectId(rawTerm);
+    if (termId) {
+      const resolved = termNameById.get(termId);
+      if (resolved) {
+        return resolved;
+      }
+    }
+
+    if (typeof rawTerm === 'string') {
+      return rawTerm;
+    }
+
+    return 'Unknown Term';
+  }
+
+  private resolveAcademicYearLabel(
+    rawAcademicYear: unknown,
+    academicYearLabelById: Map<string, string>,
+  ): string {
+    const populatedLabel = this.getProp<string>(rawAcademicYear, 'label');
+    if (populatedLabel) {
+      return populatedLabel;
+    }
+
+    const academicYearId = this.extractObjectId(rawAcademicYear);
+    if (academicYearId) {
+      const resolved = academicYearLabelById.get(academicYearId);
+      if (resolved) {
+        return resolved;
+      }
+    }
+
+    if (typeof rawAcademicYear === 'string') {
+      return rawAcademicYear;
+    }
+
+    return 'Unknown Academic Year';
   }
 
   private round(value: number) {
