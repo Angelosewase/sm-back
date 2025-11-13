@@ -19,6 +19,7 @@ import { ChangeStudentClassDto } from './dto/change-student-class.dto';
 import { Class, ClassDocument } from '../classes/schemas/class.schema';
 
 import moment from 'moment';
+import { Teacher, TeacherDocument } from 'src/teachers/schemas/teacher.schema';
 
 type PaginatedStudents = {
   data: Student[];
@@ -45,6 +46,8 @@ export class StudentService {
     @InjectModel(Student.name)
     private readonly studentModel: Model<StudentDocument>,
     @InjectModel(Class.name) private readonly classModel: Model<ClassDocument>,
+    @InjectModel(Teacher.name)
+    private readonly teacherModel: Model<TeacherDocument>,
   ) {}
 
   async registerStudent(dto: CreateStudentDto): Promise<Student> {
@@ -106,6 +109,7 @@ export class StudentService {
       onlyTrashed = false,
       sortBy = 'createdAt',
       sortOrder = 'desc',
+      teacher: teacherId,
     } = query;
 
     const filter: FilterQuery<StudentDocument> = {};
@@ -154,6 +158,14 @@ export class StudentService {
 
     if (schoolId && isValidObjectId(schoolId)) {
       filter.school = new Types.ObjectId(schoolId);
+    }
+
+    if (teacherId && isValidObjectId(teacherId)) {
+      const teacher = await this.teacherModel.findById(teacherId).exec();
+      if (!teacher) {
+        throw new NotFoundException(`Teacher with id ${teacherId} not found`);
+      }
+      filter.class = { $in: teacher.assignedClasses };
     }
 
     if (onlyTrashed) {
@@ -628,7 +640,11 @@ export class StudentService {
 
     const query = this.classModel
       .updateOne(
-        { _id: classObjectId, studentCount: { $gt: 0 }, students: studentObjectId },
+        {
+          _id: classObjectId,
+          studentCount: { $gt: 0 },
+          students: studentObjectId,
+        },
         {
           $pull: { students: studentObjectId },
           $inc: { studentCount: -1 },
@@ -797,7 +813,6 @@ export class StudentService {
         [key]: bucketArr && bucketArr[i] ? bucketArr[i].count : 0,
       }));
 
-   
     const cards = [
       {
         name: 'Total Students',
@@ -837,7 +852,7 @@ export class StudentService {
       },
     ];
 
-    cards.forEach(async(card) => {
+    cards.forEach(async (card) => {
       const trend = card.data;
       const { change, percentageChange, changeType } =
         await this.getChangeParams(trend);
@@ -847,7 +862,7 @@ export class StudentService {
       return card;
     });
 
-    return {cards: cards};
+    return { cards: cards };
   }
 
   async getChangeParams(dataArr) {
@@ -879,9 +894,6 @@ export class StudentService {
     return { change, percentageChange, changeType };
   }
 
-
-
-  
   // Method 6: Get students with pagination
   async getStudentsByClassPaginated(
     classId: string,
@@ -889,7 +901,7 @@ export class StudentService {
     limit: number = 10,
   ) {
     const skip = (page - 1) * limit;
-    
+
     const [students, total] = await Promise.all([
       this.studentModel
         .find({ class: new Types.ObjectId(classId), isTrashed: false })
@@ -898,7 +910,10 @@ export class StudentService {
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.studentModel.countDocuments({ class: new Types.ObjectId(classId), isTrashed: false }),
+      this.studentModel.countDocuments({
+        class: new Types.ObjectId(classId),
+        isTrashed: false,
+      }),
     ]);
 
     return {
@@ -909,31 +924,28 @@ export class StudentService {
     };
   }
 
-
-    // Method 4: Get active students only
+  // Method 4: Get active students only
   async getActiveStudentsByClass(classId: string) {
     return await this.studentModel
-      .find({ 
-        class: classId, 
+      .find({
+        class: classId,
         status: 'active',
-        isTrashed: false 
+        isTrashed: false,
       })
       .select('studentId name email phoneNumber gradeLevel status')
       .sort({ name: 1 })
       .exec();
   }
 
-
-    // Method 3: Get students directly from Student collection
+  // Method 3: Get students directly from Student collection
   async getStudentsByClass(classId: string) {
     return await this.studentModel
-      .find({ 
-        class: classId, 
-        isTrashed: false 
+      .find({
+        class: classId,
+        isTrashed: false,
       })
       .select('studentId name email phoneNumber gradeLevel status')
       .sort({ name: 1 })
       .exec();
   }
-
 }
