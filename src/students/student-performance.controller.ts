@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { StudentPerformanceService } from './student-performance.service';
 import { StudentPerformanceQueryDto } from './dto/student-performance-query.dto';
+import { SubjectAssessmentPerformanceQueryDto } from './dto/subject-assessment-performance-query.dto';
 
 @ApiTags('Students')
 @ApiBearerAuth('access-token')
@@ -28,19 +29,48 @@ export class StudentPerformanceController {
     );
   }
 
-  @Get('assignments')
+  @Get('')
   @ApiOperation({
     summary:
-      'Get detailed student performance per subject, academic year, and assessment.',
+      'Get subject assessment performances grouped by academic year and subject with scores keyed by assessment id.',
   })
-  async getAssignmentsBreakdown(
-    @Param('studentId') studentId: string,
-    @Query() query: StudentPerformanceQueryDto,
+  async getSubjectAssessments(
+    @Param('studentId') routeStudentId: string,
+    @Query() query: SubjectAssessmentPerformanceQueryDto,
   ) {
-    return this.studentPerformanceService.getStudentAssignmentsBreakdown(
-      studentId,
-      query,
-    );
+    const candidateStudentId = query.studentId ?? routeStudentId;
+    const normalizedStudentId =
+      candidateStudentId && candidateStudentId.toLowerCase() === 'all'
+        ? undefined
+        : candidateStudentId;
+
+    return this.studentPerformanceService.getSubjectAssessmentPerformances({
+      term: query.term,
+      year: query.year,
+      studentId: normalizedStudentId,
+    });
+  }
+
+  @Get('assessments')
+  @ApiOperation({
+    summary:
+      'Get individual assessments related to a student with optional term and year filters.',
+  })
+  async getStudentAssessments(
+    @Param('studentId') routeStudentId: string,
+    @Query() query: SubjectAssessmentPerformanceQueryDto,
+  ) {
+    const candidateStudentId = query.studentId ?? routeStudentId;
+    const normalizedStudentId =
+      candidateStudentId && candidateStudentId.toLowerCase() === 'all'
+        ? undefined
+        : candidateStudentId;
+
+    return this.studentPerformanceService.getStudentAssessments({
+      term: query.term,
+      year: query.year,
+      studentId: normalizedStudentId,
+    });
   }
 }
 

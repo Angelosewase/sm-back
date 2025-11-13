@@ -28,28 +28,28 @@ export interface SubjectPerformanceSummary {
   terms: SubjectTermBreakdown[];
 }
 
-export interface AssignmentsBreakdown {
-  academicYear: string | null;
-  subjects: Array<{
-    subjectId: string | null;
-    subjectName: string;
-    subjectCode?: string;
-    classId?: string | null;
-    className?: string | null;
-    totalScore: number;
-    totalMax: number;
-    percentage: number | null;
-    assignments: Array<{
-      assessmentId: string | null;
-      title: string;
-      term: string | null;
-      assessmentType?: string | null;
-      score: number;
-      maxScore: number;
-      percentage: number | null;
-      deadline?: Date | string | null;
-    }>;
-  }>;
+export interface SubjectAssessmentPerformance {
+  subject: string;
+  scores: Record<string, number | null>;
+}
+
+export interface SubjectAssessmentPerformanceFilters {
+  term?: string;
+  year?: string;
+  studentId?: string;
+}
+
+export interface StudentAssessmentDetail {
+  assessmentId: string;
+  assessmentTitle: string;
+  subject: string;
+  studentId: string | null;
+  academicYear: string;
+  term: string;
+  score: number | null;
+  maxScore: number;
+  assessmentType: string | null;
+  deadline: Date | null;
 }
 
 type PopulatedMark = {
@@ -78,22 +78,15 @@ export class StudentPerformanceService {
     filters: StudentPerformanceFilters = {},
   ): Promise<{
     subjects: SubjectPerformanceSummary[];
-    overall: { totalScore: number; totalMax: number; percentage: number | null };
+    overall: {
+      totalScore: number;
+      totalMax: number;
+      percentage: number | null;
+    };
   }> {
     const matchStage = this.buildMatchStage(studentId, filters);
-    console.log(
-      '[StudentPerformanceService][summary] match stage',
-      JSON.stringify(matchStage),
-    );
+
     const marks = await this.findMarks(matchStage, studentId);
-    console.log(
-      '[StudentPerformanceService][summary] marks fetched',
-      marks.length,
-    );
-    console.log(
-      '[StudentPerformanceService][summary] marks sample',
-      JSON.stringify(marks, null, 2),
-    );
 
     const subjectMap = new Map<
       string,
@@ -108,10 +101,6 @@ export class StudentPerformanceService {
     >();
 
     for (const mark of marks) {
-      console.log(
-        '[StudentPerformanceService][summary] processing mark',
-        JSON.stringify(mark, null, 2),
-      );
       const { subjectId, subjectName, subjectCode, subjectKey } =
         this.extractSubjectInfo(mark);
       const score = this.toNumber(mark.score) ?? 0;
@@ -134,14 +123,11 @@ export class StudentPerformanceService {
       subjectAcc.totalScore += score;
       subjectAcc.totalMax += maxScore;
 
-      const termAcc =
-        subjectAcc.terms.get(termKey) ?? { totalScore: 0, totalMax: 0 };
-      console.log(
-        '[StudentPerformanceService][summary] term addition',
-        subjectKey,
-        termKey,
-        { score, maxScore },
-      );
+      const termAcc = subjectAcc.terms.get(termKey) ?? {
+        totalScore: 0,
+        totalMax: 0,
+      };
+
       termAcc.totalScore += score;
       termAcc.totalMax += maxScore;
       subjectAcc.terms.set(termKey, termAcc);
@@ -155,15 +141,6 @@ export class StudentPerformanceService {
     )
       .sort((a, b) => a.subjectName.localeCompare(b.subjectName))
       .map((subject) => {
-        console.log(
-          '[StudentPerformanceService][summary] subject bucket before totals',
-          subject.subjectName,
-          {
-            totalScore: subject.totalScore,
-            totalMax: subject.totalMax,
-            terms: Array.from(subject.terms.entries()),
-          },
-        );
         overallScore += subject.totalScore;
         overallMax += subject.totalMax;
 
@@ -195,22 +172,6 @@ export class StudentPerformanceService {
     const overallPercentage =
       overallMax > 0 ? this.round((overallScore / overallMax) * 100) : null;
 
-    console.log(
-      '[StudentPerformanceService][summary] overall result',
-      JSON.stringify(
-        {
-          subjects,
-          overall: {
-            totalScore: overallScore,
-            totalMax: overallMax,
-            percentage: overallPercentage,
-          },
-        },
-        null,
-        2,
-      ),
-    );
-
     return {
       subjects,
       overall: {
@@ -221,167 +182,108 @@ export class StudentPerformanceService {
     };
   }
 
-  async getStudentAssignmentsBreakdown(
-    studentId: string,
-    filters: StudentPerformanceFilters = {},
-  ): Promise<AssignmentsBreakdown[]> {
-    const matchStage = this.buildMatchStage(studentId, filters);
-    console.log(
-      '[StudentPerformanceService][assignments] match stage',
-      JSON.stringify(matchStage),
-    );
-    const marks = await this.findMarks(matchStage, studentId);
-    console.log(
-      '[StudentPerformanceService][assignments] marks fetched',
-      marks.length,
-    );
-    console.log(
-      '[StudentPerformanceService][assignments] marks sample',
-      JSON.stringify(marks, null, 2),
-    );
+  async getSubjectAssessmentPerformances(
+    filters: SubjectAssessmentPerformanceFilters = {},
+  ): Promise<SubjectAssessmentPerformance[]> {
+    const match = this.buildAssessmentFiltersMatch(filters);
 
-    const yearMap = new Map<
-      string | null,
-      Map<
-        string,
+    const marks = await this.marksModel
+      .find(match)
+      .populate([
         {
-          subjectId: string | null;
-          subjectName: string;
-          subjectCode?: string;
-          classId?: string | null;
-          className?: string | null;
-          totalScore: number;
-          totalMax: number;
-          assignments: Map<
-            string,
-            {
-              assessmentId: string | null;
-              title: string;
-              term: string | null;
-              assessmentType: string | null;
-              deadline: Date | string | null;
-              score: number;
-              maxScore: number;
-            }
-          >;
-        }
-      >
+          path: 'assessment',
+          select: 'title AssessmentType maxScore',
+        },
+        { path: 'subject', select: 'name code' },
+      ])
+      .lean()
+      .exec();
+
+    const subjectMap = new Map<
+      string,
+      { subject: string; scores: Map<string, number | null> }
     >();
 
     for (const mark of marks) {
-      console.log(
-        '[StudentPerformanceService][assignments] processing mark',
-        JSON.stringify(mark, null, 2),
-      );
-      const yearKey = mark.academicYear ?? null;
-      const { subjectId, subjectName, subjectCode, subjectKey } =
-        this.extractSubjectInfo(mark);
-      const classId = this.extractObjectId(mark.class);
-      const className = this.getProp<string>(mark.class, 'name');
-      const score = this.toNumber(mark.score) ?? 0;
-      const maxScore = this.resolveMaxScore(mark);
+      const { subjectName, subjectKey } = this.extractSubjectInfo(mark);
+      const assessmentId = this.extractObjectId(mark.assessment);
+      if (!assessmentId) {
+        continue;
+      }
+      const score = this.toNumber(mark.score);
 
-      let subjectsMap = yearMap.get(yearKey);
-      if (!subjectsMap) {
-        subjectsMap = new Map();
-        yearMap.set(yearKey, subjectsMap);
+      let subjectEntry = subjectMap.get(subjectKey);
+      if (!subjectEntry) {
+        subjectEntry = { subject: subjectName, scores: new Map() };
+        subjectMap.set(subjectKey, subjectEntry);
       }
 
-      let subjectAcc = subjectsMap.get(subjectKey);
-      if (!subjectAcc) {
-        subjectAcc = {
-          subjectId,
-          subjectName,
-          subjectCode,
-          classId,
-          className,
-          totalScore: 0,
-          totalMax: 0,
-          assignments: new Map(),
-        };
-        subjectsMap.set(subjectKey, subjectAcc);
-      }
-
-      subjectAcc.totalScore += score;
-      subjectAcc.totalMax += maxScore;
-
-      const assignmentInfo = this.extractAssignmentInfo(mark, subjectKey);
-      console.log(
-        '[StudentPerformanceService][assignments] assignment bucket key',
-        assignmentInfo,
-      );
-      let assignmentAcc = subjectAcc.assignments.get(assignmentInfo.key);
-      if (!assignmentAcc) {
-        assignmentAcc = {
-          assessmentId: assignmentInfo.id,
-          title: assignmentInfo.title,
-          term: assignmentInfo.term,
-          assessmentType: assignmentInfo.type,
-          deadline: assignmentInfo.deadline,
-          score: 0,
-          maxScore: 0,
-        };
-        subjectAcc.assignments.set(assignmentInfo.key, assignmentAcc);
-      }
-
-      assignmentAcc.score += score;
-      assignmentAcc.maxScore += maxScore;
+      subjectEntry.scores.set(assessmentId, score ?? null);
     }
 
-    const result = Array.from(yearMap.entries())
-      .map(([academicYear, subjectsMap]) => {
-        console.log(
-          '[StudentPerformanceService][assignments] year aggregate',
-          academicYear,
-          Array.from(subjectsMap.entries()),
-        );
-        return {
-          academicYear,
-          subjects: Array.from(subjectsMap.values())
-            .sort((a, b) => a.subjectName.localeCompare(b.subjectName))
-            .map((subject) => ({
-              subjectId: subject.subjectId,
-              subjectName: subject.subjectName,
-              subjectCode: subject.subjectCode,
-              classId: subject.classId ?? null,
-              className: subject.className ?? null,
-              totalScore: this.round(subject.totalScore),
-              totalMax: this.round(subject.totalMax),
-              percentage:
-                subject.totalMax > 0
-                  ? this.round((subject.totalScore / subject.totalMax) * 100)
-                  : null,
-              assignments: Array.from(subject.assignments.values()).map(
-                (assignment) => ({
-                  assessmentId: assignment.assessmentId,
-                  title: assignment.title,
-                  term: assignment.term,
-                  assessmentType: assignment.assessmentType,
-                  score: this.round(assignment.score),
-                  maxScore: this.round(assignment.maxScore),
-                  percentage:
-                    assignment.maxScore > 0
-                      ? this.round(
-                          (assignment.score / assignment.maxScore) * 100,
-                        )
-                      : null,
-                  deadline: assignment.deadline ?? null,
-                }),
-              ),
-            })),
-        };
-      })
-      .sort((a, b) => {
-        if (!a.academicYear) return 1;
-        if (!b.academicYear) return -1;
-        return (b.academicYear || '').localeCompare(a.academicYear || '');
-      });
+    return Array.from(subjectMap.values())
+      .sort((a, b) => a.subject.localeCompare(b.subject))
+      .map((subjectEntry) => ({
+        subject: subjectEntry.subject,
+        scores: Object.fromEntries(subjectEntry.scores),
+      }));
+  }
 
-    console.log(
-      '[StudentPerformanceService][assignments] final result',
-      JSON.stringify(result, null, 2),
-    );
-    return result;
+  async getStudentAssessments(
+    filters: SubjectAssessmentPerformanceFilters = {},
+  ): Promise<StudentAssessmentDetail[]> {
+    const match = this.buildAssessmentFiltersMatch(filters);
+
+    const marks = await this.marksModel
+      .find(match)
+      .populate([
+        {
+          path: 'assessment',
+          select: 'title AssessmentType maxScore deadline',
+        },
+        { path: 'subject', select: 'name code' },
+        { path: 'student', select: '_id' },
+      ])
+      .lean()
+      .exec();
+
+    const details: StudentAssessmentDetail[] = [];
+
+    for (const mark of marks) {
+      const assessmentId = this.extractObjectId(mark.assessment);
+      if (!assessmentId) {
+        continue;
+      }
+
+      const { subjectName } = this.extractSubjectInfo(mark);
+      const studentId = this.extractObjectId(mark.student);
+      const score = this.toNumber(mark.score);
+
+      details.push({
+        assessmentId,
+        assessmentTitle:
+          this.getProp<string>(mark.assessment, 'title') ?? 'Unknown Assessment',
+        subject: subjectName,
+        studentId,
+        academicYear: mark.academicYear ?? '',
+        term: mark.term ?? '',
+        score: score ?? null,
+        maxScore: this.resolveMaxScore(mark),
+        assessmentType:
+          this.getProp<string>(mark.assessment, 'AssessmentType') ?? null,
+        deadline: this.getProp<Date>(mark.assessment, 'deadline'),
+      });
+    }
+
+    return details.sort((a, b) => {
+      const subjectCompare = a.subject.localeCompare(b.subject);
+      if (subjectCompare !== 0) return subjectCompare;
+      const titleCompare = a.assessmentTitle.localeCompare(b.assessmentTitle);
+      if (titleCompare !== 0) return titleCompare;
+      const termCompare = a.term.localeCompare(b.term);
+      if (termCompare !== 0) return termCompare;
+      return a.academicYear.localeCompare(b.academicYear);
+    });
   }
 
   private buildMatchStage(
@@ -391,66 +293,31 @@ export class StudentPerformanceService {
     const match: Record<string, any> = {
       student: studentId,
     };
-    console.log(
-      '[StudentPerformanceService][helpers] initial match object',
-      match,
-    );
 
     if (filters.subjectId) {
       match.subject = this.toObjectId(filters.subjectId, 'subjectId');
-      console.log(
-        '[StudentPerformanceService][helpers] applied subject filter',
-        match.subject,
-      );
     }
 
     if (filters.academicYear && filters.academicYear.toLowerCase() !== 'all') {
       match.academicYear = filters.academicYear;
-      console.log(
-        '[StudentPerformanceService][helpers] applied academicYear filter',
-        match.academicYear,
-      );
     }
 
     if (filters.term && filters.term.toLowerCase() !== 'all') {
       match.term = filters.term;
-      console.log(
-        '[StudentPerformanceService][helpers] applied term filter',
-        match.term,
-      );
     }
 
     if (filters.classId) {
       match.class = this.toObjectId(filters.classId, 'classId');
-      console.log(
-        '[StudentPerformanceService][helpers] applied class filter',
-        match.class,
-      );
     }
 
     if (filters.assessmentId) {
-      match.assessment = this.toObjectId(
-        filters.assessmentId,
-        'assessmentId',
-      );
-      console.log(
-        '[StudentPerformanceService][helpers] applied assessment filter',
-        match.assessment,
-      );
+      match.assessment = this.toObjectId(filters.assessmentId, 'assessmentId');
     }
 
     if (filters.assessmentType) {
       match.assessmentType = filters.assessmentType;
-      console.log(
-        '[StudentPerformanceService][helpers] applied assessmentType filter',
-        match.assessmentType,
-      );
     }
 
-    console.log(
-      '[StudentPerformanceService][helpers] final match object',
-      match,
-    );
     return match;
   }
 
@@ -458,11 +325,13 @@ export class StudentPerformanceService {
     match: Record<string, any>,
     studentId: string,
   ): Promise<PopulatedMark[]> {
-    console.log('[StudentPerformanceService][helpers] findMarks with', match);
     return this.marksModel
       .find({ ...match, student: studentId })
       .populate([
-        { path: 'assessment', select: 'title AssessmentType maxScore deadline' },
+        {
+          path: 'assessment',
+          select: 'title AssessmentType maxScore deadline',
+        },
         { path: 'subject', select: 'name code maxScore' },
         { path: 'class', select: 'name' },
       ])
@@ -471,10 +340,6 @@ export class StudentPerformanceService {
   }
 
   private extractSubjectInfo(mark: PopulatedMark) {
-    console.log(
-      '[StudentPerformanceService][helpers] extractSubjectInfo subject value',
-      mark.subject,
-    );
     const subjectId = this.extractObjectId(mark.subject);
     const subjectName =
       this.getProp<string>(mark.subject, 'name') || 'Unknown Subject';
@@ -483,31 +348,7 @@ export class StudentPerformanceService {
     return { subjectId, subjectName, subjectCode, subjectKey };
   }
 
-  private extractAssignmentInfo(mark: PopulatedMark, subjectKey: string) {
-    console.log(
-      '[StudentPerformanceService][helpers] extractAssignmentInfo assessment value',
-      mark.assessment,
-    );
-    const assessmentId = this.extractObjectId(mark.assessment);
-    const title =
-      this.getProp<string>(mark.assessment, 'title') ||
-      mark.assessmentType ||
-      'Assessment';
-    const term = mark.term ?? null;
-    const type =
-      this.getProp<string>(mark.assessment, 'AssessmentType') ??
-      mark.assessmentType ??
-      null;
-    const deadline = this.getProp<any>(mark.assessment, 'deadline') ?? null;
-    const key = assessmentId ?? `${subjectKey}:${term ?? 'term'}:${title}`;
-    return { id: assessmentId, title, term, type, deadline, key };
-  }
-
   private extractObjectId(value: unknown): string | null {
-    console.log(
-      '[StudentPerformanceService][helpers] extractObjectId value',
-      value,
-    );
     if (!value) return null;
     if (typeof value === 'string') return value;
     if (value instanceof Types.ObjectId) return value.toHexString();
@@ -520,12 +361,6 @@ export class StudentPerformanceService {
   }
 
   private resolveMaxScore(mark: PopulatedMark): number {
-    console.log(
-      '[StudentPerformanceService][helpers] resolveMaxScore inputs',
-      mark.maxScore,
-      this.getProp<number>(mark.assessment, 'maxScore'),
-      this.getProp<number>(mark.subject, 'maxScore'),
-    );
     const candidates = [
       this.toNumber(mark.maxScore),
       this.toNumber(this.getProp<number>(mark.assessment, 'maxScore')),
@@ -538,33 +373,22 @@ export class StudentPerformanceService {
   }
 
   private toNumber(value: unknown): number | null {
-    console.log('[StudentPerformanceService][helpers] toNumber value', value);
     if (value === null || value === undefined) return null;
     if (typeof value === 'number' && Number.isFinite(value)) return value;
     const parsed = Number(value);
-    console.log('[StudentPerformanceService][helpers] toNumber parsed', parsed);
     return Number.isFinite(parsed) ? parsed : null;
   }
 
   private getProp<T>(source: unknown, prop: string): T | null {
     if (source && typeof source === 'object' && prop in (source as any)) {
       const result = (source as any)[prop];
-      console.log(
-        '[StudentPerformanceService][helpers] getProp result',
-        prop,
-        result,
-      );
+
       return (result ?? null) as T | null;
     }
     return null;
   }
 
   private toObjectId(id: string, fieldName: string) {
-    console.log(
-      '[StudentPerformanceService][helpers] toObjectId input',
-      fieldName,
-      id,
-    );
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException(`Invalid ${fieldName}: ${id}`);
     }
@@ -572,8 +396,42 @@ export class StudentPerformanceService {
   }
 
   private round(value: number) {
-    console.log('[StudentPerformanceService][helpers] round input', value);
     return Math.round((value + Number.EPSILON) * 100) / 100;
   }
-}
 
+  private buildAssessmentFiltersMatch(
+    filters: SubjectAssessmentPerformanceFilters,
+  ) {
+    const match: Record<string, any> = {};
+
+    const normalizeAll = (value?: string) =>
+      value && value.toLowerCase() === 'all' ? undefined : value;
+
+    const normalizedStudentId = normalizeAll(filters.studentId);
+    const normalizedTerm = normalizeAll(filters.term);
+    const normalizedYear = normalizeAll(filters.year);
+
+    if (normalizedStudentId) {
+      match.student = this.toObjectId(normalizedStudentId, 'studentId');
+    }
+
+    if (normalizedTerm) {
+      const termVariants = [normalizedTerm];
+      if (/^\d+$/.test(normalizedTerm)) {
+        termVariants.push(`Term ${normalizedTerm}`, `term ${normalizedTerm}`);
+      }
+
+      match.term =
+        termVariants.length === 1 ? termVariants[0] : { $in: termVariants };
+    }
+
+    if (normalizedYear) {
+      const escapedYear = normalizedYear.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      match.academicYear = normalizedYear.includes('/')
+        ? normalizedYear
+        : new RegExp(escapedYear, 'i');
+    }
+
+    return match;
+  }
+}
