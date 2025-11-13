@@ -23,7 +23,10 @@ import {
   SubjectAssignment,
   SubjectAssignmentDocument,
 } from 'src/subjects/schemas/subject-assignment.schema';
-import { Assessment, AssessmentDocument } from 'src/assessments/schemas/assessment-schema';
+import {
+  Assessment,
+  AssessmentDocument,
+} from 'src/assessments/schemas/assessment-schema';
 
 @Injectable()
 export class TeachersService {
@@ -33,7 +36,8 @@ export class TeachersService {
     private readonly emailService: EmailService,
     @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
-    @InjectModel(Assessment.name) private readonly assessmentModel: Model<AssessmentDocument>,
+    @InjectModel(Assessment.name)
+    private readonly assessmentModel: Model<AssessmentDocument>,
     @InjectModel(SubjectEntity.name)
     private subjectModel: Model<SubjectDocument>,
     @InjectModel(SubjectAssignment.name)
@@ -975,7 +979,7 @@ export class TeachersService {
    * Returns: total students, total subjects, total classes, total assessments (active, pending, completed)
    */
   async getTeacherDashboardStats(teacherId: string) {
-    console.log("the teacher id is: ", teacherId);
+    console.log('the teacher id is: ', teacherId);
     try {
       const teacher = await this.ensureTeacher(teacherId);
       if (!teacher.teacher || teacher.teacher.isTrashed) {
@@ -1098,7 +1102,7 @@ export class TeachersService {
       // If specific classId filter provided, ensure it's in teacher's classes
       let targetClassIds = classIds;
       if (filters?.classId) {
-        if (!classIds.some((cid:any) => cid.toString() === filters.classId)) {
+        if (!classIds.some((cid: any) => cid.toString() === filters.classId)) {
           throw new BadRequestException('Class not assigned to this teacher');
         }
         targetClassIds = [new Types.ObjectId(filters.classId)];
@@ -1235,8 +1239,7 @@ export class TeachersService {
     }
   }
 
-
-    /**
+  /**
    * Enhanced: getTeacherClasses
    *
    * What's NEW & IMPROVED:
@@ -1300,25 +1303,30 @@ export class TeachersService {
       });
 
       // Step 5: Count pending assessments per subject (only for teacher's subjects)
-      const pendingAssessmentsBySubject = teacherSubjectIds.size > 0
-        ? await this.assessmentModel
-            .aggregate([
-              {
-                $match: {
-                  subject: { $in: Array.from(teacherSubjectIds).map(id => new Types.ObjectId(id)) },
-                  status: 'pending',
-                  isTrashed: { $ne: true },
+      const pendingAssessmentsBySubject =
+        teacherSubjectIds.size > 0
+          ? await this.assessmentModel
+              .aggregate([
+                {
+                  $match: {
+                    subject: {
+                      $in: Array.from(teacherSubjectIds).map(
+                        (id) => new Types.ObjectId(id),
+                      ),
+                    },
+                    status: 'pending',
+                    isTrashed: { $ne: true },
+                  },
                 },
-              },
-              {
-                $group: {
-                  _id: '$subject',
-                  count: { $sum: 1 },
+                {
+                  $group: {
+                    _id: '$subject',
+                    count: { $sum: 1 },
+                  },
                 },
-              },
-            ])
-            .exec()
-        : [];
+              ])
+              .exec()
+          : [];
 
       // Step 6: Build map: subjectId → pendingCount
       const pendingCountMap = new Map<string, number>();
@@ -1361,7 +1369,6 @@ export class TeachersService {
     }
   }
 
-  
   /**
    * Get all assessments created by teacher
    * Includes filters for status, subject, class; supports pagination
@@ -1486,5 +1493,13 @@ export class TeachersService {
       );
       throw new NotFoundException('Failed to fetch teacher assignments');
     }
+  }
+
+  async getTeacherByUserId(userId: string) {
+    const teacher = await this.teacherModel.findOne({ user: new Types.ObjectId(userId) }).exec();
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+    return teacher;
   }
 }

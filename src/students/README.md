@@ -1,112 +1,134 @@
-# Students Module
+## Student Performance API
 
-This module exposes a set of REST endpoints for managing students, their class assignments, and soft-delete lifecycle. All routes are protected with the JWT access guard; include a valid `Authorization: Bearer <token>` header.
+These endpoints let you retrieve a student’s performance broken down by subject, term, academic year, and individual assessments.
 
-Base path: `/students`
+All routes require an authenticated request and share the base path:
 
-## Data Model Highlights
+```
+/api/students/:studentId/performance
+```
 
-- `studentId` – required, unique per school.
-- `name` – required full name.
-- `district` / `province` – optional location fields.
-- `gradeLevel` – optional grade descriptor.
-- `class` – optional `Class` reference. Counts are incremented/decremented automatically when a class is set or removed.
-- `status` – one of `active | graduated | transferred | suspended` (default `active`).
-- Soft delete is tracked with `isTrashed` and `trashedAt`.
+### Common Query Parameters
 
-Students may exist without a class (for example when suspended or trashed). When trashed, any existing class assignment is cleared and the class headcount is decremented. Restoring a student leaves them without a class until one is reassigned.
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `academicYear` | `string` | Filter by year label (e.g. `2024/2025`). Use `all` to include every year. |
+| `term` | `string` | Filter by stored term label (`Term 1`, `Q1`, etc.). Use `all` to include every term. |
+| `subjectId` | `ObjectId` | Restrict results to a subject. |
+| `classId` | `ObjectId` | Restrict to marks associated with a class. |
+| `assessmentId` | `ObjectId` | Focus on a specific assessment. |
+| `assessmentType` | `string` | Filter by assessment type (`Exam`, `Quiz`, etc.). |
 
-## Endpoints
+All parameters are optional. Omitted values return the full data set for the chosen student.
 
-- `POST /students`
-  - Body: `CreateStudentDto`
-    - Required: `studentId`, `name`
-    - Optional: `classId`, `schoolId`, contact/guardian fields, `status`, `isTrashed`
-    - If `classId` is supplied, capacity is validated and the class count increments (skipped when `isTrashed` is `true`).
+---
 
-- `GET /students`
-  - Query (`QueryStudentsDto`):
-    - Pagination: `page` (default 1), `limit` (default 25, max 100)
-    - Filtering: `search` (name, studentId, email, phone), `status`, `guardianRelationShip`, `classId`, `schoolId`
-    - Trash controls: `includeTrashed`, `onlyTrashed`
-    - Sorting: `sortBy` (`createdAt|updatedAt|name|studentId|status`), `sortOrder` (`asc|desc`)
-  - Returns `{ data: Student[], meta: { total, page, limit, pages } }`
+### 1. GET `/summary`
 
-- `GET /students/:id`
-  - Returns a single student (class and school populated). `404` if not found.
+Returns overall and per-term totals for each subject the student has marks for.
 
-- `PATCH /students/:id`
-  - Body: any subset of `UpdateStudentDto`
-  - `classId` may be set to a new `ObjectId` or to `null` to unassign. Capacity and class counters adjust automatically.
-  - Setting `isTrashed` to `true` clears the class and records `trashedAt`; setting back to `false` simply restores the student without reassigning a class.
+#### Example Request
 
-- `PATCH /students/:id/class`
-  - Body: `{ classId: '<ObjectId>' }` to assign/transfer or `{ classId: null }` to unassign.
-  - Operates even if other fields should stay untouched.
+```
+GET /api/students/665f3.../performance/summary?academicYear=2024/2025&term=Term%201
+Authorization: Bearer <token>
+```
 
-- `PATCH /students/:id/trash`
-  - Moves a student to trash, clears their class (if any), and decrements the class count.
+#### Example Response
 
-- `PATCH /students/bulk/trash`
-  - Body: `BulkStudentActionDto`
-  - Soft deletes multiple students in one request.
+```json
+{
+  "subjects": [
+    {
+      "subjectId": "664ab...",
+      "subjectName": "Mathematics",
+      "totalScore": 180,
+      "totalMax": 200,
+      "percentage": 90,
+      "terms": [
+        {
+          "term": "Term 1",
+          "totalScore": 90,
+          "totalMax": 100,
+          "percentage": 90
+        },
+        {
+          "term": "Term 2",
+          "totalScore": 90,
+          "totalMax": 100,
+          "percentage": 90
+        }
+      ]
+    }
+  ],
+  "overall": {
+    "totalScore": 180,
+    "totalMax": 200,
+    "percentage": 90
+  }
+}
+```
 
-- `PATCH /students/:id/restore`
-  - Restores a trashed student. No class is assigned automatically.
+---
 
-- `PATCH /students/bulk/restore`
-  - Body: `BulkStudentActionDto`
-  - Restores multiple trashed students. Classes remain unassigned.
+### 2. GET `/assignments`
 
-- `DELETE /students/:id`
-  - Permanently removes the student. If they had a class and were not trashed, the class count is decremented first.
+Shows the student’s history per assessment, grouped by academic year and subject.
 
-- `DELETE /students/bulk`
-  - Body: `BulkStudentActionDto`
-  - Permanently removes multiple students. Class counts are adjusted for each record.
+#### Example Request
 
-## Usage Tips
+```
+GET /api/students/665f3.../performance/assignments?subjectId=664ab...
+Authorization: Bearer <token>
+```
 
-- Always send ISO 8601 strings for date fields (`dob`, `enrollmentDate`).
-- To remove optional values (`dob`, `schoolId`, etc.) during updates, send them explicitly as `null`.
-- When importing or bulk creating, avoid assigning classes to trashed students; the service rejects that combination.
-- To audit trash operations, rely on the `trashedAt` timestamp; listings with `includeTrashed=true` expose both active and trashed records.
+#### Example Response
 
-## DTO Reference
+```json
+[
+  {
+    "academicYear": "2024/2025",
+    "subjects": [
+      {
+        "subjectId": "664ab...",
+        "subjectName": "Science",
+        "subjectCode": "SCI",
+        "classId": "663cd...",
+        "className": "S2 A",
+        "totalScore": 85,
+        "totalMax": 100,
+        "percentage": 85,
+        "assignments": [
+          {
+            "assessmentId": "662fa...",
+            "title": "Midterm",
+            "term": "Term 1",
+            "assessmentType": "Exam",
+            "score": 85,
+            "maxScore": 100,
+            "percentage": 85,
+            "deadline": "2024-02-01T00:00:00.000Z"
+          }
+        ]
+      }
+    ]
+  }
+]
+```
 
-### `CreateStudentDto`
-- `studentId` *(string, required)* – unique admission number per school.
-- `name` *(string, required)* – full display name.
-- `classId` *(string, optional)* – `Class` document `_id`; triggers capacity check and student count increment when provided.
-- `email` *(string, optional)* – validated as email and normalised to lowercase.
-- `phoneNumber`, `gender`, `address`, `district`, `province`, `gradeLevel`, `previousSchool`, `guardianName`, `guardianPhoneNumber`, `guardianEmergencyContact`, `medicalInformation`, `additionalNotes` *(string, optional)*.
-- `guardianEmail` *(string, optional)* – validated as email and normalised to lowercase.
-- `dob`, `enrollmentDate` *(ISO date string, optional)* – converted to `Date`.
-- `guardianRelationShip` *(enum: father|mother|guardian|other, optional)*.
-- `status` *(enum: active|graduated|transferred|suspended, optional, defaults to active)*.
-- `schoolId` *(string, optional)* – `School` document `_id`.
-- `isTrashed` *(boolean, optional)* – initialise student in trash state (skips class increment).
+---
 
-### `UpdateStudentDto`
-- Extends `PartialType(CreateStudentDto)`; all fields optional.
-- `classId` may be supplied to assign or set explicitly to `null` to unassign.
-- `isTrashed` toggles trash state (class cleared automatically when set to `true`).
+### Error Handling
 
-### `QueryStudentsDto`
-- `page` *(number, optional)* – default 1.
-- `limit` *(number, optional)* – default 25, max 100.
-- `search` *(string, optional)* – fuzzy search across `name`, `studentId`, `email`, `phoneNumber`, `district`, `province`, `gradeLevel`, `guardianEmail`.
-- `status`, `guardianRelationShip` *(enum filters, optional)*.
-- `district`, `province`, `gradeLevel`, `guardianEmail` *(string filters, optional)*.
-- `classId`, `schoolId` *(string ObjectId filters, optional)*.
-- `includeTrashed`, `onlyTrashed` *(boolean flags, optional)* – control soft-delete visibility.
-- `sortBy` *(string, optional)* – `createdAt|updatedAt|name|studentId|status`; default `createdAt`.
-- `sortOrder` *(string, optional)* – `asc|desc`; default `desc`.
+- `400 Bad Request` – any supplied ID fails ObjectId validation.
+- `404 Not Found` – student ID does not exist or caller lacks permission.
 
-### `ChangeStudentClassDto`
-- `classId` *(string or null, optional)* – new class to assign (capacity checked) or `null` to clear class.
+---
 
-### `BulkStudentActionDto`
-- `ids` *(string[], required)* – array of student ObjectIds to target with the bulk operation.
+### Tips
+
+- Use `term=all` or omit the parameter to compare performance across the whole academic year.
+- Combine `subjectId` and `assessmentType` to find how a student performs in a subject for a specific assessment type (e.g. quizzes vs. exams).
+- The `classId` filter lets you analyse students who moved classes during the year by isolating marks from a particular class.
 
 

@@ -63,12 +63,18 @@ export class QueryStudentsDto {
   @IsString()
   guardianEmail?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by class ObjectId', type: String })
+  @ApiPropertyOptional({
+    description: 'Filter by class ObjectId',
+    type: String,
+  })
   @IsOptional()
   @IsMongoId()
   classId?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by school ObjectId', type: String })
+  @ApiPropertyOptional({
+    description: 'Filter by school ObjectId',
+    type: String,
+  })
   @IsOptional()
   @IsMongoId()
   schoolId?: string;
@@ -108,5 +114,12 @@ export class QueryStudentsDto {
   @IsOptional()
   @IsString()
   sortOrder?: 'asc' | 'desc' = 'desc';
-}
 
+  @ApiPropertyOptional({
+    description: 'Filter by teacher ObjectId',
+    type: String,
+  })
+  @IsOptional()
+  @IsMongoId()
+  teacher?: string;
+}

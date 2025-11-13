@@ -311,4 +311,14 @@ export class TeachersController {
       limit: limit || 20,
     });
   }
+
+  //get teacher using user id 
+  @Get('user/:userId')
+  @ApiOperation({ summary: 'Get teacher using user ID' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Teacher retrieved' })
+  @ApiResponse({ status: 404, description: 'Teacher not found' })
+  async getTeacherByUserId(@Param('userId') userId: string) {
+    return this.teachersService.getTeacherByUserId(userId);
+  }
 }
