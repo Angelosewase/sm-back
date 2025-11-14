@@ -30,7 +30,7 @@ export class Student {
 
   @Prop({ trim: true })
   phoneNumber?: string;
-
+  
   @Prop({ type: Date })
   dob?: Date;
 

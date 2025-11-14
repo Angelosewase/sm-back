@@ -19,7 +19,10 @@ import { Marks, MarksDocument } from '../marks/schemas/marks.schema';
 import { Subject, SubjectDocument } from '../subjects/schemas/subject.schema';
 import { Class, ClassDocument } from 'src/classes/schemas/class.schema';
 import { Term, TermDocument } from 'src/terms/schemas/term.schema';
-import { AcademicYear, AcademicYearDocument } from 'src/academic-year/schemas/academic-year.schema';
+import {
+  AcademicYear,
+  AcademicYearDocument,
+} from 'src/academic-year/schemas/academic-year.schema';
 
 @Injectable()
 export class AssessmentService {
@@ -30,55 +33,54 @@ export class AssessmentService {
     private assessmentModel: Model<AssessmentDocument>,
     @InjectModel(Marks.name) private marksModel: Model<MarksDocument>,
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
-    @InjectModel(AcademicYear.name) private academicYearModel: Model<AcademicYearDocument>,
+    @InjectModel(AcademicYear.name)
+    private academicYearModel: Model<AcademicYearDocument>,
     @InjectModel(Term.name) private termModel: Model<TermDocument>,
     @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
   ) {}
 
-async create(dto: CreateAssessmentDto): Promise<Assessment> {
-  // Parallel checks (faster than sequential)
-  const [academicYear, term, subject, cls] = await Promise.all([
-    this.academicYearModel.findById(dto.academicYear),
-    this.termModel.findById(dto.term),
-    this.subjectModel.findById(dto.subject),
-    this.classModel.findById(dto.class),
-  ]);
+  async create(dto: CreateAssessmentDto): Promise<Assessment> {
+    const [academicYear, term, subject, cls] = await Promise.all([
+      this.academicYearModel.findById(dto.academicYear),
+      this.termModel.findById(dto.term),
+      this.subjectModel.findById(dto.subject),
+      this.classModel.findById(dto.class),
+    ]);
 
-  // Throw with clear messages for missing
-  if (!academicYear) {
-    this.logger.warn(`Invalid academicYear: ${dto.academicYear}`);
-    throw new BadRequestException('Academic year does not exist');
-  }
-  if (!term) {
-    this.logger.warn(`Invalid term: ${dto.term}`);
-    throw new BadRequestException('Term does not exist');
-  }
-  if (!subject) {
-    this.logger.warn(`Invalid subject: ${dto.subject}`);
-    throw new BadRequestException('Subject does not exist');
-  }
-  if (!cls) {
-    this.logger.warn(`Invalid class: ${dto.class}`);
-    throw new BadRequestException('Class does not exist');
-  }
+    // Throw with clear messages for missing
+    if (!academicYear) {
+      this.logger.warn(`Invalid academicYear: ${dto.academicYear}`);
+      throw new BadRequestException('Academic year does not exist');
+    }
+    if (!term) {
+      this.logger.warn(`Invalid term: ${dto.term}`);
+      throw new BadRequestException('Term does not exist');
+    }
+    if (!subject) {
+      this.logger.warn(`Invalid subject: ${dto.subject}`);
+      throw new BadRequestException('Subject does not exist');
+    }
+    if (!cls) {
+      this.logger.warn(`Invalid class: ${dto.class}`);
+      throw new BadRequestException('Class does not exist');
+    }
 
-  try {
-    const created = await this.assessmentModel.create(dto);
+    try {
+      const created = await this.assessmentModel.create(dto);
 
-    await this.subjectModel.updateOne(
-      { _id: dto.subject },
-      {
-        $inc: { assessmentsCount: 1 },
-        $addToSet: { assessments: created._id },
-      },
-    );
-    return created;
-  } catch (error) {
-    this.logger.error('Failed to create assessment', error as any);
-    throw new InternalServerErrorException('Failed to create assessment');
+      await this.subjectModel.updateOne(
+        { _id: dto.subject },
+        {
+          $inc: { assessmentsCount: 1 },
+          $addToSet: { assessments: created._id },
+        },
+      );
+      return created;
+    } catch (error) {
+      this.logger.error('Failed to create assessment', error as any);
+      throw new InternalServerErrorException('Failed to create assessment');
+    }
   }
-}
-
 
   async update(
     id: string,
