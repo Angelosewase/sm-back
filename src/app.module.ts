@@ -19,6 +19,7 @@ import { StudentsModule } from './students/students.module';
 import { ReportsModule } from './reports/reports.module';
 import { AssessmentModule } from './assessments/assessment.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { PassMarksModule } from './pass-marks/pass-marks.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     StaffModule,
     AnalyticsModule,
     AssessmentModule,
+    PassMarksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
