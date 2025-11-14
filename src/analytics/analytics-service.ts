@@ -4,7 +4,12 @@ import { Role, User, UserDocument } from 'src/users/schemas/user.schema';
 import { UsersService } from 'src/users/users.service';
 import { AdminStatsDto } from './dto/admin-stats-dto';
 import { StudentService } from 'src/students/student.service';
-import { AnalyticsResponseDto, TimeSeriesItem, GenderDistributionItem, RegistrationAnalyticsDto } from './dto/analytics.dto';
+import {
+  AnalyticsResponseDto,
+  TimeSeriesItem,
+  GenderDistributionItem,
+  RegistrationAnalyticsDto,
+} from './dto/analytics.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Student, StudentDocument } from 'src/students/schemas/student.schema';
@@ -15,7 +20,7 @@ interface ISeries {
   'Total Students': number;
   Teachers: number;
   Classes: number;
-  'Staff Members':number;
+  'Staff Members': number;
 }
 @Injectable()
 export class AnalyticsService {
@@ -29,7 +34,7 @@ export class AnalyticsService {
     private readonly studentModel: Model<StudentDocument>,
 
     @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>
+    private readonly userModel: Model<UserDocument>,
   ) {}
 
   async getAdminStats(schoolId: string): Promise<AdminStatsDto> {
@@ -66,8 +71,6 @@ export class AnalyticsService {
     const totalClasses = classesRes.total;
     const totalStaffMembers = staffRes.total;
 
-    console.log("the output: ",teachersRes, studentsRes, schoolId,  totalClasses, totalTeachers, totalStudents, totalStaffMembers);
-
     // -------------------------------------------------
     // 2. Historic weekly data (last 7 weeks)
     // -------------------------------------------------
@@ -100,13 +103,13 @@ export class AnalyticsService {
         query.createdBefore = targetDate.toISOString();
       }
 
-      const res:any = isClass
+      const res: any = isClass
         ? await this.classesService.findAll(query)
         : isStudent
-        ? await this.studentsService.findStudents(query)
-        : await this.usersService.findAll(query);
+          ? await this.studentsService.findStudents(query)
+          : await this.usersService.findAll(query);
 
-      return  isStudent ? res.meta.total : res.total;
+      return isStudent ? res.meta.total : res.total;
     };
 
     for (let i = weeks - 1; i >= 0; i--) {
@@ -183,20 +186,29 @@ export class AnalyticsService {
     };
   }
 
-
-
-  async getRegistrationAnalytics(schoolId: string): Promise<RegistrationAnalyticsDto> {
+  async getRegistrationAnalytics(
+    schoolId: string,
+  ): Promise<RegistrationAnalyticsDto> {
     const now = new Date();
     const schoolObjectId = new Types.ObjectId(schoolId);
 
     // Helper: generate monthly series
-    const generateSeries = async (months: number): Promise<TimeSeriesItem[]> => {
+    const generateSeries = async (
+      months: number,
+    ): Promise<TimeSeriesItem[]> => {
       const items: TimeSeriesItem[] = [];
 
       for (let i = months - 1; i >= 0; i--) {
         const date = subMonths(now, i);
         const start = startOfMonth(date);
-        const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
+        const end = new Date(
+          date.getFullYear(),
+          date.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+        );
 
         const [studentCount, teacherCount, staffCount] = await Promise.all([
           this.studentModel.countDocuments({
@@ -235,7 +247,10 @@ export class AnalyticsService {
     ]);
 
     // Trend: last 12 months vs previous 12 months
-    const last12Total = last12Months.reduce((sum, m) => sum + m.students + m.teachers + m.staff, 0);
+    const last12Total = last12Months.reduce(
+      (sum, m) => sum + m.students + m.teachers + m.staff,
+      0,
+    );
 
     const prev12Start = subMonths(now, 24);
     const prev12End = subMonths(now, 12);
@@ -258,9 +273,12 @@ export class AnalyticsService {
     ]);
 
     const prev12Total = prevStudents + prevTeachers + prevStaff;
-    const trendPct = prev12Total === 0
-      ? last12Total > 0 ? 100 : 0
-      : Math.round(((last12Total - prev12Total) / prev12Total) * 100);
+    const trendPct =
+      prev12Total === 0
+        ? last12Total > 0
+          ? 100
+          : 0
+        : Math.round(((last12Total - prev12Total) / prev12Total) * 100);
 
     const trend = {
       change: trendPct >= 0 ? `+${trendPct}%` : `${trendPct}%`,
@@ -287,8 +305,12 @@ export class AnalyticsService {
 
     const totalStudents = genderStats.reduce((sum, g) => sum + g.count, 0) || 1;
 
-    const genderDistribution: GenderDistributionItem[] = ['male', 'female', 'other'].map(g => {
-      const found = genderStats.find(x => x._id === g);
+    const genderDistribution: GenderDistributionItem[] = [
+      'male',
+      'female',
+      'other',
+    ].map((g) => {
+      const found = genderStats.find((x) => x._id === g);
       const count = found?.count || 0;
       return {
         gender: g as any,
@@ -303,5 +325,4 @@ export class AnalyticsService {
       genderDistribution,
     };
   }
-
 }
