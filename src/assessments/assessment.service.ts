@@ -39,10 +39,9 @@ export class AssessmentService {
 
 async create(dto: CreateAssessmentDto): Promise<Assessment> {
   // Parallel checks (faster than sequential)
-  const [academicYear, term, teacher, subject, cls] = await Promise.all([
+  const [academicYear, term, subject, cls] = await Promise.all([
     this.academicYearModel.findById(dto.academicYear),
     this.termModel.findById(dto.term),
-    this.teacherModel.findById(dto.teacher),
     this.subjectModel.findById(dto.subject),
     this.classModel.findById(dto.class),
   ]);
@@ -56,10 +55,6 @@ async create(dto: CreateAssessmentDto): Promise<Assessment> {
     this.logger.warn(`Invalid term: ${dto.term}`);
     throw new BadRequestException('Term does not exist');
   }
-  if (!teacher) {
-    this.logger.warn(`Invalid teacher: ${dto.teacher}`);
-    throw new BadRequestException('Teacher does not exist');
-  }
   if (!subject) {
     this.logger.warn(`Invalid subject: ${dto.subject}`);
     throw new BadRequestException('Subject does not exist');
@@ -67,14 +62,6 @@ async create(dto: CreateAssessmentDto): Promise<Assessment> {
   if (!cls) {
     this.logger.warn(`Invalid class: ${dto.class}`);
     throw new BadRequestException('Class does not exist');
-  }
-
-  // NEW: Check subject is assigned to teacher
-  if (!teacher.subjectsCanTeach || !teacher.subjectsCanTeach.map(String).includes(dto.subject)) {
-    this.logger.warn(
-      `Teacher ${dto.teacher} does not teach subject ${dto.subject}`
-    );
-    throw new BadRequestException('Selected teacher is not assigned to the given subject');
   }
   
   try {

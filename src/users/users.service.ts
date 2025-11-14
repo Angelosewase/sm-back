@@ -103,7 +103,7 @@ export class UsersService {
     const filter: FilterQuery<User> = {};
     if (role) filter.role = role;
     if (email) filter.email = email.toLowerCase();
-    if (school) filter.school = school;
+    if (school) filter.school = new Types.ObjectId(school);
     if (q) {
       const regex = new RegExp(q, 'i');
       filter.$or = [{ name: regex }, { email: regex }];

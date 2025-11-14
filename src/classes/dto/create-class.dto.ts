@@ -11,6 +11,7 @@ import {
 import { ClassStatus } from '../schemas/class.schema';
 
 export class CreateClassDto {
+
   @ApiProperty({ description: 'Name of the class', example: 'Mathematics 101' })
   @IsString()
   @IsNotEmpty()
@@ -55,5 +56,15 @@ export class CreateClassDto {
   @IsOptional()
   @IsMongoId()
   classTeacher?: string;
+
+
+  @ApiProperty({
+    description: 'Identifier of the assigned school',
+    example: '64f0a5b3c21a7123456789ab',
+    required: false,
+  })
+  @IsOptional()
+  @IsMongoId()
+  school?: string;
 }
 

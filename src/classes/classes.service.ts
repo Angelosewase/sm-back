@@ -39,6 +39,7 @@ export class ClassesService {
 
     const createdClass = new this.classModel({
       ...classData,
+      school: new Types.ObjectId(createClassDto.school),
       status: classData.status ?? ClassStatus.ACTIVE,
       studentCount: 0,
       isTrashed: false,
@@ -70,6 +71,7 @@ export class ClassesService {
       search,
       gradeLevel,
       includeTrashed,
+      school,
       onlyTrashed,
     } = query;
 
@@ -95,6 +97,9 @@ export class ClassesService {
       ];
     }
 
+    if(school){
+      filter.school = new Types.ObjectId(school);
+    }
     const [items, total] = await Promise.all([
       this.classModel
         .find(filter)
