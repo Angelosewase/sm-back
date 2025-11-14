@@ -4,6 +4,8 @@ import { ClassesService } from 'src/classes/classes.service';
 import { StudentService } from 'src/students/student.service';
 import { AnalyticsService } from './analytics-service';
 import { AdminStatsDto } from './dto/admin-stats-dto';
+import { SchoolPerformanceAnalyticsDto } from './dto/analytics.dto';
+import { PerformanceQueryDto } from './dto/analytics-query.dto';
 
 @ApiTags('Dashboard')
 @Controller('api/dashboard')
@@ -35,8 +37,20 @@ export class DashboardController {
 
   @Get('registration-analytics/:schoolId')
   @ApiOkResponse({ /* add schema example if needed */ })
-  
+  @ApiOperation({ summary: 'Get registration analytics.' })
   async getRegistrationAnalytics(@Param('schoolId') schoolId: string): Promise<any> {
     return this.analyticsService.getRegistrationAnalytics(schoolId);
   }
+
+  @Get('performance')
+  @ApiOkResponse({ /* add schema example if needed */ })
+  @ApiOperation({ summary: 'Get performance analytics.' })
+  async getPerformance(
+    @Query() query: PerformanceQueryDto,
+  ): Promise<SchoolPerformanceAnalyticsDto> {
+    return this.analyticsService.getPerformanceAnalytics(query);
+  }
 }
+
+
+

@@ -9,11 +9,19 @@ import {
   TimeSeriesItem,
   GenderDistributionItem,
   RegistrationAnalyticsDto,
+  SchoolPerformanceAnalyticsDto,
+  AcademicYearPerformanceDto,
+  StudentPerformanceDto,
 } from './dto/analytics.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Student, StudentDocument } from 'src/students/schemas/student.schema';
 import { subMonths, startOfMonth, format } from 'date-fns';
+import { Marks, MarksDocument } from 'src/marks/schemas/marks.schema';
+import { PerformanceQueryDto } from './dto/analytics-query.dto';
+import { Class, ClassDocument } from 'src/classes/schemas/class.schema';
+import { AcademicYear, AcademicYearDocument } from 'src/academic-year/schemas/academic-year.schema';
+import { Term, TermDocument } from 'src/terms/schemas/term.schema';
 
 interface ISeries {
   date: string;
@@ -35,6 +43,18 @@ export class AnalyticsService {
 
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+
+    @InjectModel(Marks.name)
+    private readonly marksModel: Model<MarksDocument>,
+
+    @InjectModel(Class.name)
+    private readonly classModel: Model<ClassDocument>,
+
+    @InjectModel(AcademicYear.name)
+    private readonly academicYearModel: Model<AcademicYearDocument>,
+
+    @InjectModel(Term.name)
+    private readonly termModel: Model<TermDocument>,
   ) {}
 
   async getAdminStats(schoolId: string): Promise<AdminStatsDto> {
@@ -324,5 +344,225 @@ export class AnalyticsService {
       trend,
       genderDistribution,
     };
+  }
+
+
+  async getPerformanceAnalytics(
+    query: PerformanceQueryDto,
+  ): Promise<SchoolPerformanceAnalyticsDto> {
+    const { schoolId, classId, academicYear, termId, scope = 'all' } = query;
+
+    // Build base match
+    const match: any = {};
+    if (schoolId) match['student.school'] = new Types.ObjectId(schoolId);
+    if (classId) match['class'] = new Types.ObjectId(classId);
+    if (academicYear) match.academicYear = academicYear;
+    if (termId) match.term = new Types.ObjectId(termId);
+
+    // Get all relevant marks
+    const marks = await this.marksModel.aggregate([
+      {
+        $lookup: {
+          from: 'students',
+          localField: 'student',
+          foreignField: '_id',
+          as: 'student',
+        },
+      },
+      { $unwind: '$student' },
+      {
+        $lookup: {
+          from: 'classes',
+          localField: 'class',
+          foreignField: '_id',
+          as: 'class',
+        },
+      },
+      { $unwind: { path: '$class', preserveNullAndEmptyArrays: true } },
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            academicYear: '$academicYear',
+            term: '$term',
+            class: '$class._id',
+            student: '$student._id',
+            subject: '$subject',
+          },
+          totalScore: { $sum: '$score' },
+          totalPossible: { $sum: '$maxScore' },
+          assessments: { $push: '$$ROOT' },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            academicYear: '$_id.academicYear',
+            term: '$_id.term',
+            class: '$_id.class',
+            student: '$_id.student',
+          },
+          subjects: {
+            $push: {
+              subject: '$_id.subject',
+              average: {
+                $cond: [
+                  { $eq: ['$totalPossible', 0] },
+                  0,
+                  { $multiply: [{ $divide: ['$totalScore', '$totalPossible'] }, 100] },
+                ],
+              },
+              totalScore: '$totalScore',
+              totalPossible: '$totalPossible',
+              count: { $size: '$assessments' },
+            },
+          },
+          totalScore: { $sum: '$totalScore' },
+          totalPossible: { $sum: '$totalPossible' },
+          assessmentCount: { $sum: { $size: '$assessments' } },
+        },
+      },
+      {
+        $addFields: {
+          average: {
+            $cond: [
+              { $eq: ['$totalPossible', 0] },
+              0,
+              { $round: [{ $multiply: [{ $divide: ['$totalScore', '$totalPossible'] }, 100] }, 1] },
+            ],
+          },
+        },
+      },
+    ]);
+
+    // Populate metadata
+    const academicYears = await this.academicYearModel.find().lean();
+    const terms = await this.termModel.find().lean();
+    const classes = await this.classModel.find().lean();
+    const students = await this.studentModel.find().lean();
+
+    const classMap = Object.fromEntries(classes.map(c => [c._id.toString(), c]));
+    const studentMap = Object.fromEntries(students.map(s => [s._id.toString(), s]));
+    const termMap = Object.fromEntries(terms.map(t => [t._id.toString(), t]));
+
+    // Build response
+    const result: SchoolPerformanceAnalyticsDto = {
+      schoolId: schoolId || 'all',
+      academicYears: [],
+    };
+
+    const yearMap = new Map<string, AcademicYearPerformanceDto>();
+
+    marks.forEach(m => {
+      const yearKey = m._id.academicYear;
+      const termKey = m._id.term?.toString();
+      const classKey = m._id.class?.toString();
+      const studentKey = m._id.student.toString();
+
+      if (!yearMap.has(yearKey)) {
+        yearMap.set(yearKey, {
+          academicYear: yearKey,
+          terms: [],
+          overallAverage: 0,
+          totalStudents: 0,
+          totalAssessments: 0,
+        });
+      }
+
+      const yearData = yearMap.get(yearKey)!;
+      let termData = yearData.terms.find(t => t.termId === termKey);
+      if (!termData && termKey) {
+        termData = {
+          termId: termKey,
+          termName: termMap[termKey]?.name || 'Unknown',
+          startDate: termMap[termKey]?.startDate ?? undefined,
+          endDate: termMap[termKey]?.endDate ?? undefined,
+          classes: [],
+          overallAverage: 0,
+          totalStudents: 0,
+          totalAssessments: 0,
+        };
+        if(termData) yearData.terms.push(termData);
+      }
+
+      let classData = termData?.classes.find(c => c.classId === classKey);
+      if (!classData && classKey) {
+        classData = {
+          classId: classKey,
+          className: classMap[classKey]?.name || 'Unknown',
+          gradeLevel: classMap[classKey]?.gradeLevel || '',
+          totalStudents: 0,
+          averageScore: 0,
+          subjectBreakdown: [],
+        };
+        termData!.classes.push(classData);
+      }
+
+      const studentPerf: StudentPerformanceDto = {
+        studentId: studentKey,
+        name: studentMap[studentKey]?.name || 'Unknown',
+        totalMarks: m.totalScore,
+        totalPossible: m.totalPossible,
+        average: m.average,
+        grade: this.getGrade(m.average),
+      };
+
+      classData!.totalStudents++;
+      classData!.averageScore = ((classData!.averageScore * (classData!.totalStudents - 1)) + m.average) / classData!.totalStudents;
+      termData!.totalAssessments += m.assessmentCount;
+      yearData.totalAssessments += m.assessmentCount;
+    });
+
+    // Finalize averages and ranks
+    yearMap.forEach(year => {
+      year.terms.forEach(term => {
+        term.classes.forEach(cls => {
+          cls.averageScore = Number(cls.averageScore.toFixed(1));
+        });
+        term.overallAverage = Number(
+          (term.classes.reduce((s, c) => s + c.averageScore, 0) / term.classes.length || 0).toFixed(1),
+        );
+      });
+      year.overallAverage = Number(
+        (year.terms.reduce((s, t) => s + t.overallAverage, 0) / year.terms.length || 0).toFixed(1),
+      );
+    });
+
+    result.academicYears = Array.from(yearMap.values());
+
+    // Add all-time summary if scope allows
+    if (scope === 'all') {
+      const allMarks = await this.marksModel.aggregate([
+        { $match: schoolId ? { 'student.school': new Types.ObjectId(schoolId) } : {} },
+        {
+          $group: {
+            _id: null,
+            totalScore: { $sum: '$score' },
+            totalPossible: { $sum: '$maxScore' },
+          },
+        },
+      ]);
+
+      const all = allMarks[0];
+      result.allTime = {
+        overallAverage: all ? Number(((all.totalScore / all.totalPossible) * 100).toFixed(1)) : 0,
+        totalStudents: await this.studentModel.countDocuments(
+          schoolId ? { school: schoolId } : {},
+        ),
+        totalAssessments: await this.marksModel.countDocuments(
+          schoolId ? { 'student.school': schoolId } : {},
+        ),
+      };
+    }
+
+    return result;
+  }
+
+  private getGrade(percentage: number): string {
+    if (percentage >= 90) return 'A';
+    if (percentage >= 80) return 'B';
+    if (percentage >= 70) return 'C';
+    if (percentage >= 60) return 'D';
+    return 'F';
   }
 }

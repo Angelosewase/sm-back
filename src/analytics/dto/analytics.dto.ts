@@ -43,3 +43,64 @@ export interface RegistrationAnalyticsDto {
   };
   genderDistribution: GenderDistributionItem[];
 }
+
+
+
+// analytics.dto.ts
+export interface StudentPerformanceDto {
+  studentId: string;
+  name: string;
+  totalMarks: number;
+  totalPossible: number;
+  average: number; // 0-100
+  grade?: string;
+  rank?: number;
+}
+
+export interface ClassPerformanceDto {
+  classId: string;
+  className: string;
+  gradeLevel: string;
+  totalStudents: number;
+  averageScore: number;
+  topStudent?: StudentPerformanceDto;
+  lowestStudent?: StudentPerformanceDto;
+  subjectBreakdown: SubjectPerformanceDto[];
+}
+
+export interface SubjectPerformanceDto {
+  subjectId: string;
+  subjectName: string;
+  averageScore: number;
+  totalAssessments: number;
+  completed: number;
+}
+
+export interface TermPerformanceDto {
+  termId: string;
+  termName: string;
+  startDate?: Date;
+  endDate?: Date;
+  classes: ClassPerformanceDto[];
+  overallAverage: number;
+  totalStudents: number;
+  totalAssessments: number;
+}
+
+export interface AcademicYearPerformanceDto {
+  academicYear: string;
+  terms: TermPerformanceDto[];
+  overallAverage: number;
+  totalStudents: number;
+  totalAssessments: number;
+}
+
+export interface SchoolPerformanceAnalyticsDto {
+  schoolId: string;
+  academicYears: AcademicYearPerformanceDto[];
+  allTime?: {
+    overallAverage: number;
+    totalStudents: number;
+    totalAssessments: number;
+  };
+}
