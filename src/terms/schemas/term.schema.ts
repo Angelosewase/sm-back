@@ -11,6 +11,9 @@ export class Term {
   @Prop({ type: Number, required: true, enum: [1, 2, 3] })
   order: number; // 1, 2, or 3
 
+  @Prop({ required: true, trim: true })
+  name: string; // "Term 1", "Term 2", "Term 3"
+
   @Prop({ default: false })
   isOpen: boolean;
 

@@ -34,9 +34,9 @@ export class AcademicYearService {
 
     // Create 3 terms for this academic year
     await this.termModel.create([
-      { academicYear: academicYear._id, order: 1, isOpen: false, isClosed: false },
-      { academicYear: academicYear._id, order: 2, isOpen: false, isClosed: false },
-      { academicYear: academicYear._id, order: 3, isOpen: false, isClosed: false },
+      { academicYear: academicYear._id, order: 1, name: 'Term 1', isOpen: false, isClosed: false },
+      { academicYear: academicYear._id, order: 2, name: 'Term 2', isOpen: false, isClosed: false },
+      { academicYear: academicYear._id, order: 3, name: 'Term 3', isOpen: false, isClosed: false },
     ]);
 
     return academicYear;
