@@ -58,19 +58,3 @@ export class BulkMarksDto {
   @Type(() => SingleMark)
   marks: SingleMark[];
 }
-
-export class BulkSubmitMarksDto {
-  @ApiProperty({ type: [SingleMark] })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => SingleMark)
-  marks: SingleMark[];
-}
-
-export class BulkApproveMarksDto {
-  @ApiProperty({ type: [SingleMark] })
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => SingleMark)
-  marks: SingleMark[];
-}

@@ -20,7 +20,6 @@ import { Subject, SubjectDocument } from '../subjects/schemas/subject.schema';
 import { Class, ClassDocument } from 'src/classes/schemas/class.schema';
 import { Term, TermDocument } from 'src/terms/schemas/term.schema';
 import { AcademicYear, AcademicYearDocument } from 'src/academic-year/schemas/academic-year.schema';
-import { Teacher, TeacherDocument } from 'src/teachers/schemas/teacher.schema';
 
 @Injectable()
 export class AssessmentService {
@@ -33,12 +32,12 @@ export class AssessmentService {
     @InjectModel(Class.name) private classModel: Model<ClassDocument>,
     @InjectModel(AcademicYear.name) private academicYearModel: Model<AcademicYearDocument>,
     @InjectModel(Term.name) private termModel: Model<TermDocument>,
-    @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
     @InjectModel(Subject.name) private subjectModel: Model<SubjectDocument>,
   ) {}
 
 async create(dto: CreateAssessmentDto): Promise<Assessment> {
   // Parallel checks (faster than sequential)
+  const [academicYear, term, subject, cls] = await Promise.all([
   const [academicYear, term, subject, cls] = await Promise.all([
     this.academicYearModel.findById(dto.academicYear),
     this.termModel.findById(dto.term),
@@ -64,16 +63,17 @@ async create(dto: CreateAssessmentDto): Promise<Assessment> {
     throw new BadRequestException('Class does not exist');
   }
   
+
   try {
     const created = await this.assessmentModel.create(dto);
 
-     await this.subjectModel.updateOne(
-    { _id: dto.subject },
-    {
-      $inc: { assessmentsCount: 1 },
-      $addToSet: { assessments: created._id }
-    }
-  );
+    await this.subjectModel.updateOne(
+      { _id: dto.subject },
+      {
+        $inc: { assessmentsCount: 1 },
+        $addToSet: { assessments: created._id },
+      },
+    );
     return created;
   } catch (error) {
     this.logger.error('Failed to create assessment', error as any);
@@ -103,7 +103,6 @@ async create(dto: CreateAssessmentDto): Promise<Assessment> {
       const query: any = {};
       if (filter.academicYear) query.academicYear = filter.academicYear;
       if (filter.term) query.term = filter.term;
-      if (filter.teacher) query.teacher = filter.teacher;
       if (filter.subject) query.subject = filter.subject;
       if (filter.class) query.class = filter.class;
       if (filter.status) query.status = filter.status;
@@ -122,7 +121,7 @@ async create(dto: CreateAssessmentDto): Promise<Assessment> {
           .find(query)
           .skip(skip)
           .limit(limit)
-          .populate(['teacher', 'subject', 'class', 'academicYear', 'term'])
+          .populate(['subject', 'class', 'academicYear', 'term'])
           .exec(),
         this.assessmentModel.countDocuments(query).exec(),
       ]);
@@ -143,7 +142,20 @@ async create(dto: CreateAssessmentDto): Promise<Assessment> {
     try {
       const assessment = await this.assessmentModel
         .findById(id)
-        .populate(['teacher', 'subject', 'class', 'academicYear', 'term'])
+        .populate([
+          'subject',
+          'academicYear',
+          'term',
+          {
+            path: 'class',
+            populate: {
+              path: 'students',
+              model: 'Student',
+              match: { isTrashed: false },
+              select: 'studentId name email phoneNumber gradeLevel status',
+            },
+          },
+        ])
         .exec();
       if (!assessment) throw new NotFoundException('Assessment not found');
       return assessment;

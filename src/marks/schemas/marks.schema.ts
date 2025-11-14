@@ -3,13 +3,6 @@ import { Document, Types } from 'mongoose';
 
 export type MarksDocument = Marks & Document;
 
-export enum MarkStatus {
-  DRAFT = 'draft',
-  SUBMITTED = 'submitted',
-  APPROVED = 'approved',
-  LOCKED = 'locked',
-}
-
 @Schema({ timestamps: true })
 export class Marks {
   @Prop({ type: Types.ObjectId, ref: 'Student', required: true, index: true })
@@ -18,14 +11,17 @@ export class Marks {
   @Prop({ type: Types.ObjectId, ref: 'Subject', required: true, index: true })
   subject: Types.ObjectId;
 
-  @Prop({ required: true, trim: true, index: true })
-  academicYear: string;
+  @Prop({ type: Types.ObjectId, ref: 'Class', index: true })
+  class?: Types.ObjectId;
 
   @Prop({ required: true, trim: true, index: true })
-  term: string;
+  academicYear: string; // e.g. "2023/2024"
 
-  @Prop({ type: Types.ObjectId, ref: 'Assessment', required: true, trim: true })
-  assessment: string;
+  @Prop({ required: true, trim: true, index: true })
+  term: string; // e.g. "Term 1"
+
+  @Prop({ type: Types.ObjectId, ref: 'Assessment', required: true, index: true })
+  assessment: Types.ObjectId;
 
   @Prop({ type: Number, required: true })
   score: number;
@@ -33,17 +29,14 @@ export class Marks {
   @Prop({ type: Number, default: 1 })
   weight?: number;
 
+  @Prop({ type: Number })
+  maxScore?: number;
+
+  @Prop({ trim: true })
+  assessmentType?: string;
+
   @Prop({ trim: true })
   comment?: string;
-
-  @Prop({
-    type: String,
-    enum: Object.values(MarkStatus),
-    default: MarkStatus.DRAFT,
-    index: true,
-  })
-  status: MarkStatus;
-
 
   @Prop({ type: Types.ObjectId, ref: 'Teacher' })
   createdBy?: Types.ObjectId;
@@ -53,8 +46,17 @@ export class Marks {
 }
 
 export const MarksSchema = SchemaFactory.createForClass(Marks);
+
+// 🔒 Enforce one unique mark per student–subject–assessment–term–year
 MarksSchema.index(
-  { student: 1, subject: 1, academicYear: 1, term: 1, assessmentType: 1 },
-  { unique: false },
+  { student: 1, subject: 1, academicYear: 1, term: 1, assessment: 1 },
+  { unique: true },
 );
-MarksSchema.index({ academicYear: 1, term: 1, class: 1, subject: 1 });
+
+// ⚡ Query optimization index (non-unique)
+MarksSchema.index({ academicYear: 1, term: 1, subject: 1 });
+
+// 📊 Performance analytics helper indexes
+MarksSchema.index({ student: 1, academicYear: 1, term: 1 });
+MarksSchema.index({ class: 1, academicYear: 1, term: 1 });
+

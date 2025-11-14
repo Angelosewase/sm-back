@@ -8,7 +8,6 @@ import { AssessmentService } from "./assessment.service";
 import { Marks, MarksSchema } from "src/marks/schemas/marks.schema";
 import { Term, TermSchema } from "src/terms/schemas/term.schema";
 import { AcademicYear, AcademicYearSchema } from "src/academic-year/schemas/academic-year.schema";
-import { Teacher, TeacherSchema } from "src/teachers/schemas/teacher.schema";
 
 @Module({
 imports: [
@@ -19,7 +18,6 @@ imports: [
         {name: Marks.name, schema: MarksSchema},
         {name: AcademicYear.name, schema: AcademicYearSchema},
         {name: Term.name, schema: TermSchema},
-        {name: Teacher.name, schema: TeacherSchema},
     ]),
 ],
 controllers: [AssessmentController],
