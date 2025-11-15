@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  Inject,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, FilterQuery, Types, ClientSession } from 'mongoose';
@@ -17,12 +18,16 @@ import { isInstance } from 'class-validator';
 import { School } from '../school/entities/school.entity';
 import { hash } from 'crypto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import EventEmitter2 from 'eventemitter2';
+import { EventType } from 'src/events/schemas/event.schema';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(School.name) private schoolModel: Model<School>,
+
+    @Inject('EVENT_EMITTER') private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async createUser(createUserDto: RegisterDto): Promise<User> {
@@ -45,10 +50,12 @@ export class UsersService {
         school,
       });
 
+      this.eventEmitter.emit(EventType.CREATE, 'User created', user._id, 'User', user._id);
       return this.userModel
         .findById(user._id)
         .select('-password -__v')
         .exec() as any;
+
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw new BadRequestException(error.message);
