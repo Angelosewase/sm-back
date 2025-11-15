@@ -7,11 +7,13 @@ import {
   AcademicYear,
   AcademicYearSchema,
 } from 'src/academic-year/schemas/academic-year.schema';
+import { Term, TermSchema } from 'src/terms/schemas/term.schema';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: AcademicYear.name, schema: AcademicYearSchema },
+      { name: Term.name, schema: TermSchema },
     ]),
   ],
   controllers: [AcademicYearController],

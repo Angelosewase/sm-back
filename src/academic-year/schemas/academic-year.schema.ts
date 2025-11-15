@@ -5,7 +5,7 @@ export type AcademicYearDocument = AcademicYear & Document;
 
 @Schema({ timestamps: true })
 export class AcademicYear {
-  @Prop({ required: true, trim: true, index: true })
+  @Prop({ required: true, trim: true, index: true, unique: true })
   label: string; // e.g. 2024/2025
 
   @Prop()
@@ -14,8 +14,8 @@ export class AcademicYear {
   @Prop()
   endDate?: Date;
 
-  @Prop({ default: false })
-  isActive?: boolean;
+  @Prop({ default: false, index: true })
+  isOpen?: boolean;
 }
 
 export const AcademicYearSchema = SchemaFactory.createForClass(AcademicYear);
