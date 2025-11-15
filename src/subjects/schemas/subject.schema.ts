@@ -11,11 +11,15 @@ export enum SubjectType {
 }
 
 export enum GradeLevel {
-  GRADE_9 = 'Grade 9',
-  GRADE_10 = 'Grade 10',
-  GRADE_11 = 'Grade 11',
-  GRADE_12 = 'Grade 12',
-  ALL_GRADES = 'All Grades',
+  NURSERY_1 = "ns1",
+  NURSERY_2 = "ns2",
+  NURSERY_3 = "ns3",
+  PRIMARY_1 = "p1",
+  PRIMARY_2 = "p2",
+  PRIMARY_3 = "p3",
+  PRIMARY_4 = "p4",
+  PRIMARY_5 = "p5",
+  PRIMARY_6 = "p6",
 }
 
 @Schema({ timestamps: true })
