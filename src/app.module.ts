@@ -19,6 +19,7 @@ import { StudentsModule } from './students/students.module';
 import { ReportsModule } from './reports/reports.module';
 import { AssessmentModule } from './assessments/assessment.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { PassMarksModule } from './pass-marks/pass-marks.module';
 import { EventsModule } from './events/events.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 
@@ -45,6 +46,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     StaffModule,
     AnalyticsModule,
     AssessmentModule,
+    PassMarksModule,
     EventsModule,
   ],
   controllers: [AppController],

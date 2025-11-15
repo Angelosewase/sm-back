@@ -37,7 +37,7 @@ export class ReportsController {
       );
 
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
     res.setHeader('Content-Length', buffer.length.toString());
 
     return res.send(buffer);
