@@ -27,7 +27,7 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(School.name) private schoolModel: Model<School>,
 
-    @Inject('EVENT_EMITTER') private readonly eventEmitter: EventEmitter2,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async createUser(createUserDto: RegisterDto): Promise<User> {
