@@ -1,8 +1,8 @@
-<html lang='fr'>
+<html lang='en'>
   <head>
     <meta charset='UTF-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
-    <title>Bulletin Scolaire - Badges</title>
+    <title>School Report - Badges</title>
     <style>
       * {
         margin: 0;
@@ -52,7 +52,7 @@
       .school-name {
         font-weight: bold;
         font-size: 18px;
-        color: #8b4513;
+        color: #1E90FF;
         margin-bottom: 5px;
       }
 
@@ -91,7 +91,7 @@
         padding: 15px;
         text-align: center;
         border: 1px solid #000;
-        background-color: #d2b48c;
+        background-color: #B3E5FF;
         font-weight: bold;
       }
 
@@ -123,19 +123,20 @@
         background-color: #ff8c00;
       }
 
-      .subjects-table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-
-      .subjects-table td {
-        padding: 15px;
-        border: 1px solid #000;
-        vertical-align: top;
+      .subjects-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        padding: 12px;
+        border-top: 2px solid #000;
+        border-bottom: 2px solid #000;
       }
 
       .subject-cell {
         background-color: white;
+        border: 1px solid #000;
+        padding: 15px;
+        text-align: center;
       }
 
       .subject-name {
@@ -201,13 +202,16 @@
     <div class='report-card'>
       <!-- Header -->
       <div class='header'>
+        {{#if assets.logoPath}}
+        <img src="{{assets.logoPath}}" alt="Logo" style="width:150px;height:80px;object-fit:contain;border:2px solid #ccc;" />
+        {{else}}
         <div class='logo-placeholder'>Logo</div>
+        {{/if}}
         <div class='school-info'>
-          <div class='school-name'>MALAIKA INTERNATIONAL SCHOOL</div>
+          <div class='school-name'>{{#if school.name}}{{school.name}}{{else}}SCHOOL{{/if}}</div>
           <div class='school-details'>
-            CAMBRIDGE AND PURE FRENCH PROGRAMS<br />
-            malaika.int.school@gmail.com<br />
-            Phone: +250 788 532 632
+            {{#if school.email}}{{school.email}}<br />{{/if}}
+            {{#if school.phone}}Phone: {{school.phone}}{{/if}}
           </div>
         </div>
         <div class='logo-placeholder'>Cambridge Assessment</div>
@@ -216,24 +220,30 @@
       <!-- Student Info -->
       <div class='student-info'>
         <div class='student-row'>
-          <span>Nom et prénom: Mironko Asher Beckett</span>
-          <span>2025-26 (Term 1)</span>
+          <span>Student Name: {{student.fullName}}</span>
+          <span>
+            {{#if report.period}}
+              {{#if report.periodLabel}}{{report.periodLabel}}: {{/if}}{{report.period}}
+            {{/if}}
+          </span>
         </div>
         <div class='student-row'>
-          <span>Classe: Moyenne Section (MS)</span>
+          <span>Class: {{student.class}}</span>
         </div>
       </div>
 
       <!-- Title -->
-      <div class='bulletin-title'>BULLETIN DE MI-SEMESTRE</div>
+      <div class='bulletin-title'>
+        {{#if report.title}}{{report.title}}{{else}}MID-TERM REPORT{{/if}}
+      </div>
 
       <!-- Legend Table -->
       <table class='legend-table'>
         <tr>
-          <td>Excellent</td>
-          <td>Très Bien</td>
-          <td>Bien</td>
-          <td>Passable</td>
+          <td>Excellent (≥85%)</td>
+          <td>Very Good (70–84%)</td>
+          <td>Good (50–69%)</td>
+          <td>Pass (0–49%)</td>
         </tr>
         <tr class='badge-row'>
           <td>
@@ -252,60 +262,38 @@
       </table>
 
       <!-- Subjects Grid -->
-      <table class='subjects-table'>
-        <tr>
-          <td class='subject-cell'>
-            <div class='subject-name'>Activités Physiques</div>
-            <div class='badge badge-green'></div>
-          </td>
-          <td class='subject-cell'>
-            <div class='subject-name'>Apprendre à vivre ensemble</div>
-            <div class='badge badge-yellow'></div>
-          </td>
-          <td class='subject-cell'>
-            <div class='subject-name'>Mobiliser le langage oral</div>
-            <div class='badge badge-green'></div>
-          </td>
-          <td class='subject-cell'>
-            <div class='subject-name'>Mobiliser le langage écrit</div>
-            <div class='badge badge-blue'></div>
-          </td>
-        </tr>
-        <tr>
-          <td class='subject-cell'>
-            <div class='subject-name'>Outils Mathématiques</div>
-            <div class='badge badge-green'></div>
-          </td>
-          <td class='subject-cell'>
-            <div class='subject-name'>Explorer le monde</div>
-            <div class='badge badge-green'></div>
-          </td>
-          <td class='subject-cell'>
-            <div class='subject-name'>Activités Artistiques</div>
-            <div class='badge badge-green'></div>
-          </td>
-          <td class='subject-cell'></td>
-        </tr>
-      </table>
+      <div class='subjects-grid'>
+        {{#if subjects}}
+          {{#each subjects}}
+            <div class='subject-cell'>
+              <div class='subject-name'>{{name}}</div>
+              <div class='badge {{indicatorClass}}'></div>
+              {{#if percentage}}<div style='margin-top:8px;font-size:12px;'>{{percentage}}</div>{{/if}}
+            </div>
+          {{/each}}
+        {{else}}
+          <div>No subjects available</div>
+        {{/if}}
+      </div>
 
       <!-- Teacher Section -->
       <div class='teacher-section'>
-        <div class='teacher-name'>Titulaire de la classe: KYAKIMWA KAKUNDIKA
-          FURAHA</div>
+        <div class='teacher-name'>
+          {{#if teacher.name}}Class teacher: {{teacher.name}}{{else}}Class teacher{{/if}}
+        </div>
         <div class='signature-placeholder'>Signature</div>
       </div>
 
       <!-- Footer -->
       <div class='footer'>
         <div class='director-section'>
-          <div class='director-title'>DIRECTEUR: UGIRAMAHORO ISSA</div>
-          <div class='director-title'>signature et cachet de l'école</div>
+          <div class='director-title'>DIRECTOR</div>
+          <div class='director-title'>Signature and school stamp</div>
           <div class='signature-placeholder'>Signature</div>
         </div>
         <div class='school-stamp'>
-          MALAIKA INTERNATIONAL SCHOOL<br />
-          TEL: 0788532632<br />
-          B.P 540<br />
+          {{#if school.name}}{{school.name}}<br />{{/if}}
+          {{#if school.phone}}TEL: {{school.phone}}<br />{{/if}}
           KIGALI - RWANDA
         </div>
       </div>

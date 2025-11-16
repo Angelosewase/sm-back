@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import {
@@ -49,6 +50,8 @@ export class StudentService {
     @InjectModel(Teacher.name)
     private readonly teacherModel: Model<TeacherDocument>,
   ) {}
+
+  private readonly logger = new Logger('StudentService');
 
   async registerStudent(dto: CreateStudentDto): Promise<Student> {
     const session = await this.studentModel.db.startSession();
@@ -129,7 +132,7 @@ export class StudentService {
     }
 
     if (status) {
-      filter.status = status;
+      filter.status = String(status).toLowerCase();
     }
 
     if (guardianRelationShip) {
@@ -160,12 +163,95 @@ export class StudentService {
       filter.school = new Types.ObjectId(schoolId);
     }
 
-    if (teacherId && isValidObjectId(teacherId)) {
-      const teacher = await this.teacherModel.findById(teacherId).exec();
-      if (!teacher) {
+    if (teacherId) {
+      // Verbose logs to help diagnose all cases
+      this.logger.log(
+        `findStudents teacher filter received teacher="${teacherId}", isValidObjectId=${isValidObjectId(
+          teacherId,
+        )}`,
+      );
+
+      let teacher: TeacherDocument | null = null;
+      let teacherLookupMode: 'byTeacherId' | 'byUserId' | 'none' = 'none';
+
+      if (isValidObjectId(teacherId)) {
+        teacher = await this.teacherModel.findById(teacherId).exec();
+        teacherLookupMode = 'byTeacherId';
+        if (!teacher) {
+          // Try resolving by user id if teacher id not found
+          teacher = await this.teacherModel
+            .findOne({ user: new Types.ObjectId(teacherId) })
+            .exec();
+          teacherLookupMode = 'byUserId';
+        }
+      } else {
+        // Not a valid ObjectId: we cannot query by _id/user reliably, log and short-circuit
+        this.logger.warn(
+          `Teacher filter value "${teacherId}" is not a valid ObjectId. Skipping teacher-based filter.`,
+        );
+      }
+
+      if (!teacher && isValidObjectId(teacherId)) {
+        this.logger.warn(
+          `Teacher not found with provided id "${teacherId}" (lookupMode=${teacherLookupMode})`,
+        );
         throw new NotFoundException(`Teacher with id ${teacherId} not found`);
       }
-      filter.class = { $in: teacher.assignedClasses };
+
+      if (teacher) {
+        const teacherObjectId =
+          teacher._id instanceof Types.ObjectId
+            ? (teacher._id as Types.ObjectId)
+            : new Types.ObjectId((teacher as any)._id);
+        const userObjectId =
+          (teacher as any).user instanceof Types.ObjectId
+            ? ((teacher as any).user as Types.ObjectId)
+            : new Types.ObjectId((teacher as any).user);
+
+        const assignedClassIds = (teacher.assignedClasses || []).map((id) =>
+          id instanceof Types.ObjectId ? id : new Types.ObjectId(id as any),
+        );
+
+        // Find classes where this teacher is classTeacher, handling both Teacher._id and User._id stored scenarios
+        const primaryClasses = await this.classModel
+          .find({ classTeacher: { $in: [teacherObjectId, userObjectId] } })
+          .select('_id classTeacher name')
+          .lean()
+          .exec();
+
+        const primaryClassIds = (primaryClasses || []).map((c: any) => c._id);
+
+        const allClassIds = Array.from(
+          new Set(
+            [...assignedClassIds, ...primaryClassIds].map((id) =>
+              (id as Types.ObjectId).toString(),
+            ),
+          ),
+        ).map((id) => new Types.ObjectId(id));
+
+        this.logger.log(
+          `Teacher filter resolved: lookupMode=${teacherLookupMode}, ` +
+            `assignedClasses=${assignedClassIds.map((x) => x.toString())}, ` +
+            `primaryClasses=${primaryClassIds.map((x) => x.toString())}, ` +
+            `finalClassIds=${allClassIds.map((x) => x.toString())}`,
+        );
+
+        // If no classes found, ensure filter yields none instead of all students
+        // Also include string representations to tolerate bad data where class is stored as a string
+        const classIdStrings = allClassIds.map((x) => x.toString());
+        const classFilterValues: (Types.ObjectId | string)[] = [
+          ...allClassIds,
+          ...classIdStrings,
+        ];
+        filter.class = classFilterValues.length
+          ? { $in: classFilterValues }
+          : { $in: [] };
+
+        // When teacher filter is active, ignore incoming status filter and include all
+        // non-suspended and non-graduated students.
+        const ignoredStatus = status ? String(status) : undefined;
+        filter.status = { $nin: ['suspended', 'graduated'] };
+      }
     }
 
     if (onlyTrashed) {
@@ -178,6 +264,8 @@ export class StudentService {
     const sortDirection = sortOrder === 'asc' ? 1 : -1;
 
     const skip = (page - 1) * limit;
+
+    
 
     const [data, total] = await Promise.all([
       this.studentModel

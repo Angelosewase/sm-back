@@ -41,6 +41,8 @@ export interface SubjectAssessmentPerformance {
 export interface SubjectAssessmentPerformanceFilters {
   term?: string;
   year?: string;
+  termId?: string;
+  academicYearId?: string;
   studentId?: string;
 }
 
@@ -103,9 +105,13 @@ export class StudentPerformanceService {
         subjectId: string | null;
         subjectName: string;
         subjectCode?: string;
-        totalScore: number;
-        totalMax: number;
-        terms: Map<string, { totalScore: number; totalMax: number }>;
+        subjectScaleMax: number;
+        weightedSum: number; // sum of (score/max) * weight
+        totalWeight: number; // sum of weights
+        terms: Map<
+          string,
+          { weightedSum: number; totalWeight: number; subjectScaleMax: number }
+        >;
       }
     >();
 
@@ -113,7 +119,9 @@ export class StudentPerformanceService {
       const { subjectId, subjectName, subjectCode, subjectKey } =
         this.extractSubjectInfo(mark);
       const score = this.toNumber(mark.score) ?? 0;
-      const maxScore = this.resolveMaxScore(mark);
+      const assessmentMax = this.resolveMaxScore(mark);
+      const subjectScaleMax = this.resolveSubjectScaleMax(mark);
+      const weight = this.resolveAssessmentWeight(mark);
       const termKey = mark.term ?? 'Unspecified';
 
       let subjectAcc = subjectMap.get(subjectKey);
@@ -122,23 +130,27 @@ export class StudentPerformanceService {
           subjectId,
           subjectName,
           subjectCode,
-          totalScore: 0,
-          totalMax: 0,
+          subjectScaleMax,
+          weightedSum: 0,
+          totalWeight: 0,
           terms: new Map(),
         };
         subjectMap.set(subjectKey, subjectAcc);
       }
 
-      subjectAcc.totalScore += score;
-      subjectAcc.totalMax += maxScore;
+      const normalized = assessmentMax > 0 ? score / assessmentMax : 0;
+      subjectAcc.weightedSum += normalized * weight;
+      subjectAcc.totalWeight += weight;
 
-      const termAcc = subjectAcc.terms.get(termKey) ?? {
-        totalScore: 0,
-        totalMax: 0,
-      };
+      const termAcc =
+        subjectAcc.terms.get(termKey) ?? {
+          weightedSum: 0,
+          totalWeight: 0,
+          subjectScaleMax,
+        };
 
-      termAcc.totalScore += score;
-      termAcc.totalMax += maxScore;
+      termAcc.weightedSum += normalized * weight;
+      termAcc.totalWeight += weight;
       subjectAcc.terms.set(termKey, termAcc);
     }
 
@@ -150,30 +162,38 @@ export class StudentPerformanceService {
     )
       .sort((a, b) => a.subjectName.localeCompare(b.subjectName))
       .map((subject) => {
-        overallScore += subject.totalScore;
-        overallMax += subject.totalMax;
+        const subjectWeightedAvg =
+          subject.totalWeight > 0 ? subject.weightedSum / subject.totalWeight : 0;
+        const subjectScaledScore = this.round(
+          subjectWeightedAvg * subject.subjectScaleMax,
+        );
+        const subjectScaledMax = this.round(subject.subjectScaleMax);
+
+        overallScore += subjectScaledScore;
+        overallMax += subjectScaledMax;
 
         const terms: SubjectTermBreakdown[] = Array.from(
           subject.terms.entries(),
-        ).map(([term, stats]) => ({
-          term,
-          totalScore: this.round(stats.totalScore),
-          totalMax: this.round(stats.totalMax),
-          percentage:
-            stats.totalMax > 0
-              ? this.round((stats.totalScore / stats.totalMax) * 100)
-              : null,
-        }));
+        ).map(([term, stats]) => {
+          const termWeightedAvg =
+            stats.totalWeight > 0 ? stats.weightedSum / stats.totalWeight : 0;
+          const termScaledScore = this.round(termWeightedAvg * stats.subjectScaleMax);
+          const termScaledMax = this.round(stats.subjectScaleMax);
+          return {
+            term,
+            totalScore: termScaledScore,
+            totalMax: termScaledMax,
+            percentage:
+              stats.totalWeight > 0 ? this.round(termWeightedAvg * 100) : null,
+          };
+        });
 
         return {
           subjectId: subject.subjectId,
           subjectName: subject.subjectName,
-          totalScore: this.round(subject.totalScore),
-          totalMax: this.round(subject.totalMax),
-          percentage:
-            subject.totalMax > 0
-              ? this.round((subject.totalScore / subject.totalMax) * 100)
-              : null,
+          totalScore: subjectScaledScore,
+          totalMax: subjectScaledMax,
+          percentage: subject.totalWeight > 0 ? this.round(subjectWeightedAvg * 100) : null,
           terms,
         };
       });
@@ -194,7 +214,7 @@ export class StudentPerformanceService {
   async getSubjectAssessmentPerformances(
     filters: SubjectAssessmentPerformanceFilters = {},
   ): Promise<SubjectAssessmentPerformance[]> {
-    const match = this.buildAssessmentFiltersMatch(filters);
+    const match = await this.buildAssessmentFiltersMatch(filters);
 
     const marks = await this.marksModel
       .find(match)
@@ -241,7 +261,7 @@ export class StudentPerformanceService {
   async getStudentAssessments(
     filters: SubjectAssessmentPerformanceFilters = {},
   ): Promise<StudentAssessmentDetail[]> {
-    const match = this.buildAssessmentFiltersMatch(filters);
+    const match = await this.buildAssessmentFiltersMatch(filters);
 
     const marks = await this.marksModel
       .find(match)
@@ -356,7 +376,7 @@ export class StudentPerformanceService {
       .populate([
         {
           path: 'assessment',
-          select: 'title AssessmentType maxScore deadline',
+          select: 'title AssessmentType maxScore deadline weight',
         },
         { path: 'subject', select: 'name code maxScore' },
         { path: 'class', select: 'name' },
@@ -396,6 +416,22 @@ export class StudentPerformanceService {
       if (candidate !== null) return candidate;
     }
     return 100;
+  }
+
+  private resolveSubjectScaleMax(mark: PopulatedMark): number {
+    const subjectMax = this.toNumber(this.getProp<number>(mark.subject, 'maxScore'));
+    return subjectMax !== null ? subjectMax : 100;
+  }
+
+  private resolveAssessmentWeight(mark: PopulatedMark): number {
+    const candidates = [
+      this.toNumber(this.getProp<number>(mark.assessment, 'weight')),
+      this.toNumber(mark.weight),
+    ];
+    for (const candidate of candidates) {
+      if (candidate !== null) return candidate;
+    }
+    return 1;
   }
 
   private toNumber(value: unknown): number | null {
@@ -538,7 +574,7 @@ export class StudentPerformanceService {
     return Math.round((value + Number.EPSILON) * 100) / 100;
   }
 
-  private buildAssessmentFiltersMatch(
+  private async buildAssessmentFiltersMatch(
     filters: SubjectAssessmentPerformanceFilters,
   ) {
     const match: Record<string, any> = {};
@@ -554,17 +590,21 @@ export class StudentPerformanceService {
       match.student = this.toObjectId(normalizedStudentId, 'studentId');
     }
 
-    if (normalizedTerm) {
+    // Prefer IDs if provided; directly match on stored IDs in Marks
+    if (filters.termId) {
+      match.term = this.toObjectId(filters.termId, 'termId');
+    } else if (normalizedTerm) {
       const termVariants = [normalizedTerm];
       if (/^\d+$/.test(normalizedTerm)) {
         termVariants.push(`Term ${normalizedTerm}`, `term ${normalizedTerm}`);
       }
-
       match.term =
         termVariants.length === 1 ? termVariants[0] : { $in: termVariants };
     }
 
-    if (normalizedYear) {
+    if (filters.academicYearId) {
+      match.academicYear = this.toObjectId(filters.academicYearId, 'academicYearId');
+    } else if (normalizedYear) {
       const escapedYear = normalizedYear.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       match.academicYear = normalizedYear.includes('/')
         ? normalizedYear

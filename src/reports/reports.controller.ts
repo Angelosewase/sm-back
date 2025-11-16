@@ -11,13 +11,13 @@ export class ReportsController {
   @Get('students/:studentId/report')
   @ApiParam({ name: 'studentId', description: 'Target student identifier' })
   @ApiQuery({
-    name: 'academicYear',
-    description: 'Academic year label (e.g. 2024/2025)',
+    name: 'academicYearId',
+    description: 'Academic year ObjectId',
     required: true,
   })
   @ApiQuery({
-    name: 'term',
-    description: 'Term or period label (e.g. Term 1)',
+    name: 'termId',
+    description: 'Term ObjectId',
     required: false,
   })
   @ApiOkResponse({
@@ -25,15 +25,15 @@ export class ReportsController {
   })
   async downloadStudentReport(
     @Param('studentId') studentId: string,
-    @Query('academicYear') academicYear: string,
-    @Query('term') term: string | undefined,
+    @Query('academicYearId') academicYearId: string,
+    @Query('termId') termId: string | undefined,
     @Res() res: Response,
   ) {
     const { buffer, fileName, contentType } =
       await this.reportsService.generateStudentReportPdf(
         studentId,
-        academicYear,
-        term,
+        academicYearId,
+        termId,
       );
 
     res.setHeader('Content-Type', contentType);
