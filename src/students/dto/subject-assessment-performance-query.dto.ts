@@ -1,24 +1,24 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsMongoId, IsOptional, IsString } from 'class-validator';
 
 export class SubjectAssessmentPerformanceQueryDto {
   @ApiPropertyOptional({
     description:
-      'Filter results by term. Use "all" to include every available term.',
-    example: '1',
+      'Filter results by term ID. Use "all" to include every available term.',
+    example: '655f7a0e7b3c2f4a1c9d1234',
   })
   @IsOptional()
-  @IsString()
-  term?: string;
+  @IsMongoId()
+  termId?: string;
 
   @ApiPropertyOptional({
     description:
-      'Filter results by academic year. Use "all" to include every year.',
-    example: '2024',
+      'Filter results by academic year ID. Use "all" to include every year.',
+    example: '655f79fd7b3c2f4a1c9d5678',
   })
   @IsOptional()
-  @IsString()
-  year?: string;
+  @IsMongoId()
+  academicYearId?: string;
 
   @ApiPropertyOptional({
     description:
