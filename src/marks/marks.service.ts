@@ -9,6 +9,10 @@ import { ClassesService } from 'src/classes/classes.service';
 import { Marks, MarksDocument } from 'src/marks/schemas/marks.schema';
 import { EnterMarkDto } from './dto/enter-mark.dto';
 import { Subject } from 'src/subjects/schemas/subject.schema';
+import {
+  Assessment,
+  AssessmentDocument,
+} from 'src/assessments/schemas/assessment-schema';
 
 function round(n: number) {
   return Math.round((n || 0) * 100) / 100;
@@ -19,6 +23,8 @@ export class MarksService {
   constructor(
     @InjectModel(Marks.name) private marksModel: Model<MarksDocument>,
     @InjectModel(Subject.name) private subjectModel: Model<Subject>,
+    @InjectModel(Assessment.name)
+    private assessmentModel: Model<AssessmentDocument>,
     private readonly classService: ClassesService,
   ) {}
 
@@ -34,7 +40,12 @@ export class MarksService {
         'Provided class id "' + dto.classId + '" not found',
       );
 
-    const max = subject.maxScore ?? 100;
+    // Prefer assessment-specific maxScore over subject.maxScore
+    const assessment = dto.assessmentId
+      ? await this.assessmentModel.findById(dto.assessmentId).exec()
+      : null;
+    const max =
+      (assessment?.maxScore as number | undefined) ?? subject.maxScore ?? 100;
     if (dto.score < 0 || dto.score > max) {
       throw new BadRequestException(`score must be between 0 and ${max}`);
     }
@@ -69,7 +80,13 @@ export class MarksService {
       if (patch.score < 0)
         throw new BadRequestException('score must be a positive number');
       const subject = await this.subjectModel.findById(m.subject).exec();
-      const max = subject?.maxScore ?? 100;
+      const assessment = m.assessment
+        ? await this.assessmentModel.findById(m.assessment).exec()
+        : null;
+      const max =
+        (assessment?.maxScore as number | undefined) ??
+        subject?.maxScore ??
+        100;
       if (patch.score > max) {
         throw new BadRequestException(`score must be between 0 and ${max}`);
       }

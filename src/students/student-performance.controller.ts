@@ -44,11 +44,13 @@ export class StudentPerformanceController {
         ? undefined
         : candidateStudentId;
 
-    return this.studentPerformanceService.getSubjectAssessmentPerformances({
-      term: query.term,
-      year: query.year,
+    const filters = {
+      termId: query.termId,
+      academicYearId: query.academicYearId,
       studentId: normalizedStudentId,
-    });
+    };
+
+    return this.studentPerformanceService.getSubjectAssessmentPerformances(filters);
   }
 
   @Get('assessments')
@@ -66,11 +68,13 @@ export class StudentPerformanceController {
         ? undefined
         : candidateStudentId;
 
-    return this.studentPerformanceService.getStudentAssessments({
-      term: query.term,
-      year: query.year,
+    const filters = {
+      termId: query.termId,
+      academicYearId: query.academicYearId,
       studentId: normalizedStudentId,
-    });
+    };
+
+    return this.studentPerformanceService.getStudentAssessments(filters);
   }
 }
 

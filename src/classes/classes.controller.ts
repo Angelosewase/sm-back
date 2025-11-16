@@ -92,8 +92,8 @@ export class ClassesController {
 
   @Get(':id/subjects')
   @ApiOperation({ summary: 'List subjects assigned to a class' })
-  async getClassSubjects(@Param('id') classId: string) {
-    return this.subjectService.listClassSubjects(classId);
+  async getClassSubjects(@Param('id') classId: string, @Query('teacher') teacher?: string) {
+    return this.subjectService.listClassSubjects(classId, teacher);
   }
 
   @Get('subject/:subjectId/classes')

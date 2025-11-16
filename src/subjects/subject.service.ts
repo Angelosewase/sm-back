@@ -105,7 +105,7 @@ export class SubjectService {
       .lean();
 
     // Step 3: Map subjects to stats
-    return classDoc.assignedSubjects.map((subject: any) => {
+    return filteredAssignedSubjects.map((subject: any) => {
       // Assessments for this subject/class
       const subjectAssessments = assessments.filter(
         (a) => a.subject.toString() === subject._id.toString(),
