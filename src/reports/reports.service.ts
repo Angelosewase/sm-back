@@ -9,6 +9,8 @@ import { Model, Types } from 'mongoose';
 import { ReportsPdfService, PrimaryReportContext } from './reports-pdf.service';
 import { StudentService } from 'src/students/student.service';
 import { StudentPerformanceService } from 'src/students/student-performance.service';
+import { AcademicYearService } from 'src/academic-year/academic-year.service';
+import { TermService } from 'src/terms/terms.service';
 import {
   Class,
   ClassDocument,
@@ -28,21 +30,23 @@ export class ReportsService {
     private readonly reportsPdfService: ReportsPdfService,
     private readonly studentService: StudentService,
     private readonly studentPerformanceService: StudentPerformanceService,
+    private readonly academicYearService: AcademicYearService,
+    private readonly termService: TermService,
     @InjectModel(Class.name)
     private readonly classModel: Model<ClassDocument>,
   ) {}
 
   async generateStudentReportPdf(
     studentId: string,
-    academicYear: string,
-    term?: string,
+    academicYearId: string,
+    termId?: string,
   ): Promise<ReportGenerationResult> {
     if (!studentId) {
       throw new BadRequestException('Student id is required');
     }
 
-    if (!academicYear) {
-      throw new BadRequestException('Academic year is required');
+    if (!academicYearId) {
+      throw new BadRequestException('Academic year id is required');
     }
 
     const student = await this.studentService.getStudentById(studentId);
@@ -58,18 +62,30 @@ export class ReportsService {
             path: 'classTeacher',
             populate: { path: 'user', select: 'name' },
           })
+          .populate('assignedSubjects')
           .lean()
           .exec()
       : null;
 
     const teacherName = this.resolveTeacherName(classInfo);
 
+    // Resolve academic year and term
+    const academicYear = await this.academicYearService.findById(academicYearId);
+    const academicYearLabel = (academicYear as any).label ?? '';
+
+    let termLabel: string | undefined;
+    if (termId) {
+      const term = await this.termService.findById(termId as any);
+      const order = (term as any)?.order;
+      termLabel = typeof order === 'number' ? `Term ${order}` : undefined;
+    }
+
     const performance = await this.studentPerformanceService.getStudentPerformanceSummary(
       studentId,
-      { academicYear, term },
+      { academicYear: academicYearLabel, term: termLabel },
     );
 
-    const subjects = performance.subjects.map((subject) => {
+    let subjects = performance.subjects.map((subject) => {
       const percentage = this.safePercentage(
         subject.totalScore,
         subject.totalMax,
@@ -85,21 +101,54 @@ export class ReportsService {
       };
     });
 
+    // If no recorded marks, list assigned subjects with zero scores
+    if ((!subjects || subjects.length === 0) && classInfo && Array.isArray((classInfo as any).assignedSubjects)) {
+      subjects = ((classInfo as any).assignedSubjects as any[]).map((s: any) => {
+        const max = typeof s?.maxScore === 'number' ? s.maxScore : 100;
+        const { grade, comment } = this.resolveGradeAndComment(0);
+        return {
+          name: s?.name ?? s?.shortName ?? '—',
+          maximum: this.formatNumber(max),
+          obtained: this.formatNumber(0),
+          grade,
+          comment,
+        };
+      });
+    }
+
     const overallPercentage = this.safePercentage(
       performance.overall.totalScore,
       performance.overall.totalMax,
     );
 
+    // Determine school info from populated student
+    const school = (student as any).school ?? null;
+    const schoolName = school?.name ?? '—';
+    const schoolEmail = school?.email ?? null;
+    const schoolPhone = school?.phoneNumber ?? null;
+
+    // Determine template by class grade level: ns1/ns2/ns3 => nursery, p1..p6 => primary
+    const gradeLevelRaw: string | null =
+      (classInfo?.gradeLevel as any) ?? ((student as any).gradeLevel ?? null);
+    const gradeLevel = typeof gradeLevelRaw === 'string' ? gradeLevelRaw.toLowerCase() : null;
+    const isNursery =
+      gradeLevel === 'ns1' || gradeLevel === 'ns2' || gradeLevel === 'ns3';
+
     const context: PrimaryReportContext = {
+      school: {
+        name: schoolName,
+        email: schoolEmail,
+        phone: schoolPhone,
+      },
       student: {
         fullName: (student as any).name ?? '—',
         class: classInfo?.name ?? this.nullableString((student as any).gradeLevel),
-        additionalInfo: this.composeStudentExtraInfo(student as any, academicYear),
+        additionalInfo: this.composeStudentExtraInfo(student as any, academicYearLabel),
       },
       report: {
-        title: term ? `BULLETIN - ${term}` : 'BULLETIN DU MI-TRIMESTRE',
+        title: termLabel ? `BULLETIN - ${termLabel}` : 'BULLETIN DU MI-TRIMESTRE',
         periodLabel: 'Année académique',
-        period: academicYear,
+        period: academicYearLabel,
       },
       subjects,
       summary: {
@@ -116,15 +165,15 @@ export class ReportsService {
       },
     };
 
-    const pdfBuffer = await this.reportsPdfService.renderPrimarySchoolReport(
-      context,
-    );
+    const pdfBuffer = isNursery
+      ? await this.reportsPdfService.renderNurserySchoolReport(context)
+      : await this.reportsPdfService.renderPrimarySchoolReport(context);
 
-    const safeTerm = term ? term.replace(/\s+/g, '-').toLowerCase() : 'report';
-    const fileName = `student-${studentId}-${safeTerm}-${academicYear}.pdf`;
+    const safeTerm = (termLabel ?? 'report').replace(/\s+/g, '-').toLowerCase();
+    const fileName = `student-${studentId}-${safeTerm}-${academicYearLabel}.pdf`;
 
     this.logger.log(
-      `Generated report for student ${studentId} (${academicYear} ${term ?? ''})`,
+      `Generated report for student ${studentId} (${academicYearLabel} ${termLabel ?? ''})`,
     );
 
     return {

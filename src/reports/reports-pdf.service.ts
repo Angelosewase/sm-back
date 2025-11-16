@@ -5,6 +5,11 @@ import Handlebars from 'handlebars';
 import puppeteer from 'puppeteer';
 
 export interface PrimaryReportContext {
+  school?: {
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  };
   student: {
     fullName: string;
     class?: string | null;
@@ -67,6 +72,41 @@ export class ReportsPdfService {
         : Buffer.from(pdfBuffer);
     } catch (error) {
       this.logger.error('Failed to render primary school report', error as Error);
+      throw error;
+    } finally {
+      await browser.close();
+    }
+  }
+
+  async renderNurserySchoolReport(context: PrimaryReportContext): Promise<Buffer> {
+    const template = await this.loadTemplate('nurserly-report.hbs');
+    const html = template(context);
+
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    try {
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.emulateMediaType('screen');
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '20px',
+          right: '20px',
+          bottom: '20px',
+          left: '20px',
+        },
+      });
+      await page.close();
+      return Buffer.isBuffer(pdfBuffer)
+        ? pdfBuffer
+        : Buffer.from(pdfBuffer);
+    } catch (error) {
+      this.logger.error('Failed to render nursery school report', error as Error);
       throw error;
     } finally {
       await browser.close();

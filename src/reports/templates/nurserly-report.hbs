@@ -52,7 +52,7 @@
       .school-name {
         font-weight: bold;
         font-size: 18px;
-        color: #8b4513;
+        color: #1E90FF;
         margin-bottom: 5px;
       }
 
@@ -91,7 +91,7 @@
         padding: 15px;
         text-align: center;
         border: 1px solid #000;
-        background-color: #d2b48c;
+        background-color: #B3E5FF;
         font-weight: bold;
       }
 
@@ -203,11 +203,10 @@
       <div class='header'>
         <div class='logo-placeholder'>Logo</div>
         <div class='school-info'>
-          <div class='school-name'>MALAIKA INTERNATIONAL SCHOOL</div>
+          <div class='school-name'>{{#if school.name}}{{school.name}}{{else}}ÉCOLE{{/if}}</div>
           <div class='school-details'>
-            CAMBRIDGE AND PURE FRENCH PROGRAMS<br />
-            malaika.int.school@gmail.com<br />
-            Phone: +250 788 532 632
+            {{#if school.email}}{{school.email}}<br />{{/if}}
+            {{#if school.phone}}Phone: {{school.phone}}{{/if}}
           </div>
         </div>
         <div class='logo-placeholder'>Cambridge Assessment</div>
@@ -216,16 +215,22 @@
       <!-- Student Info -->
       <div class='student-info'>
         <div class='student-row'>
-          <span>Nom et prénom: Mironko Asher Beckett</span>
-          <span>2025-26 (Term 1)</span>
+          <span>Nom et prénom: {{student.fullName}}</span>
+          <span>
+            {{#if report.period}}
+              {{#if report.periodLabel}}{{report.periodLabel}}: {{/if}}{{report.period}}
+            {{/if}}
+          </span>
         </div>
         <div class='student-row'>
-          <span>Classe: Moyenne Section (MS)</span>
+          <span>Classe: {{student.class}}</span>
         </div>
       </div>
 
       <!-- Title -->
-      <div class='bulletin-title'>BULLETIN DE MI-SEMESTRE</div>
+      <div class='bulletin-title'>
+        {{#if report.title}}{{report.title}}{{else}}BULLETIN DE MI-SEMESTRE{{/if}}
+      </div>
 
       <!-- Legend Table -->
       <table class='legend-table'>
@@ -290,8 +295,9 @@
 
       <!-- Teacher Section -->
       <div class='teacher-section'>
-        <div class='teacher-name'>Titulaire de la classe: KYAKIMWA KAKUNDIKA
-          FURAHA</div>
+        <div class='teacher-name'>
+          {{#if teacher.name}}Titulaire de la classe: {{teacher.name}}{{else}}Titulaire de la classe{{/if}}
+        </div>
         <div class='signature-placeholder'>Signature</div>
       </div>
 
@@ -303,9 +309,8 @@
           <div class='signature-placeholder'>Signature</div>
         </div>
         <div class='school-stamp'>
-          MALAIKA INTERNATIONAL SCHOOL<br />
-          TEL: 0788532632<br />
-          B.P 540<br />
+          {{#if school.name}}{{school.name}}<br />{{/if}}
+          {{#if school.phone}}TEL: {{school.phone}}<br />{{/if}}
           KIGALI - RWANDA
         </div>
       </div>

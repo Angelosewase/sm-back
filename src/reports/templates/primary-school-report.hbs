@@ -53,7 +53,7 @@
         .school-name {
             font-weight: bold;
             font-size: 18px;
-            color: #8B4513;
+            color: #1E90FF;
             margin-bottom: 5px;
         }
 
@@ -87,7 +87,7 @@
         }
 
         th {
-            background-color: #D2B48C;
+            background-color: #B3E5FF;
             padding: 12px;
             text-align: left;
             font-size: 13px;
@@ -183,11 +183,10 @@
         <div class="header">
             <div class="logo-placeholder">Logo</div>
             <div class="school-info">
-                <div class="school-name">MALAIKA INTERNATIONAL SCHOOL</div>
+                <div class="school-name">{{#if school.name}}{{school.name}}{{else}}ÉCOLE{{/if}}</div>
                 <div class="school-details">
-                    CAMBRIDGE AND PURE FRENCH PROGRAMS<br>
-                    malaika.int.school@gmail.com<br>
-                    Phone: +250 788 532 632
+                    {{#if school.email}}{{school.email}}<br>{{/if}}
+                    {{#if school.phone}}Phone: {{school.phone}}{{/if}}
                 </div>
             </div>
             <div class="logo-placeholder">Cambridge Assessment</div>
