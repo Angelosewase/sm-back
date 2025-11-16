@@ -76,8 +76,8 @@ export class SubjectService {
     return await this.classModel.findById(classId).populate('assignedSubjects');
   }
 
-  /** List subjects assigned to a class */
-async listClassSubjects(classId: string) {
+  /** List subjects assigned to a class, optionally filtered by teacher (unless teacher is the class teacher) */
+async listClassSubjects(classId: string, teacherId?: string) {
     // Step 1: Get the class and its subjects
     const classDoc = await this.classModel
       .findById(classId)
@@ -86,7 +86,27 @@ async listClassSubjects(classId: string) {
 
     if (!classDoc) throw new BadRequestException('Class not found');
     if(!classDoc.assignedSubjects) return [];
-    const assignedSubjectIds = classDoc.assignedSubjects.map((sub: any) => sub._id);
+
+    let filteredAssignedSubjects: any[] = classDoc.assignedSubjects as any[];
+
+    // If teacherId provided and teacher is NOT the class teacher, filter by teacher's subjectsCanTeach
+    if (teacherId) {
+      const teacher = await this.teacherModel.findById(teacherId).lean();
+      if (!teacher) throw new BadRequestException('Teacher not found');
+
+      const isClassTeacher =
+        classDoc.classTeacher &&
+        classDoc.classTeacher.toString() === teacherId.toString();
+
+      if (!isClassTeacher) {
+        const teacherSubjectIds = (teacher.subjectsCanTeach || []).map((id: any) => id.toString());
+        filteredAssignedSubjects = filteredAssignedSubjects.filter((sub: any) =>
+          teacherSubjectIds.includes(sub._id.toString())
+        );
+      }
+    }
+
+    const assignedSubjectIds = filteredAssignedSubjects.map((sub: any) => sub._id);
 
     // Step 2: Get assessments for class and its subjects
     const assessments = await this.assessmentModel
@@ -98,7 +118,7 @@ async listClassSubjects(classId: string) {
       .lean();
 
     // Step 3: Map subjects to stats
-    return classDoc.assignedSubjects.map((subject: any) => {
+    return filteredAssignedSubjects.map((subject: any) => {
       // Assessments for this subject/class
       const subjectAssessments = assessments.filter(a => a.subject.toString() === subject._id.toString());
       const doneAssessments = subjectAssessments.filter(a => a.status === AssessmentStatus.COMPLETED);
