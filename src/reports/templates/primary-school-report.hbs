@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bulletin Scolaire</title>
+    <title>School Report</title>
     <style>
         * {
             margin: 0;
@@ -181,9 +181,13 @@
     <div class="report-card">
         <!-- Header -->
         <div class="header">
+            {{#if assets.logoPath}}
+            <img src="{{assets.logoPath}}" alt="Logo" style="width:150px;height:80px;object-fit:contain;border:2px solid #ccc;" />
+            {{else}}
             <div class="logo-placeholder">Logo</div>
+            {{/if}}
             <div class="school-info">
-                <div class="school-name">{{#if school.name}}{{school.name}}{{else}}ÉCOLE{{/if}}</div>
+                <div class="school-name">{{#if school.name}}{{school.name}}{{else}}SCHOOL{{/if}}</div>
                 <div class="school-details">
                     {{#if school.email}}{{school.email}}<br>{{/if}}
                     {{#if school.phone}}Phone: {{school.phone}}{{/if}}
@@ -194,7 +198,7 @@
 
         <!-- Student Info -->
         <div class="student-info">
-            <div><strong>Nom et Prenom:</strong> {{student.fullName}}</div>
+            <div><strong>Student Name:</strong> {{student.fullName}}</div>
             <div>
                 {{#if report.period}}
                     {{#if report.periodLabel}}
@@ -205,7 +209,7 @@
             </div>
         </div>
         <div class="student-info" style="border-bottom: none;">
-            <div><strong>Classe:</strong> {{student.class}}</div>
+            <div><strong>Class:</strong> {{student.class}}</div>
             {{#if student.additionalInfo}}
                 <div>{{student.additionalInfo}}</div>
             {{/if}}
@@ -216,71 +220,98 @@
             {{#if report.title}}
                 {{report.title}}
             {{else}}
-                BULLETIN DU MI-TRIMESTRE
+                MID-TERM REPORT
             {{/if}}
         </div>
 
         <!-- Grades Table -->
-        <table>
+        {{#if yearView}}
+          <table>
             <thead>
-                <tr>
-                    <th>COURS</th>
-                    <th style="text-align: center;">MAXIMUM</th>
-                    <th style="text-align: center;">POINTS OBTENUS</th>
-                    <th style="text-align: center;">MENTION</th>
-                    <th>COMMENTAIRES</th>
-                </tr>
+              <tr>
+                <th>SUBJECT</th>
+                {{#each yearView.terms}}
+                  <th style="text-align: center;">{{label}} Max</th>
+                  <th style="text-align: center;">{{label}} Score</th>
+                  <th style="text-align: center;">{{label}} Grade</th>
+                {{/each}}
+              </tr>
             </thead>
             <tbody>
-                {{#if subjects}}
-                    {{#each subjects}}
-                        <tr class="subject-row">
-                            <td>{{name}}</td>
-                            <td style="text-align: center;">{{maximum}}</td>
-                            <td style="text-align: center;">{{obtained}}</td>
-                            <td style="text-align: center;">{{grade}}</td>
-                            <td>{{comment}}</td>
-                        </tr>
-                    {{/each}}
-                {{else}}
-                    <tr class="subject-row">
-                        <td colspan="5" style="text-align: center;">Aucun cours disponible</td>
-                    </tr>
-                {{/if}}
-                {{#if summary.percentage}}
-                    <tr class="percentage-row">
-                        <td>
-                            <strong>
-                                {{#if summary.percentageLabel}}
-                                    {{summary.percentageLabel}}
-                                {{else}}
-                                    Percentage
-                                {{/if}}
-                            </strong>
-                        </td>
-                        <td style="text-align: center;"><strong>{{summary.percentage}}</strong></td>
-                        <td colspan="3">
-                            {{#if summary.notes}}
-                                {{summary.notes}}
-                            {{/if}}
-                        </td>
-                    </tr>
-                {{/if}}
+              {{#each yearView.subjects}}
+                <tr class="subject-row">
+                  <td>{{name}}</td>
+                  {{#each byTerm}}
+                    <td style="text-align: center;">{{maximum}}</td>
+                    <td style="text-align: center;">{{obtained}}</td>
+                    <td style="text-align: center;">{{grade}}</td>
+                  {{/each}}
+                </tr>
+              {{/each}}
             </tbody>
-        </table>
+          </table>
+        {{else}}
+          <table>
+              <thead>
+                  <tr>
+                      <th>SUBJECT</th>
+                      <th style="text-align: center;">MAX</th>
+                      <th style="text-align: center;">SCORE</th>
+                      <th style="text-align: center;">GRADE</th>
+                      <th>COMMENTS</th>
+                  </tr>
+              </thead>
+              <tbody>
+                  {{#if subjects}}
+                      {{#each subjects}}
+                          <tr class="subject-row">
+                              <td>{{name}}</td>
+                              <td style="text-align: center;">{{maximum}}</td>
+                              <td style="text-align: center;">{{obtained}}</td>
+                              <td style="text-align: center;">{{grade}}</td>
+                              <td>{{comment}}</td>
+                          </tr>
+                      {{/each}}
+                  {{else}}
+                      <tr class="subject-row">
+                          <td colspan="5" style="text-align: center;">No subjects available</td>
+                      </tr>
+                  {{/if}}
+                  {{#if summary.percentage}}
+                      <tr class="percentage-row">
+                          <td>
+                              <strong>
+                                  {{#if summary.percentageLabel}}
+                                      {{summary.percentageLabel}}
+                                  {{else}}
+                                      Percentage
+                                  {{/if}}
+                              </strong>
+                          </td>
+                          <td style="text-align: center;"><strong>{{summary.percentage}}</strong></td>
+                          <td colspan="3">
+                              {{#if summary.notes}}
+                                  {{summary.notes}}
+                              {{/if}}
+                          </td>
+                      </tr>
+                  {{/if}}
+              </tbody>
+          </table>
+        {{/if}}
 
         <!-- Code Section -->
         <div class="code-section">
             <div>
-                <strong>Code</strong>
+                <strong>Scale</strong>
             </div>
             <div>
                 A: EXCELLENT (9-10)<br>
-                B: TRÈS BIEN (7-8)
+                B: VERY GOOD (7-8)
             </div>
             <div>
-                C: BIEN (5-6)<br>
-                D: PASSABLE (0-4)
+                C: GOOD (5-6)<br>
+                D: PASS (0-4)
             </div>
         </div>
 
@@ -288,9 +319,9 @@
         <div class="teacher-section">
             <div class="teacher-name">
                 {{#if teacher.name}}
-                    Titulaire de la classe: {{teacher.name}}
+                    Class teacher: {{teacher.name}}
                 {{else}}
-                    Titulaire de la classe
+                    Class teacher
                 {{/if}}
             </div>
             {{#if teacher.additionalNotes}}
@@ -302,14 +333,13 @@
         <!-- Footer -->
         <div class="footer">
             <div class="director-section">
-                <div class="director-title">DIRECTEUR: UGIRAMAHORO ISSA</div>
-                <div class="director-title">SIGNATURE ET CACHET DE L'ÉCOLE</div>
+                <div class="director-title">DIRECTOR</div>
+                <div class="director-title">SIGNATURE AND SCHOOL STAMP</div>
                 <div class="signature-placeholder">Signature</div>
             </div>
             <div class="school-stamp">
-                MALAIKA INTERNATIONAL SCHOOL<br>
-                TEL: 0788532632<br>
-                B.P 7483<br>
+                {{#if school.name}}{{school.name}}<br>{{/if}}
+                {{#if school.phone}}TEL: {{school.phone}}<br>{{/if}}
                 KIGALI - RWANDA
             </div>
         </div>

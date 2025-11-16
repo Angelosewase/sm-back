@@ -1,8 +1,8 @@
-<html lang='fr'>
+<html lang='en'>
   <head>
     <meta charset='UTF-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
-    <title>Bulletin Scolaire - Badges</title>
+    <title>School Report - Badges</title>
     <style>
       * {
         margin: 0;
@@ -201,9 +201,13 @@
     <div class='report-card'>
       <!-- Header -->
       <div class='header'>
+        {{#if assets.logoPath}}
+        <img src="{{assets.logoPath}}" alt="Logo" style="width:150px;height:80px;object-fit:contain;border:2px solid #ccc;" />
+        {{else}}
         <div class='logo-placeholder'>Logo</div>
+        {{/if}}
         <div class='school-info'>
-          <div class='school-name'>{{#if school.name}}{{school.name}}{{else}}ÉCOLE{{/if}}</div>
+          <div class='school-name'>{{#if school.name}}{{school.name}}{{else}}SCHOOL{{/if}}</div>
           <div class='school-details'>
             {{#if school.email}}{{school.email}}<br />{{/if}}
             {{#if school.phone}}Phone: {{school.phone}}{{/if}}
@@ -215,7 +219,7 @@
       <!-- Student Info -->
       <div class='student-info'>
         <div class='student-row'>
-          <span>Nom et prénom: {{student.fullName}}</span>
+          <span>Student Name: {{student.fullName}}</span>
           <span>
             {{#if report.period}}
               {{#if report.periodLabel}}{{report.periodLabel}}: {{/if}}{{report.period}}
@@ -223,22 +227,22 @@
           </span>
         </div>
         <div class='student-row'>
-          <span>Classe: {{student.class}}</span>
+          <span>Class: {{student.class}}</span>
         </div>
       </div>
 
       <!-- Title -->
       <div class='bulletin-title'>
-        {{#if report.title}}{{report.title}}{{else}}BULLETIN DE MI-SEMESTRE{{/if}}
+        {{#if report.title}}{{report.title}}{{else}}MID-TERM REPORT{{/if}}
       </div>
 
       <!-- Legend Table -->
       <table class='legend-table'>
         <tr>
           <td>Excellent</td>
-          <td>Très Bien</td>
-          <td>Bien</td>
-          <td>Passable</td>
+          <td>Very Good</td>
+          <td>Good</td>
+          <td>Pass</td>
         </tr>
         <tr class='badge-row'>
           <td>
@@ -260,33 +264,33 @@
       <table class='subjects-table'>
         <tr>
           <td class='subject-cell'>
-            <div class='subject-name'>Activités Physiques</div>
+            <div class='subject-name'>Physical Activities</div>
             <div class='badge badge-green'></div>
           </td>
           <td class='subject-cell'>
-            <div class='subject-name'>Apprendre à vivre ensemble</div>
+            <div class='subject-name'>Learn to live together</div>
             <div class='badge badge-yellow'></div>
           </td>
           <td class='subject-cell'>
-            <div class='subject-name'>Mobiliser le langage oral</div>
+            <div class='subject-name'>Develop oral language</div>
             <div class='badge badge-green'></div>
           </td>
           <td class='subject-cell'>
-            <div class='subject-name'>Mobiliser le langage écrit</div>
+            <div class='subject-name'>Develop written language</div>
             <div class='badge badge-blue'></div>
           </td>
         </tr>
         <tr>
           <td class='subject-cell'>
-            <div class='subject-name'>Outils Mathématiques</div>
+            <div class='subject-name'>Mathematics Tools</div>
             <div class='badge badge-green'></div>
           </td>
           <td class='subject-cell'>
-            <div class='subject-name'>Explorer le monde</div>
+            <div class='subject-name'>Explore the world</div>
             <div class='badge badge-green'></div>
           </td>
           <td class='subject-cell'>
-            <div class='subject-name'>Activités Artistiques</div>
+            <div class='subject-name'>Artistic Activities</div>
             <div class='badge badge-green'></div>
           </td>
           <td class='subject-cell'></td>
@@ -296,7 +300,7 @@
       <!-- Teacher Section -->
       <div class='teacher-section'>
         <div class='teacher-name'>
-          {{#if teacher.name}}Titulaire de la classe: {{teacher.name}}{{else}}Titulaire de la classe{{/if}}
+          {{#if teacher.name}}Class teacher: {{teacher.name}}{{else}}Class teacher{{/if}}
         </div>
         <div class='signature-placeholder'>Signature</div>
       </div>
@@ -304,8 +308,8 @@
       <!-- Footer -->
       <div class='footer'>
         <div class='director-section'>
-          <div class='director-title'>DIRECTEUR: UGIRAMAHORO ISSA</div>
-          <div class='director-title'>signature et cachet de l'école</div>
+          <div class='director-title'>DIRECTOR</div>
+          <div class='director-title'>Signature and school stamp</div>
           <div class='signature-placeholder'>Signature</div>
         </div>
         <div class='school-stamp'>

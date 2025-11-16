@@ -5,6 +5,9 @@ import Handlebars from 'handlebars';
 import puppeteer from 'puppeteer';
 
 export interface PrimaryReportContext {
+  assets?: {
+    logoPath?: string;
+  };
   school?: {
     name?: string | null;
     email?: string | null;
@@ -20,13 +23,30 @@ export interface PrimaryReportContext {
     periodLabel?: string | null;
     period?: string | null;
   };
-  subjects: Array<{
+  // Single-term subjects (nursery and primary term view)
+  subjects?: Array<{
     name: string;
     maximum: string | number;
     obtained: string | number;
     grade: string;
     comment: string;
   }>;
+  // Multi-term layout for primary year view
+  yearView?: {
+    terms: Array<{ label: string }>;
+    subjects: Array<{
+      name: string;
+      byTerm: Array<{
+        maximum: string | number;
+        obtained: string | number;
+        grade: string;
+      }>;
+    }>;
+    overall?: {
+      percentage?: string | null;
+      notes?: string | null;
+    };
+  };
   summary?: {
     percentageLabel?: string | null;
     percentage?: string | null;

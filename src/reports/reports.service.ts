@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import * as path from 'path';
 import { ReportsPdfService, PrimaryReportContext } from './reports-pdf.service';
 import { StudentService } from 'src/students/student.service';
 import { StudentPerformanceService } from 'src/students/student-performance.service';
@@ -80,53 +81,6 @@ export class ReportsService {
       termLabel = typeof order === 'number' ? `Term ${order}` : undefined;
     }
 
-    const performance = await this.studentPerformanceService.getStudentPerformanceSummary(
-      studentId,
-      { academicYear: academicYearLabel, term: termLabel },
-    );
-
-    let subjects = performance.subjects.map((subject) => {
-      const percentage = this.safePercentage(
-        subject.totalScore,
-        subject.totalMax,
-      );
-      const { grade, comment } = this.resolveGradeAndComment(percentage);
-
-      return {
-        name: subject.subjectName,
-        maximum: this.formatNumber(subject.totalMax),
-        obtained: this.formatNumber(subject.totalScore),
-        grade,
-        comment,
-      };
-    });
-
-    // If no recorded marks, list assigned subjects with zero scores
-    if ((!subjects || subjects.length === 0) && classInfo && Array.isArray((classInfo as any).assignedSubjects)) {
-      subjects = ((classInfo as any).assignedSubjects as any[]).map((s: any) => {
-        const max = typeof s?.maxScore === 'number' ? s.maxScore : 100;
-        const { grade, comment } = this.resolveGradeAndComment(0);
-        return {
-          name: s?.name ?? s?.shortName ?? '—',
-          maximum: this.formatNumber(max),
-          obtained: this.formatNumber(0),
-          grade,
-          comment,
-        };
-      });
-    }
-
-    const overallPercentage = this.safePercentage(
-      performance.overall.totalScore,
-      performance.overall.totalMax,
-    );
-
-    // Determine school info from populated student
-    const school = (student as any).school ?? null;
-    const schoolName = school?.name ?? '—';
-    const schoolEmail = school?.email ?? null;
-    const schoolPhone = school?.phoneNumber ?? null;
-
     // Determine template by class grade level: ns1/ns2/ns3 => nursery, p1..p6 => primary
     const gradeLevelRaw: string | null =
       (classInfo?.gradeLevel as any) ?? ((student as any).gradeLevel ?? null);
@@ -134,7 +88,142 @@ export class ReportsService {
     const isNursery =
       gradeLevel === 'ns1' || gradeLevel === 'ns2' || gradeLevel === 'ns3';
 
+    let subjects: Array<any> | undefined;
+    let summaryPercentage: string | null = null;
+    let summaryNotes: string | null = null;
+    let yearView:
+      | {
+          terms: Array<{ label: string }>;
+          subjects: Array<{
+            name: string;
+            byTerm: Array<{ maximum: string | number; obtained: string | number; grade: string }>;
+          }>;
+          overall?: { percentage?: string | null; notes?: string | null };
+        }
+      | undefined;
+
+    if (!termLabel && !isNursery) {
+      // Primary full-year view across 3 terms
+      const termLabels = ['Term 1', 'Term 2', 'Term 3'];
+      const subjectNameToIndex = new Map<string, number>();
+      const yearSubjects: Array<{
+        name: string;
+        byTerm: Array<{ maximum: string | number; obtained: string | number; grade: string }>;
+      }> = [];
+
+      // Seed from assigned subjects to ensure all appear
+      const assigned = Array.isArray((classInfo as any)?.assignedSubjects)
+        ? ((classInfo as any).assignedSubjects as any[])
+        : [];
+      for (const s of assigned) {
+        const name = s?.name ?? s?.shortName ?? '—';
+        if (!subjectNameToIndex.has(name)) {
+          subjectNameToIndex.set(name, yearSubjects.length);
+          yearSubjects.push({
+            name,
+            byTerm: [
+              { maximum: this.formatNumber(s?.maxScore ?? 100), obtained: this.formatNumber(0), grade: 'D' },
+              { maximum: this.formatNumber(s?.maxScore ?? 100), obtained: this.formatNumber(0), grade: 'D' },
+              { maximum: this.formatNumber(s?.maxScore ?? 100), obtained: this.formatNumber(0), grade: 'D' },
+            ],
+          });
+        }
+      }
+
+      for (let i = 0; i < termLabels.length; i++) {
+        const tLabel = termLabels[i];
+        const perf = await this.studentPerformanceService.getStudentPerformanceSummary(studentId, {
+          academicYear: academicYearLabel,
+          term: tLabel,
+        });
+        for (const sub of perf.subjects) {
+          const name = sub.subjectName;
+          const idx =
+            subjectNameToIndex.get(name) ?? (() => {
+              const newIndex = yearSubjects.length;
+              subjectNameToIndex.set(name, newIndex);
+              const defaultMax = sub.totalMax ?? 100;
+              yearSubjects.push({
+                name,
+                byTerm: [
+                  { maximum: this.formatNumber(defaultMax), obtained: this.formatNumber(0), grade: 'D' },
+                  { maximum: this.formatNumber(defaultMax), obtained: this.formatNumber(0), grade: 'D' },
+                  { maximum: this.formatNumber(defaultMax), obtained: this.formatNumber(0), grade: 'D' },
+                ],
+              });
+              return newIndex;
+            })();
+          const percentage = this.safePercentage(sub.totalScore, sub.totalMax);
+          const { grade } = this.resolveGradeAndComment(percentage);
+          yearSubjects[idx].byTerm[i] = {
+            maximum: this.formatNumber(sub.totalMax),
+            obtained: this.formatNumber(sub.totalScore),
+            grade,
+          };
+        }
+      }
+
+      yearView = {
+        terms: termLabels.map((l) => ({ label: l })),
+        subjects: yearSubjects,
+        overall: undefined,
+      };
+    } else {
+      // Single term (or nursery combined)
+      const performance = await this.studentPerformanceService.getStudentPerformanceSummary(
+        studentId,
+        { academicYear: academicYearLabel, term: termLabel },
+      );
+
+      subjects = performance.subjects.map((subject) => {
+        const percentage = this.safePercentage(subject.totalScore, subject.totalMax);
+        const { grade, comment } = this.resolveGradeAndComment(percentage);
+
+        return {
+          name: subject.subjectName,
+          maximum: this.formatNumber(subject.totalMax),
+          obtained: this.formatNumber(subject.totalScore),
+          grade,
+          comment,
+        };
+      });
+
+      // If no recorded marks, list assigned subjects with zero scores
+      if ((!subjects || subjects.length === 0) && classInfo && Array.isArray((classInfo as any).assignedSubjects)) {
+        subjects = ((classInfo as any).assignedSubjects as any[]).map((s: any) => {
+          const max = typeof s?.maxScore === 'number' ? s.maxScore : 100;
+          const { grade, comment } = this.resolveGradeAndComment(0);
+          return {
+            name: s?.name ?? s?.shortName ?? '—',
+            maximum: this.formatNumber(max),
+            obtained: this.formatNumber(0),
+            grade,
+            comment,
+          };
+        });
+      }
+
+      const overallPercentage = this.safePercentage(
+        performance.overall.totalScore,
+        performance.overall.totalMax,
+      );
+      summaryPercentage = overallPercentage !== null ? `${overallPercentage.toFixed(1)}%` : null;
+      summaryNotes =
+        performance.overall.totalMax > 0
+          ? `Total obtained: ${this.formatNumber(performance.overall.totalScore)} / ${this.formatNumber(performance.overall.totalMax)}`
+          : null;
+    }
+
+    // Determine school info from populated student
+    const school = (student as any).school ?? null;
+    const schoolName = school?.name ?? '—';
+    const schoolEmail = school?.email ?? null;
+    const schoolPhone = school?.phoneNumber ?? null;
+
     const context: PrimaryReportContext = {
+      assets: {
+        logoPath: path.resolve(process.cwd(), 'assets', 'logo.png'),
+      },
       school: {
         name: schoolName,
         email: schoolEmail,
@@ -146,22 +235,19 @@ export class ReportsService {
         additionalInfo: this.composeStudentExtraInfo(student as any, academicYearLabel),
       },
       report: {
-        title: termLabel ? `BULLETIN - ${termLabel}` : 'BULLETIN DU MI-TRIMESTRE',
-        periodLabel: 'Année académique',
+        title: !termLabel && !isNursery ? 'ANNUAL REPORT' : termLabel ? `REPORT - ${termLabel}` : 'MID-TERM REPORT',
+        periodLabel: 'Academic Year',
         period: academicYearLabel,
       },
       subjects,
+      yearView,
       summary: {
-        percentageLabel: 'Pourcentage',
-        percentage:
-          overallPercentage !== null ? `${overallPercentage.toFixed(1)}%` : null,
-        notes:
-          performance.overall.totalMax > 0
-            ? `Total obtenu: ${this.formatNumber(performance.overall.totalScore)} / ${this.formatNumber(performance.overall.totalMax)}`
-            : null,
+        percentageLabel: 'Percentage',
+        percentage: summaryPercentage,
+        notes: summaryNotes,
       },
       teacher: {
-        name: teacherName ?? 'Titulaire non assigné',
+        name: teacherName ?? 'Class teacher not assigned',
       },
     };
 
@@ -261,12 +347,12 @@ export class ReportsService {
   private composeStudentExtraInfo(student: any, academicYear: string): string | null {
     const parts: string[] = [];
     if (student.gradeLevel) {
-      parts.push(`Niveau: ${student.gradeLevel}`);
+      parts.push(`Level: ${student.gradeLevel}`);
     }
     if (student.studentId) {
-      parts.push(`Matricule: ${student.studentId}`);
+      parts.push(`Student ID: ${student.studentId}`);
     }
-    parts.push(`Année: ${academicYear}`);
+    parts.push(`Year: ${academicYear}`);
     return parts.length ? parts.join(' • ') : null;
   }
 
