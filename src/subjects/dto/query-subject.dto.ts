@@ -1,7 +1,7 @@
 import { GradeLevel } from '../schemas/subject.schema';
 
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsOptional,
   IsString,
@@ -11,7 +11,9 @@ import {
   Min,
   Max,
   IsEnum,
+  IsBoolean,
 } from 'class-validator';
+import { booleanTransformer } from 'src/classes/dto/query-classes.dto';
 
 export class QuerySubjectDto {
   @ApiPropertyOptional({
@@ -67,6 +69,24 @@ export class QuerySubjectDto {
   @IsOptional()
   @IsString()
   gradeLevel?: GradeLevel;
+
+  @ApiPropertyOptional({
+    description: 'Include trashed subjects in the results',
+    example: false,
+  })
+  @IsOptional()
+  @Transform(booleanTransformer)
+  @IsBoolean()
+  includeTrashed?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Return only trashed subjects',
+    example: false,
+  })
+  @IsOptional()
+  @Transform(booleanTransformer)
+  @IsBoolean()
+  onlyTrashed?: boolean;
 
   @ApiPropertyOptional({ description: 'Filter by subject type' })
   @IsOptional()

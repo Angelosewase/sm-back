@@ -11,15 +11,15 @@ export enum SubjectType {
 }
 
 export enum GradeLevel {
-  NURSERY_1 = "ns1",
-  NURSERY_2 = "ns2",
-  NURSERY_3 = "ns3",
-  PRIMARY_1 = "p1",
-  PRIMARY_2 = "p2",
-  PRIMARY_3 = "p3",
-  PRIMARY_4 = "p4",
-  PRIMARY_5 = "p5",
-  PRIMARY_6 = "p6",
+  NURSERY_1 = 'ns1',
+  NURSERY_2 = 'ns2',
+  NURSERY_3 = 'ns3',
+  PRIMARY_1 = 'p1',
+  PRIMARY_2 = 'p2',
+  PRIMARY_3 = 'p3',
+  PRIMARY_4 = 'p4',
+  PRIMARY_5 = 'p5',
+  PRIMARY_6 = 'p6',
 }
 
 @Schema({ timestamps: true })
@@ -73,6 +73,11 @@ export class Subject {
   @Prop({ type: [Types.ObjectId], ref: 'Assessment', default: [] })
   assessments?: Types.ObjectId[];
 
+  @Prop({ default: false })
+  isTrashed?: boolean;
+
+  @Prop({ type: Date, default: null })
+  trashedAt?: Date | null;
 }
 
 export const SubjectSchema = SchemaFactory.createForClass(Subject);

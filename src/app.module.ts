@@ -20,12 +20,15 @@ import { ReportsModule } from './reports/reports.module';
 import { AssessmentModule } from './assessments/assessment.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { PassMarksModule } from './pass-marks/pass-marks.module';
+import { EventsModule } from './events/events.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    EventEmitterModule.forRoot(),
     MongooseModule.forRoot(process.env.MONGODB_URI as string),
     AuthModule,
     UsersModule,
@@ -44,6 +47,7 @@ import { PassMarksModule } from './pass-marks/pass-marks.module';
     AnalyticsModule,
     AssessmentModule,
     PassMarksModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
