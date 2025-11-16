@@ -29,7 +29,7 @@ export class SeederService {
   async seedSchoolAndAdmin(): Promise<void> {
     // ---- 2. Ensure the admin user exists -------------------------------
     const adminData: SeedUser = {
-      email: 'admin@app.com',
+      email: 'theodufi.rw@gmail.com',
       name: 'Super Admin',
       role: Role.ADMIN,
       passwordRaw: 'Secret@123',

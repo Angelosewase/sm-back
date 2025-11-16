@@ -33,6 +33,7 @@ import {
   AssignSubjectToClassWithTeacherDto,
   AssignSubjectToTeacherDto,
 } from './dto/assign-subject.dto';
+import { BulkSubjectActionDto } from './dto/bulk-subject-action.dto';
 
 @ApiTags('Subjects')
 @Controller('api/subjects')
@@ -81,6 +82,23 @@ export class SubjectController {
     return this.subjectService.deleteSubject(id);
   }
 
+  @Patch(':id/restore')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Restore a trashed subject' })
+  @ApiResponse({ status: 200, description: 'Subject restored' })
+  async restore(@Param('id') id: string) {
+    return this.subjectService.restore(id);
+  }
+
+  @Delete(':id/permanent')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Permanently delete a trashed subject' })
+  @ApiResponse({ status: 200, description: 'Subject permanently deleted' })
+  async removePermanently(@Param('id') id: string) {
+    return this.subjectService.removePermanently(id);
+  }
 
   @Delete('remove-from-class')
   async removeFromClass(
@@ -98,58 +116,75 @@ export class SubjectController {
     );
   }
 
-
   // Query endpoints
   @Get('class/:classId/subjects')
-  async getClassSubjects(
-    @Param('classId') classId: string,
-  ) {
-    return this.subjectService.listClassSubjects(classId)
+  async getClassSubjects(@Param('classId') classId: string) {
+    return this.subjectService.listClassSubjects(classId);
   }
-
 
   @Get('teacher/:teacherId/subjects')
   async getTeacherSubjects(
     @Param('teacherId') teacherId: string,
-    @Query() query: QuerySubjectDto
+    @Query() query: QuerySubjectDto,
   ) {
     return this.subjectService.listTeacherSubjects(teacherId, query);
   }
   @Get('all-assignments/subjects')
-  async getAllAssignedSubjects(
-   @Query() query: QuerySubjectDto
-  ) {
+  async getAllAssignedSubjects(@Query() query: QuerySubjectDto) {
     return this.subjectService.findAll(query);
   }
 
+  @Post('bulk/trash')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Bulk move subjects to trash' })
+  async bulkTrash(@Body() dto: BulkSubjectActionDto) {
+    return this.subjectService.bulkTrash(dto.ids);
+  }
 
+  @Post('bulk/restore')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Bulk restore trashed subjects' })
+  async bulkRestore(@Body() dto: BulkSubjectActionDto) {
+    return this.subjectService.bulkRestore(dto.ids);
+  }
+
+  @Post('bulk/permanent')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Bulk permanently delete trashed subjects' })
+  async bulkRemovePermanently(@Body() dto: BulkSubjectActionDto) {
+    return this.subjectService.bulkRemovePermanently(dto.ids);
+  }
 
   // subjects.controller.ts
 
   @Get(':subjectId/stats')
   @ApiOperation({
     summary: 'Get dashboard stats for a subject',
-    description: 'Returns aggregated dashboard stats for a subject by ID, with options to filter by class or term.'
+    description:
+      'Returns aggregated dashboard stats for a subject by ID, with options to filter by class or term.',
   })
   @ApiParam({
     name: 'subjectId',
     description: 'The unique identifier of the subject',
     type: String,
-    example: '507f1f77bcf86cd799439011'
+    example: '507f1f77bcf86cd799439011',
   })
   @ApiQuery({
     name: 'classId',
     required: false,
     description: 'Optional class ID if filtering for a specific class',
     type: String,
-    example: '507f1f77bcf86cd799439012'
+    example: '507f1f77bcf86cd799439012',
   })
   @ApiQuery({
     name: 'term',
     required: false,
     description: 'Optional term ID if filtering for a school term',
     type: String,
-    example: 'First Term 2024'
+    example: 'First Term 2024',
   })
   @ApiResponse({
     status: 200,
@@ -161,9 +196,9 @@ export class SubjectController {
         totalWeight: 55,
         averageScore: 61.9,
         completionRate: 50,
-        latestMarkDate: "2025-10-18T10:20:00.001Z"
-      }
-    }
+        latestMarkDate: '2025-10-18T10:20:00.001Z',
+      },
+    },
   })
   async getSubjectStats(
     @Param('subjectId') subjectId: string,
@@ -173,36 +208,50 @@ export class SubjectController {
     return this.subjectService.getSubjectStats(subjectId, classId, term);
   }
 
-
-@Get(':subjectId/assessments')
+  @Get(':subjectId/assessments')
   @ApiOperation({
     summary: 'Get all assessments for a subject',
-    description: 'Returns all assessments for a subject, with stats, by subject ID and optional class/term filtering'
+    description:
+      'Returns all assessments for a subject, with stats, by subject ID and optional class/term filtering',
   })
-  @ApiParam({ name: 'subjectId', description: 'Subject unique ID', example: '507f1f77bcf86cd799439011' })
-  @ApiQuery({ name: 'classId', required: false, description: 'Optional class ID', example: '507f1f77bcf86cd799439012' })
-  @ApiQuery({ name: 'term', required: false, description: 'Optional term filter', example: 'First Term 2024' })
+  @ApiParam({
+    name: 'subjectId',
+    description: 'Subject unique ID',
+    example: '507f1f77bcf86cd799439011',
+  })
+  @ApiQuery({
+    name: 'classId',
+    required: false,
+    description: 'Optional class ID',
+    example: '507f1f77bcf86cd799439012',
+  })
+  @ApiQuery({
+    name: 'term',
+    required: false,
+    description: 'Optional term filter',
+    example: 'First Term 2024',
+  })
   @ApiResponse({
     status: 200,
     description: 'Assessment summary for subject',
     schema: {
       example: [
         {
-          assessmentId: "6534f09d5eddb825aefe4bb1",
-          title: "Quiz 1 - Grammar Basics",
-          assessmentType: "Quiz",
+          assessmentId: '6534f09d5eddb825aefe4bb1',
+          title: 'Quiz 1 - Grammar Basics',
+          assessmentType: 'Quiz',
           weight: 10,
-          createdAt: "2024-10-15T00:00:00.001Z",
+          createdAt: '2024-10-15T00:00:00.001Z',
           maxScore: 20,
-          class: "Primary 5A",
+          class: 'Primary 5A',
           completedCount: 28,
           totalCount: 28,
           completionRate: 100,
           averageScore: 16.5,
-          status: "Completed"
-        }
-      ]
-    }
+          status: 'Completed',
+        },
+      ],
+    },
   })
   async getSubjectAssessments(
     @Param('subjectId') subjectId: string,
@@ -211,8 +260,4 @@ export class SubjectController {
   ) {
     return this.subjectService.getSubjectAssessments(subjectId, classId, term);
   }
-
-
 }
-
-
