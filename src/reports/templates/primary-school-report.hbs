@@ -235,6 +235,7 @@
                   <th style="text-align: center;">{{label}} Score</th>
                   <th style="text-align: center;">{{label}} Grade</th>
                 {{/each}}
+                <th style="text-align: center;">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -246,6 +247,7 @@
                     <td style="text-align: center;">{{obtained}}</td>
                     <td style="text-align: center;">{{grade}}</td>
                   {{/each}}
+                  <td style="text-align: center;"></td>
                 </tr>
               {{/each}}
             </tbody>
@@ -306,12 +308,15 @@
                 <strong>Scale</strong>
             </div>
             <div>
-                A: EXCELLENT (9-10)<br>
-                B: VERY GOOD (7-8)
+                A+: 90-100<br>
+                A: 80-89
             </div>
             <div>
-                C: GOOD (5-6)<br>
-                D: PASS (0-4)
+                B: 70-79<br>
+                C: 60-69<br>
+                D: 50-59<br>
+                E: 40-49<br>
+                F: 0-39
             </div>
         </div>
 

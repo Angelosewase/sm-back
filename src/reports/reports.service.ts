@@ -12,6 +12,7 @@ import { StudentService } from 'src/students/student.service';
 import { StudentPerformanceService } from 'src/students/student-performance.service';
 import { AcademicYearService } from 'src/academic-year/academic-year.service';
 import { TermService } from 'src/terms/terms.service';
+import { PassMarksService } from 'src/pass-marks/pass-marks.service';
 import {
   Class,
   ClassDocument,
@@ -33,6 +34,7 @@ export class ReportsService {
     private readonly studentPerformanceService: StudentPerformanceService,
     private readonly academicYearService: AcademicYearService,
     private readonly termService: TermService,
+    private readonly passMarksService: PassMarksService,
     @InjectModel(Class.name)
     private readonly classModel: Model<ClassDocument>,
   ) {}
@@ -104,7 +106,9 @@ export class ReportsService {
 
     if (!termLabel && !isNursery) {
       // Primary full-year view across 3 terms
-      const termLabels = ['Term 1', 'Term 2', 'Term 3'];
+      const terms = await this.termService.findByAcademicYear(academicYearId);
+      const termLabels = terms.map((t: any) => (t?.order ? `Term ${t.order}` : (t?.name ?? 'Term')));
+      const termIds = terms.map((t: any) => t?._id?.toString()).filter(Boolean) as string[];
       const subjectNameToIndex = new Map<string, number>();
       const yearSubjects: Array<{
         name: string;
@@ -130,11 +134,11 @@ export class ReportsService {
         }
       }
 
-      for (let i = 0; i < termLabels.length; i++) {
-        const tLabel = termLabels[i];
+      for (let i = 0; i < termIds.length; i++) {
+        const tId = termIds[i];
         const perf = await this.studentPerformanceService.getStudentPerformanceSummary(studentId, {
-          academicYear: academicYearLabel,
-          term: tLabel,
+          academicYear: academicYearId,
+          term: tId,
         });
         for (const sub of perf.subjects) {
           const name = sub.subjectName;
@@ -154,7 +158,7 @@ export class ReportsService {
               return newIndex;
             })();
           const percentage = this.safePercentage(sub.totalScore, sub.totalMax);
-          const { grade } = this.resolveGradeAndComment(percentage);
+          const { grade } = this.resolvePrimaryGrade(percentage);
           yearSubjects[idx].byTerm[i] = {
             maximum: this.formatNumber(sub.totalMax),
             obtained: this.formatNumber(sub.totalScore),
@@ -172,12 +176,14 @@ export class ReportsService {
       // Single term (or nursery combined)
       const performance = await this.studentPerformanceService.getStudentPerformanceSummary(
         studentId,
-        { academicYear: academicYearLabel, term: termLabel },
+        { academicYear: academicYearId, term: termId },
       );
 
       subjects = performance.subjects.map((subject) => {
         const percentage = this.safePercentage(subject.totalScore, subject.totalMax);
-        const { grade, comment } = this.resolveGradeAndComment(percentage);
+        const { grade, comment } = isNursery
+          ? this.resolveNurseryMention(percentage)
+          : this.resolvePrimaryGrade(percentage);
 
         return {
           name: subject.subjectName,
@@ -220,9 +226,29 @@ export class ReportsService {
     const schoolEmail = school?.email ?? null;
     const schoolPhone = school?.phoneNumber ?? null;
 
+    // Promotion/Status based on pass-marks
+    const schoolId = this.extractObjectId((student as any).school);
+    let promotionStatus: string | null = null;
+    if (schoolId) {
+      const passCfg = await this.passMarksService.findBySchool(schoolId);
+      if (passCfg) {
+        const pctNumber =
+          summaryPercentage && summaryPercentage.endsWith('%')
+            ? Number(summaryPercentage.replace('%', ''))
+            : null;
+        if (pctNumber !== null && Number.isFinite(pctNumber)) {
+          if (pctNumber >= passCfg.passMark) promotionStatus = 'Promoted';
+          else if (pctNumber >= passCfg.secondSittingMin && pctNumber <= passCfg.secondSittingMax)
+            promotionStatus = 'Second sitting';
+          else if (pctNumber < passCfg.failMark) promotionStatus = 'Repeat';
+        }
+      }
+    }
+
+    const { pathToFileURL } = await import('url');
     const context: PrimaryReportContext = {
       assets: {
-        logoPath: path.resolve(process.cwd(), 'assets', 'logo.png'),
+        logoPath: pathToFileURL(path.resolve(process.cwd(), 'assets', 'logo.png')).href,
       },
       school: {
         name: schoolName,
@@ -244,7 +270,7 @@ export class ReportsService {
       summary: {
         percentageLabel: 'Percentage',
         percentage: summaryPercentage,
-        notes: summaryNotes,
+        notes: [summaryNotes, promotionStatus ? `Status: ${promotionStatus}` : null].filter(Boolean).join(' • '),
       },
       teacher: {
         name: teacherName ?? 'Class teacher not assigned',
@@ -296,21 +322,27 @@ export class ReportsService {
     return (Number(score) / Number(max)) * 100;
   }
 
-  private resolveGradeAndComment(percentage: number | null) {
+  private resolvePrimaryGrade(percentage: number | null) {
     if (percentage === null) {
-      return { grade: 'D', comment: 'PASSABLE' };
+      return { grade: 'F', comment: 'Fail' };
     }
+    if (percentage >= 90) return { grade: 'A+', comment: 'Excellent' };
+    if (percentage >= 80) return { grade: 'A', comment: 'Very good' };
+    if (percentage >= 70) return { grade: 'B', comment: 'Good' };
+    if (percentage >= 60) return { grade: 'C', comment: 'Satisfactory' };
+    if (percentage >= 50) return { grade: 'D', comment: 'Pass' };
+    if (percentage >= 40) return { grade: 'E', comment: 'Borderline' };
+    return { grade: 'F', comment: 'Fail' };
+  }
 
-    if (percentage >= 85) {
-      return { grade: 'A', comment: 'EXCELLENT' };
+  private resolveNurseryMention(percentage: number | null) {
+    if (percentage === null) {
+      return { grade: 'Pass', comment: 'Pass' };
     }
-    if (percentage >= 70) {
-      return { grade: 'B', comment: 'TRÈS BIEN' };
-    }
-    if (percentage >= 50) {
-      return { grade: 'C', comment: 'BIEN' };
-    }
-    return { grade: 'D', comment: 'PASSABLE' };
+    if (percentage >= 85) return { grade: 'Excellent', comment: 'Excellent' };
+    if (percentage >= 70) return { grade: 'Very Good', comment: 'Very Good' };
+    if (percentage >= 50) return { grade: 'Good', comment: 'Good' };
+    return { grade: 'Pass', comment: 'Pass' };
   }
 
   private formatNumber(value: number | null | undefined): string {

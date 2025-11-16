@@ -5,6 +5,7 @@ import { StudentsModule } from 'src/students/students.module';
 import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
 import { AcademicYearModule } from 'src/academic-year/academic-year.module';
 import { TermModule } from 'src/terms/terms.module';
+import { PassMarksModule } from 'src/pass-marks/pass-marks.module';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
 import { ReportsPdfService } from './reports-pdf.service';
@@ -15,6 +16,7 @@ import { ReportsPdfService } from './reports-pdf.service';
     StudentsModule,
     AcademicYearModule,
     TermModule,
+    PassMarksModule,
     MongooseModule.forFeature([{ name: Class.name, schema: ClassSchema }]),
   ],
   controllers: [ReportsController],
