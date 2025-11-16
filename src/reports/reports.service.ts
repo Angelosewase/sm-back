@@ -186,12 +186,18 @@ export class ReportsService {
           ? this.resolveNurseryMention(percentage)
           : this.resolvePrimaryGrade(percentage);
 
+        const indicatorClass = isNursery
+          ? this.resolveNurseryBadgeClass(percentage)
+          : undefined;
+
         return {
           name: subject.subjectName,
           maximum: this.formatNumber(subject.totalMax),
           obtained: this.formatNumber(subject.totalScore),
           grade,
           comment,
+          percentage: percentage !== null ? `${percentage.toFixed(0)}%` : null,
+          indicatorClass,
         };
       });
 
@@ -208,6 +214,8 @@ export class ReportsService {
             obtained: this.formatNumber(0),
             grade,
             comment,
+            percentage: '0%',
+            indicatorClass: isNursery ? this.resolveNurseryBadgeClass(0) : undefined,
           };
         });
       }
@@ -354,6 +362,14 @@ export class ReportsService {
     if (percentage >= 70) return { grade: 'Very Good', comment: 'Very Good' };
     if (percentage >= 50) return { grade: 'Good', comment: 'Good' };
     return { grade: 'Pass', comment: 'Pass' };
+  }
+
+  private resolveNurseryBadgeClass(percentage: number | null): string {
+    if (percentage === null) return 'badge-orange';
+    if (percentage >= 85) return 'badge-yellow';
+    if (percentage >= 70) return 'badge-green';
+    if (percentage >= 50) return 'badge-blue';
+    return 'badge-orange';
   }
 
   private formatNumber(value: number | null | undefined): string {

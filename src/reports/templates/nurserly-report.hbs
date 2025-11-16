@@ -123,19 +123,20 @@
         background-color: #ff8c00;
       }
 
-      .subjects-table {
-        width: 100%;
-        border-collapse: collapse;
-      }
-
-      .subjects-table td {
-        padding: 15px;
-        border: 1px solid #000;
-        vertical-align: top;
+      .subjects-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        padding: 12px;
+        border-top: 2px solid #000;
+        border-bottom: 2px solid #000;
       }
 
       .subject-cell {
         background-color: white;
+        border: 1px solid #000;
+        padding: 15px;
+        text-align: center;
       }
 
       .subject-name {
@@ -261,41 +262,19 @@
       </table>
 
       <!-- Subjects Grid -->
-      <table class='subjects-table'>
-        <tr>
-          <td class='subject-cell'>
-            <div class='subject-name'>Physical Activities</div>
-            <div class='badge badge-green'></div>
-          </td>
-          <td class='subject-cell'>
-            <div class='subject-name'>Learn to live together</div>
-            <div class='badge badge-yellow'></div>
-          </td>
-          <td class='subject-cell'>
-            <div class='subject-name'>Develop oral language</div>
-            <div class='badge badge-green'></div>
-          </td>
-          <td class='subject-cell'>
-            <div class='subject-name'>Develop written language</div>
-            <div class='badge badge-blue'></div>
-          </td>
-        </tr>
-        <tr>
-          <td class='subject-cell'>
-            <div class='subject-name'>Mathematics Tools</div>
-            <div class='badge badge-green'></div>
-          </td>
-          <td class='subject-cell'>
-            <div class='subject-name'>Explore the world</div>
-            <div class='badge badge-green'></div>
-          </td>
-          <td class='subject-cell'>
-            <div class='subject-name'>Artistic Activities</div>
-            <div class='badge badge-green'></div>
-          </td>
-          <td class='subject-cell'></td>
-        </tr>
-      </table>
+      <div class='subjects-grid'>
+        {{#if subjects}}
+          {{#each subjects}}
+            <div class='subject-cell'>
+              <div class='subject-name'>{{name}}</div>
+              <div class='badge {{indicatorClass}}'></div>
+              {{#if percentage}}<div style='margin-top:8px;font-size:12px;'>{{percentage}}</div>{{/if}}
+            </div>
+          {{/each}}
+        {{else}}
+          <div>No subjects available</div>
+        {{/if}}
+      </div>
 
       <!-- Teacher Section -->
       <div class='teacher-section'>
