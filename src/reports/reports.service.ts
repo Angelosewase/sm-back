@@ -7,6 +7,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as path from 'path';
+import { promises as fs } from 'fs';
 import { ReportsPdfService, PrimaryReportContext } from './reports-pdf.service';
 import { StudentService } from 'src/students/student.service';
 import { StudentPerformanceService } from 'src/students/student-performance.service';
@@ -198,7 +199,9 @@ export class ReportsService {
       if ((!subjects || subjects.length === 0) && classInfo && Array.isArray((classInfo as any).assignedSubjects)) {
         subjects = ((classInfo as any).assignedSubjects as any[]).map((s: any) => {
           const max = typeof s?.maxScore === 'number' ? s.maxScore : 100;
-          const { grade, comment } = this.resolveGradeAndComment(0);
+          const { grade, comment } = isNursery
+            ? this.resolveNurseryMention(0)
+            : this.resolvePrimaryGrade(0);
           return {
             name: s?.name ?? s?.shortName ?? '—',
             maximum: this.formatNumber(max),
@@ -245,10 +248,18 @@ export class ReportsService {
       }
     }
 
-    const { pathToFileURL } = await import('url');
+    // Prepare logo as data URL to ensure visibility in headless PDF
+    const logoFsPath = path.resolve(process.cwd(), 'assets', 'logo.png');
+    let logoSrc = undefined as string | undefined;
+    try {
+      const logoBuffer = await fs.readFile(logoFsPath);
+      logoSrc = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+    } catch {
+      logoSrc = undefined;
+    }
     const context: PrimaryReportContext = {
       assets: {
-        logoPath: pathToFileURL(path.resolve(process.cwd(), 'assets', 'logo.png')).href,
+        logoPath: logoSrc,
       },
       school: {
         name: schoolName,
