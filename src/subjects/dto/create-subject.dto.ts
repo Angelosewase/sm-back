@@ -5,8 +5,9 @@ import {
   IsString,
   IsNumber,
   MaxLength,
+  IsArray,
 } from 'class-validator';
-import { SubjectType } from '../schemas/subject.schema';
+import { SubjectStatus, SubjectType } from '../schemas/subject.schema';
 
 export class CreateSubjectDto {
   @ApiProperty({
@@ -105,8 +106,8 @@ export class CreateSubjectDto {
     description: 'Grade level',
   })
   @IsOptional()
-  @IsString()
-  gradeLevel?: string;
+  @IsArray()
+  gradeLevels?: string[];
 
   @ApiProperty({
     required: false,
@@ -115,7 +116,7 @@ export class CreateSubjectDto {
   })
   @IsOptional()
   @IsString()
-  status?: string;
+  status?: SubjectStatus;
 
   @ApiProperty({
     required: false,

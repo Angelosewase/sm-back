@@ -23,13 +23,12 @@ export interface AnalyticsResponseDto {
   // Overall trend
   trend: {
     change: string; // "+8.7%"
-    label: string;  // "Trending up by 8.7% this period"
+    label: string; // "Trending up by 8.7% this period"
   };
 
   // Gender distribution (current academic year)
   genderDistribution: GenderDistributionItem[];
 }
-
 
 export interface RegistrationAnalyticsDto {
   timeSeries: {
@@ -43,8 +42,6 @@ export interface RegistrationAnalyticsDto {
   };
   genderDistribution: GenderDistributionItem[];
 }
-
-
 
 // analytics.dto.ts
 export interface StudentPerformanceDto {
@@ -103,4 +100,13 @@ export interface SchoolPerformanceAnalyticsDto {
     totalStudents: number;
     totalAssessments: number;
   };
+}
+
+export interface HeadTeacherSubjectStatsDto {
+  totalSubjects: number;
+  totalTeachers: number;
+  averageClassSize: number;
+  averagePerformance: number; // 0-100 (percentage)
+  performanceGrade: string;
+  schoolId: string;
 }

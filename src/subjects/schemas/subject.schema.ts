@@ -22,6 +22,11 @@ export enum GradeLevel {
   PRIMARY_6 = 'p6',
 }
 
+export enum SubjectStatus {
+  ACTIVE = 'Active',
+  INACTIVE = 'Inactive',
+}
+
 @Schema({ timestamps: true })
 export class Subject {
   @Prop({ trim: true, unique: true })
@@ -64,7 +69,13 @@ export class Subject {
   @Prop({ trim: true })
   prerequisites?: string;
 
-  @Prop({ trim: true, index: true, default: 'active' })
+
+  @Prop({
+    trim: true,
+    index: true,
+    enum: Object.values(SubjectStatus),
+    default: SubjectStatus.ACTIVE,
+  })
   status?: string;
 
   @Prop({ type: Types.ObjectId, ref: 'School' })

@@ -1,7 +1,7 @@
 import { GradeLevel } from '../schemas/subject.schema';
 
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
+import { Transform, TransformFnParams, Type } from 'class-transformer';
 import {
   IsOptional,
   IsString,
@@ -13,7 +13,23 @@ import {
   IsEnum,
   IsBoolean,
 } from 'class-validator';
-import { booleanTransformer } from 'src/classes/dto/query-classes.dto';
+
+
+export const booleanTransformer = ({
+  value,
+}: TransformFnParams): boolean | undefined => {
+  console.log("the value is ", value)
+
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+
+  if (typeof value === 'string') {
+    return value.trim().toLowerCase() === 'true';
+  }
+
+  return value === true;
+};
 
 export class QuerySubjectDto {
   @ApiPropertyOptional({

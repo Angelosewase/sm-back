@@ -1,18 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsNumber, MaxLength } from 'class-validator';
+import { IsOptional, IsString, IsNumber, MaxLength, IsArray } from 'class-validator';
 
 export class UpdateSubjectDto {
   @ApiProperty({ required: false, example: 'Mathematics' })
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  subjectName?: string;
+  name?: string;
 
   @ApiProperty({ required: false, example: 'MATH101' })
   @IsOptional()
   @IsString()
   @MaxLength(30)
-  subjectCode?: string;
+  code?: string;
 
   @ApiProperty({ required: false, example: 'Math' })
   @IsOptional()
@@ -69,6 +69,15 @@ export class UpdateSubjectDto {
 
   @ApiProperty({
     required: false,
+    example: 'Grade 10',
+    description: 'Grade level',
+  })
+  @IsOptional()
+  @IsArray()
+  gradeLevels?: string[];
+
+  @ApiProperty({
+    required: false,
     example: 'Active',
     description: 'Status: Active | Inactive',
   })
@@ -84,4 +93,13 @@ export class UpdateSubjectDto {
   @IsOptional()
   @IsString()
   prerequisites?: string;
+
+  @ApiProperty({
+    required: false,
+    example: 'class description',
+    description: 'Description of the class',
+  })
+  @IsOptional()
+  @IsString()
+  description?: string;
 }

@@ -9,7 +9,16 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
-import { ApiBody, ApiOkResponse, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+  ApiQuery,
+} from '@nestjs/swagger';
+import { ClassPerformanceQueryDto } from './dto/class-performance-query.dto';
 import { ClassesService } from './classes.service';
 import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
@@ -22,7 +31,8 @@ import { TeachersService } from 'src/teachers/teachers.service';
 @ApiTags('classes')
 @Controller('api/classes')
 export class ClassesController {
-  constructor(private readonly classesService: ClassesService,
+  constructor(
+    private readonly classesService: ClassesService,
     private readonly subjectService: SubjectService,
     private readonly teacherService: TeachersService,
   ) {}
@@ -77,16 +87,21 @@ export class ClassesController {
     return this.classesService.bulkRemovePermanently(bulkClassActionDto.ids);
   }
 
-
   @Post(':id/assign-subjects')
   @ApiOperation({ summary: 'Assign subjects to class' })
-  async assignSubjects(@Param('id') classId: string, @Body('subjectIds') subjectIds: string[]) {
+  async assignSubjects(
+    @Param('id') classId: string,
+    @Body('subjectIds') subjectIds: string[],
+  ) {
     return this.subjectService.assignSubjectsToClass(classId, subjectIds);
   }
 
   @Put(':id/remove-subject/:subjectId')
   @ApiOperation({ summary: 'Remove a subject from class' })
-  async removeSubject(@Param('id') classId: string, @Param('subjectId') subjectId: string) {
+  async removeSubject(
+    @Param('id') classId: string,
+    @Param('subjectId') subjectId: string,
+  ) {
     return this.subjectService.removeSubjectFromClass(classId, subjectId);
   }
 
@@ -111,14 +126,16 @@ export class ClassesController {
     @Param('id') classId: string,
     @Body() assignDto: AssignTeacherDto,
   ) {
-    return await this.classesService.assignClassTeacher(classId, assignDto.teacherId);
+    return await this.classesService.assignClassTeacher(
+      classId,
+      assignDto.teacherId,
+    );
   }
-
 
   // DASHBOARD ENDPOINTS
   /**Class stats endpoints for returning average, class capacities */
 
-   @Get('class-stats')
+  @Get('class-stats')
   @ApiOperation({ summary: 'Get class statistics for dashboard' })
   @ApiOkResponse({
     schema: {
@@ -127,11 +144,24 @@ export class ClassesController {
         activeClasses: 0,
         averageCapacity: 0,
         utilizationRate: 0,
-      }
-    }
+      },
+    },
   })
   async getClassStats(@Query('schoolId') schoolId?: string) {
     return this.classesService.getClassStats(schoolId);
   }
-}
 
+  @Get(':id/performance')
+  @ApiOperation({
+    summary: 'Get detailed performance analytics for a class (filterable).',
+  })
+  @ApiOkResponse({
+    description: 'Class performance analytics ready for charts.',
+  })
+  async getClassPerformance(
+    @Param('id') id: string,
+    @Query() query: ClassPerformanceQueryDto,
+  ) {
+    return this.classesService.getClassPerformance(id, query);
+  }
+}

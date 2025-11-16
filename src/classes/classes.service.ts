@@ -15,6 +15,14 @@ import { QueryClassesDto } from './dto/query-classes.dto';
 import { Teacher, TeacherDocument } from '../teachers/schemas/teacher.schema';
 import moment from 'moment';
 import { StudentDocument } from 'src/students/schemas/student.schema';
+import { create } from 'handlebars/runtime';
+import { Marks, MarksDocument } from 'src/marks/schemas/marks.schema';
+import {
+  Assessment,
+  AssessmentDocument,
+} from 'src/assessments/schemas/assessment-schema';
+import { Student } from 'src/students/schemas/student.schema';
+import { SchoolService } from 'src/school/school.service';
 @Injectable()
 export class ClassesService {
   private readonly logger = new Logger('ClassesService');
@@ -23,12 +31,26 @@ export class ClassesService {
     private readonly usersService: UsersService,
     @InjectModel(Teacher.name)
     private readonly teacherModel: Model<TeacherDocument>,
+
+    private readonly schoolService: SchoolService,
+
+    @InjectModel(Marks.name)
+    private readonly marksModel: Model<MarksDocument>,
+
+    @InjectModel(Assessment.name)
+    private readonly assessmentModel: Model<AssessmentDocument>,
+
+    @InjectModel(Student.name)
+    private readonly studentModel: Model<StudentDocument>,
   ) {}
 
   async create(createClassDto: CreateClassDto): Promise<Class> {
     const { classTeacher, ...classData } = createClassDto;
 
     let teacherId: Types.ObjectId | undefined;
+
+    let schoolId = new Types.ObjectId(createClassDto.school);
+
     if (classTeacher) {
       teacherId = new Types.ObjectId(classTeacher);
       let teacher = await this.teacherModel.findById(teacherId);
@@ -37,9 +59,17 @@ export class ClassesService {
       }
     }
 
+    // validate school
+    let school_: any | null = null;
+    if (createClassDto.school) {
+      school_ = await this.schoolService.findOne(createClassDto.school);
+      if (!school_) {
+        throw new NotFoundException('School not found');
+      }
+    }
     const createdClass = new this.classModel({
       ...classData,
-      school: new Types.ObjectId(createClassDto.school),
+      school: school_._id,
       status: classData.status ?? ClassStatus.ACTIVE,
       studentCount: 0,
       isTrashed: false,
@@ -97,7 +127,7 @@ export class ClassesService {
       ];
     }
 
-    if(school){
+    if (school) {
       filter.school = new Types.ObjectId(school);
     }
     const [items, total] = await Promise.all([
@@ -779,5 +809,360 @@ export class ClassesService {
       .exec();
   }
 
+  /**
+   * Return detailed, filterable and scalable class performance ready for charts.
+   * Behavior:
+   * - If no `academicYear` provided => return performance grouped by `academicYear` (overall years)
+   * - If `academicYear` provided but no `term` => return performance grouped by `term` within that year
+   * - If `term` provided => return performance broken down by `assessmentType` and detailed assessments
+   * Filters supported: `assessmentType`, `assessmentTypes`, `periodStart`, `periodEnd`, `weeks`
+   */
+  async getClassPerformance(classId: string, query: any) {
+    const classDoc = await this.classModel.findById(classId).lean();
+    if (!classDoc)
+      throw new NotFoundException(`Class with id ${classId} not found`);
 
+    const {
+      academicYear,
+      term,
+      assessmentType,
+      assessmentTypes,
+      periodStart,
+      periodEnd,
+      weeks,
+      groupBy,
+    } = query || {};
+
+    const match: any = { class: new Types.ObjectId(classId) };
+    if (academicYear) match.academicYear = academicYear;
+    if (term) match.term = term;
+    if (assessmentType) match.assessmentType = assessmentType;
+    if (
+      assessmentTypes &&
+      Array.isArray(assessmentTypes) &&
+      assessmentTypes.length
+    ) {
+      match.assessmentType = { $in: assessmentTypes };
+    }
+    if (periodStart || periodEnd) {
+      match.createdAt = {};
+      if (periodStart) match.createdAt.$gte = new Date(periodStart);
+      if (periodEnd) match.createdAt.$lte = new Date(periodEnd);
+    }
+
+    // Helper to compute average percentage safely
+    const buildAvgProjection = (
+      totalScoreField = '$totalScore',
+      totalPossibleField = '$totalPossible',
+    ) => ({
+      average: {
+        $cond: [
+          { $eq: [totalPossibleField, 0] },
+          0,
+          {
+            $round: [
+              {
+                $multiply: [
+                  { $divide: [totalScoreField, totalPossibleField] },
+                  100,
+                ],
+              },
+              1,
+            ],
+          },
+        ],
+      },
+    });
+
+    // Case A: No academicYear provided => group by academicYear
+    if (!academicYear) {
+      const pipeline: any[] = [
+        { $match: match },
+        {
+          $group: {
+            _id: '$academicYear',
+            totalScore: { $sum: '$score' },
+            totalPossible: { $sum: { $ifNull: ['$maxScore', 0] } },
+            marksCount: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            academicYear: '$_id',
+            totalScore: 1,
+            totalPossible: 1,
+            marksCount: 1,
+            average: {
+              $cond: [
+                { $eq: ['$totalPossible', 0] },
+                0,
+                {
+                  $round: [
+                    {
+                      $multiply: [
+                        { $divide: ['$totalScore', '$totalPossible'] },
+                        100,
+                      ],
+                    },
+                    1,
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        { $sort: { academicYear: 1 } },
+      ];
+
+      const rows = await this.marksModel.aggregate(pipeline).exec();
+      return {
+        classId,
+        className: classDoc.name,
+        groupBy: 'academicYear',
+        results: rows.map((r) => ({
+          academicYear: r.academicYear,
+          average: r.average,
+          marksCount: r.marksCount,
+          totalScore: r.totalScore,
+          totalPossible: r.totalPossible,
+        })),
+      };
+    }
+
+    // Case B: academicYear provided but no term => group by term
+    if (academicYear && !term) {
+      const pipeline: any[] = [
+        { $match: match },
+        {
+          $group: {
+            _id: '$term',
+            totalScore: { $sum: '$score' },
+            totalPossible: { $sum: { $ifNull: ['$maxScore', 0] } },
+            marksCount: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            term: '$_id',
+            totalScore: 1,
+            totalPossible: 1,
+            marksCount: 1,
+            average: {
+              $cond: [
+                { $eq: ['$totalPossible', 0] },
+                0,
+                {
+                  $round: [
+                    {
+                      $multiply: [
+                        { $divide: ['$totalScore', '$totalPossible'] },
+                        100,
+                      ],
+                    },
+                    1,
+                  ],
+                },
+              ],
+            },
+          },
+        },
+        { $sort: { term: 1 } },
+      ];
+
+      const rows = await this.marksModel.aggregate(pipeline).exec();
+      return {
+        classId,
+        className: classDoc.name,
+        academicYear,
+        groupBy: 'term',
+        results: rows.map((r) => ({
+          term: r.term,
+          average: r.average,
+          marksCount: r.marksCount,
+          totalScore: r.totalScore,
+          totalPossible: r.totalPossible,
+        })),
+      };
+    }
+
+    // Case C: term provided => group by assessment type and include per-assessment details and optional weekly series
+    // We'll lookup the assessments to get titles and types
+    const pipeline: any[] = [
+      { $match: match },
+      {
+        $lookup: {
+          from: 'assessments',
+          localField: 'assessment',
+          foreignField: '_id',
+          as: 'assessmentData',
+        },
+      },
+      {
+        $unwind: { path: '$assessmentData', preserveNullAndEmptyArrays: true },
+      },
+    ];
+
+    // If assessmentType filter was provided but marks don't have it, also allow filtering by assessmentData.AssessmentType
+    if (assessmentType && !match.assessmentType) {
+      pipeline.push({
+        $match: { 'assessmentData.AssessmentType': assessmentType },
+      });
+    }
+    if (
+      assessmentTypes &&
+      Array.isArray(assessmentTypes) &&
+      assessmentTypes.length
+    ) {
+      pipeline.push({
+        $match: { 'assessmentData.AssessmentType': { $in: assessmentTypes } },
+      });
+    }
+
+    // Group by assessment type and collect assessments
+    pipeline.push({
+      $group: {
+        _id: '$assessmentData.AssessmentType',
+        totalScore: { $sum: '$score' },
+        totalPossible: { $sum: { $ifNull: ['$maxScore', 0] } },
+        marksCount: { $sum: 1 },
+        assessments: {
+          $addToSet: {
+            assessmentId: '$assessmentData._id',
+            title: '$assessmentData.title',
+            date: '$assessmentData.createdAt',
+            maxScore: '$assessmentData.maxScore',
+          },
+        },
+      },
+    });
+
+    pipeline.push({
+      $project: {
+        assessmentType: '$_id',
+        totalScore: 1,
+        totalPossible: 1,
+        marksCount: 1,
+        average: {
+          $cond: [
+            { $eq: ['$totalPossible', 0] },
+            0,
+            {
+              $round: [
+                {
+                  $multiply: [
+                    { $divide: ['$totalScore', '$totalPossible'] },
+                    100,
+                  ],
+                },
+                1,
+              ],
+            },
+          ],
+        },
+        assessments: 1,
+      },
+    });
+
+    const grouped = await this.marksModel.aggregate(pipeline).exec();
+
+    // If weeks requested, build weekly timeseries per assessment type
+    const buildWeekly = async (atype: string) => {
+      const wkMatch: any = { class: new Types.ObjectId(classId), term };
+      if (academicYear) wkMatch.academicYear = academicYear;
+      if (atype) wkMatch['assessmentData.AssessmentType'] = atype;
+      if (periodStart || periodEnd) {
+        wkMatch.createdAt = {};
+        if (periodStart) wkMatch.createdAt.$gte = new Date(periodStart);
+        if (periodEnd) wkMatch.createdAt.$lte = new Date(periodEnd);
+      }
+
+      // pipeline to get weekly averages (by ISO week number)
+      const wkPipeline: any[] = [
+        { $match: { class: new Types.ObjectId(classId) } },
+        {
+          $lookup: {
+            from: 'assessments',
+            localField: 'assessment',
+            foreignField: '_id',
+            as: 'assessmentData',
+          },
+        },
+        {
+          $unwind: {
+            path: '$assessmentData',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        { $match: wkMatch },
+        {
+          $addFields: {
+            isoWeek: { $isoWeek: '$createdAt' },
+            year: { $year: '$createdAt' },
+          },
+        },
+        {
+          $group: {
+            _id: { year: '$year', week: '$isoWeek' },
+            totalScore: { $sum: '$score' },
+            totalPossible: { $sum: { $ifNull: ['$maxScore', 0] } },
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            week: '$_id.week',
+            year: '$_id.year',
+            average: {
+              $cond: [
+                { $eq: ['$totalPossible', 0] },
+                0,
+                {
+                  $round: [
+                    {
+                      $multiply: [
+                        { $divide: ['$totalScore', '$totalPossible'] },
+                        100,
+                      ],
+                    },
+                    1,
+                  ],
+                },
+              ],
+            },
+            count: 1,
+          },
+        },
+        { $sort: { year: 1, week: 1 } },
+      ];
+
+      const w = await this.marksModel.aggregate(wkPipeline).exec();
+      return w;
+    };
+
+    // Attach weekly series where requested
+    const results = [] as any[];
+    for (const g of grouped) {
+      const item: any = {
+        assessmentType: g.assessmentType || 'Unknown',
+        average: g.average,
+        marksCount: g.marksCount,
+        totalScore: g.totalScore,
+        totalPossible: g.totalPossible,
+        assessments: g.assessments || [],
+      };
+      if (weeks) {
+        item.weekly = await buildWeekly(g.assessmentType);
+      }
+      results.push(item);
+    }
+
+    return {
+      classId,
+      className: classDoc.name,
+      academicYear,
+      term,
+      groupBy: 'assessmentType',
+      results,
+    };
+  }
 }

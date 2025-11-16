@@ -55,6 +55,7 @@ export class SubjectController {
   @Get()
   async list(@Query() query: QuerySubjectDto) {
     const filter: any = {};
+    console.log("the query is ", query);
     return this.subjectService.findAll(query);
   }
 

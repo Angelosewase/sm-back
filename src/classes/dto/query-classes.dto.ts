@@ -11,9 +11,10 @@ import {
   Min,
 } from 'class-validator';
 
-export const booleanTransformer = ({
+const booleanTransformer = ({
   value,
 }: TransformFnParams): boolean | undefined => {
+
   if (value === undefined || value === null || value === '') {
     return undefined;
   }

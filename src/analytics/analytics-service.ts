@@ -12,6 +12,7 @@ import {
   SchoolPerformanceAnalyticsDto,
   AcademicYearPerformanceDto,
   StudentPerformanceDto,
+  HeadTeacherSubjectStatsDto,
 } from './dto/analytics.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -20,8 +21,13 @@ import { subMonths, startOfMonth, format } from 'date-fns';
 import { Marks, MarksDocument } from 'src/marks/schemas/marks.schema';
 import { PerformanceQueryDto } from './dto/analytics-query.dto';
 import { Class, ClassDocument } from 'src/classes/schemas/class.schema';
-import { AcademicYear, AcademicYearDocument } from 'src/academic-year/schemas/academic-year.schema';
+import {
+  AcademicYear,
+  AcademicYearDocument,
+} from 'src/academic-year/schemas/academic-year.schema';
 import { Term, TermDocument } from 'src/terms/schemas/term.schema';
+import { Subject, SubjectDocument } from 'src/subjects/schemas/subject.schema';
+import { Teacher, TeacherDocument } from 'src/teachers/schemas/teacher.schema';
 
 interface ISeries {
   date: string;
@@ -55,6 +61,12 @@ export class AnalyticsService {
 
     @InjectModel(Term.name)
     private readonly termModel: Model<TermDocument>,
+
+    @InjectModel(Subject.name)
+    private readonly subjectModel: Model<SubjectDocument>,
+
+    @InjectModel(Teacher.name)
+    private readonly teacherModel: Model<TeacherDocument>,
   ) {}
 
   async getAdminStats(schoolId: string): Promise<AdminStatsDto> {
@@ -346,7 +358,6 @@ export class AnalyticsService {
     };
   }
 
-
   async getPerformanceAnalytics(
     query: PerformanceQueryDto,
   ): Promise<SchoolPerformanceAnalyticsDto> {
@@ -409,7 +420,12 @@ export class AnalyticsService {
                 $cond: [
                   { $eq: ['$totalPossible', 0] },
                   0,
-                  { $multiply: [{ $divide: ['$totalScore', '$totalPossible'] }, 100] },
+                  {
+                    $multiply: [
+                      { $divide: ['$totalScore', '$totalPossible'] },
+                      100,
+                    ],
+                  },
                 ],
               },
               totalScore: '$totalScore',
@@ -428,7 +444,17 @@ export class AnalyticsService {
             $cond: [
               { $eq: ['$totalPossible', 0] },
               0,
-              { $round: [{ $multiply: [{ $divide: ['$totalScore', '$totalPossible'] }, 100] }, 1] },
+              {
+                $round: [
+                  {
+                    $multiply: [
+                      { $divide: ['$totalScore', '$totalPossible'] },
+                      100,
+                    ],
+                  },
+                  1,
+                ],
+              },
             ],
           },
         },
@@ -441,9 +467,13 @@ export class AnalyticsService {
     const classes = await this.classModel.find().lean();
     const students = await this.studentModel.find().lean();
 
-    const classMap = Object.fromEntries(classes.map(c => [c._id.toString(), c]));
-    const studentMap = Object.fromEntries(students.map(s => [s._id.toString(), s]));
-    const termMap = Object.fromEntries(terms.map(t => [t._id.toString(), t]));
+    const classMap = Object.fromEntries(
+      classes.map((c) => [c._id.toString(), c]),
+    );
+    const studentMap = Object.fromEntries(
+      students.map((s) => [s._id.toString(), s]),
+    );
+    const termMap = Object.fromEntries(terms.map((t) => [t._id.toString(), t]));
 
     // Build response
     const result: SchoolPerformanceAnalyticsDto = {
@@ -453,7 +483,7 @@ export class AnalyticsService {
 
     const yearMap = new Map<string, AcademicYearPerformanceDto>();
 
-    marks.forEach(m => {
+    marks.forEach((m) => {
       const yearKey = m._id.academicYear;
       const termKey = m._id.term?.toString();
       const classKey = m._id.class?.toString();
@@ -470,7 +500,7 @@ export class AnalyticsService {
       }
 
       const yearData = yearMap.get(yearKey)!;
-      let termData = yearData.terms.find(t => t.termId === termKey);
+      let termData = yearData.terms.find((t) => t.termId === termKey);
       if (!termData && termKey) {
         termData = {
           termId: termKey,
@@ -482,10 +512,10 @@ export class AnalyticsService {
           totalStudents: 0,
           totalAssessments: 0,
         };
-        if(termData) yearData.terms.push(termData);
+        if (termData) yearData.terms.push(termData);
       }
 
-      let classData = termData?.classes.find(c => c.classId === classKey);
+      let classData = termData?.classes.find((c) => c.classId === classKey);
       if (!classData && classKey) {
         classData = {
           classId: classKey,
@@ -508,23 +538,31 @@ export class AnalyticsService {
       };
 
       classData!.totalStudents++;
-      classData!.averageScore = ((classData!.averageScore * (classData!.totalStudents - 1)) + m.average) / classData!.totalStudents;
+      classData!.averageScore =
+        (classData!.averageScore * (classData!.totalStudents - 1) + m.average) /
+        classData!.totalStudents;
       termData!.totalAssessments += m.assessmentCount;
       yearData.totalAssessments += m.assessmentCount;
     });
 
     // Finalize averages and ranks
-    yearMap.forEach(year => {
-      year.terms.forEach(term => {
-        term.classes.forEach(cls => {
+    yearMap.forEach((year) => {
+      year.terms.forEach((term) => {
+        term.classes.forEach((cls) => {
           cls.averageScore = Number(cls.averageScore.toFixed(1));
         });
         term.overallAverage = Number(
-          (term.classes.reduce((s, c) => s + c.averageScore, 0) / term.classes.length || 0).toFixed(1),
+          (
+            term.classes.reduce((s, c) => s + c.averageScore, 0) /
+              term.classes.length || 0
+          ).toFixed(1),
         );
       });
       year.overallAverage = Number(
-        (year.terms.reduce((s, t) => s + t.overallAverage, 0) / year.terms.length || 0).toFixed(1),
+        (
+          year.terms.reduce((s, t) => s + t.overallAverage, 0) /
+            year.terms.length || 0
+        ).toFixed(1),
       );
     });
 
@@ -533,7 +571,11 @@ export class AnalyticsService {
     // Add all-time summary if scope allows
     if (scope === 'all') {
       const allMarks = await this.marksModel.aggregate([
-        { $match: schoolId ? { 'student.school': new Types.ObjectId(schoolId) } : {} },
+        {
+          $match: schoolId
+            ? { 'student.school': new Types.ObjectId(schoolId) }
+            : {},
+        },
         {
           $group: {
             _id: null,
@@ -545,7 +587,9 @@ export class AnalyticsService {
 
       const all = allMarks[0];
       result.allTime = {
-        overallAverage: all ? Number(((all.totalScore / all.totalPossible) * 100).toFixed(1)) : 0,
+        overallAverage: all
+          ? Number(((all.totalScore / all.totalPossible) * 100).toFixed(1))
+          : 0,
         totalStudents: await this.studentModel.countDocuments(
           schoolId ? { school: schoolId } : {},
         ),
@@ -564,5 +608,99 @@ export class AnalyticsService {
     if (percentage >= 70) return 'C';
     if (percentage >= 60) return 'D';
     return 'F';
+  }
+readonly
+  async getHeadTeacherSubjectStats(
+    schoolId: string,
+  ): Promise<HeadTeacherSubjectStatsDto> {
+    const schoolObjectId = new Types.ObjectId(schoolId);
+    // 1. Get total subjects in school (non-trashed)
+    const totalSubjects = await this.subjectModel.countDocuments({
+      school: schoolObjectId,
+      isTrashed: false,
+    });
+
+    // 2. Get total teachers in school (active)
+    const totalTeachers = await this.userModel.countDocuments({
+      school: schoolObjectId,
+      role: Role.TEACHER,
+    });
+
+    // 3. Calculate average class size
+    const classStats = await this.classModel.aggregate([
+      {
+        $match: {
+          school: schoolObjectId,
+          isTrashed: false,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalClasses: { $sum: 1 },
+          totalStudents: { $sum: '$studentCount' },
+        },
+      },
+    ]);
+
+    const averageClassSize =
+      classStats.length > 0 && classStats[0].totalClasses > 0
+        ? Number(
+            (classStats[0].totalStudents / classStats[0].totalClasses).toFixed(
+              2,
+            ),
+          )
+        : 0;
+
+    // 4. Calculate average performance for whole school students
+    const performanceStats = await this.marksModel.aggregate([
+      {
+        $lookup: {
+          from: 'students',
+          localField: 'student',
+          foreignField: '_id',
+          as: 'studentData',
+        },
+      },
+      {
+        $unwind: {
+          path: '$studentData',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $match: {
+          'studentData.school': schoolObjectId,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalScore: { $sum: '$score' },
+          totalPossible: { $sum: '$maxScore' },
+        },
+      },
+    ]);
+
+    let averagePerformance = 0;
+    if (performanceStats.length > 0 && performanceStats[0].totalPossible > 0) {
+      averagePerformance = Number(
+        (
+          (performanceStats[0].totalScore / performanceStats[0].totalPossible) *
+          100
+        ).toFixed(1),
+      );
+    }
+
+    const performanceGrade = this.getGrade(averagePerformance);
+
+    return {
+      totalSubjects,
+      totalTeachers,
+      averageClassSize,
+      averagePerformance,
+      performanceGrade,
+      schoolId,
+    };
   }
 }

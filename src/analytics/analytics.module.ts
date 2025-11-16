@@ -14,6 +14,8 @@ import {
   AcademicYearSchema,
 } from 'src/academic-year/schemas/academic-year.schema';
 import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
+import { Subject, SubjectSchema } from 'src/subjects/schemas/subject.schema';
+import { Teacher, TeacherSchema } from 'src/teachers/schemas/teacher.schema';
 
 @Module({
   imports: [
@@ -41,6 +43,14 @@ import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
       {
         name: Class.name,
         schema: ClassSchema,
+      },
+      {
+        name: Subject.name,
+        schema: SubjectSchema,
+      },
+      {
+        name: Teacher.name,
+        schema: TeacherSchema,
       },
     ]),
     StudentsModule,

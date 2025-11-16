@@ -23,6 +23,7 @@ import {
   AssessmentDocument,
   AssessmentStatus,
 } from 'src/assessments/schemas/assessment-schema';
+import { School } from 'src/school/entities/school.entity';
 
 interface ResultInterface {
   class?: Class | null;
@@ -233,11 +234,11 @@ export class SubjectService {
     }
     if ((dto as any).gradeLevel && !(dto as any).gradeLevels) {
       payload.gradeLevels = [(dto as any).gradeLevel];
-      delete payload.gradeLevel;
     }
 
+    let school_:any | null = null;
     if (payload.school) {
-      const school_ = await this.schoolService.findOne(payload.school);
+      school_ = await this.schoolService.findOne(payload.school);
       if (!school_)
         throw new NotFoundException(
           `School with id "${payload.school}" not found`,
@@ -254,7 +255,10 @@ export class SubjectService {
         );
     }
 
-    const s = new this.subjectModel(payload);
+    const s = new this.subjectModel({
+      ...payload,
+      school: payload.school ? school_._id : null,
+    });
     const saved = await s.save();
     const obj = (saved as any).toObject ? (saved as any).toObject() : saved;
     obj.subjectName = obj.name;
@@ -284,7 +288,7 @@ export class SubjectService {
     if (onlyTrashed) {
       filter.isTrashed = true;
     } else if (!includeTrashed) {
-      // by default exclude trashed
+      console.log("including nto trashed")
       filter.isTrashed = false;
     }
     if (q) {
@@ -334,19 +338,12 @@ export class SubjectService {
         throw new NotFoundException(`Subject with id "${id}" not found`);
 
       const payload: any = { ...dto };
-      if ((dto as any).subjectName) {
-        payload.name = (dto as any).subjectName;
-        delete payload.subjectName;
-      }
-      if ((dto as any).subjectCode) {
-        payload.code = (dto as any).subjectCode;
-        delete payload.subjectCode;
-      }
       if ((dto as any).category) {
         payload.subjectType = (dto as any).category;
         delete payload.category;
       }
       if ((dto as any).gradeLevel && !(dto as any).gradeLevels) {
+
         payload.gradeLevels = [(dto as any).gradeLevel];
         delete payload.gradeLevel;
       }
