@@ -83,7 +83,9 @@ export class SubjectService {
   }
 
   /** List subjects assigned to a class */
-  async listClassSubjects(classId: string) {
+
+
+  async listClassSubjects(classId: string, teacherId?: string) {
     // Step 1: Get the class and its subjects
     const classDoc = await this.classModel
       .findById(classId)
@@ -91,10 +93,28 @@ export class SubjectService {
       .lean();
 
     if (!classDoc) throw new BadRequestException('Class not found');
-    if (!classDoc.assignedSubjects) return [];
-    const assignedSubjectIds = classDoc.assignedSubjects.map(
-      (sub: any) => sub._id,
-    );
+    if(!classDoc.assignedSubjects) return [];
+
+    let filteredAssignedSubjects: any[] = classDoc.assignedSubjects as any[];
+
+    // If teacherId provided and teacher is NOT the class teacher, filter by teacher's subjectsCanTeach
+    if (teacherId) {
+      const teacher = await this.teacherModel.findById(teacherId).lean();
+      if (!teacher) throw new BadRequestException('Teacher not found');
+
+      const isClassTeacher =
+        classDoc.classTeacher &&
+        classDoc.classTeacher.toString() === teacherId.toString();
+
+      if (!isClassTeacher) {
+        const teacherSubjectIds = (teacher.subjectsCanTeach || []).map((id: any) => id.toString());
+        filteredAssignedSubjects = filteredAssignedSubjects.filter((sub: any) =>
+          teacherSubjectIds.includes(sub._id.toString())
+        );
+      }
+    }
+
+    const assignedSubjectIds = filteredAssignedSubjects.map((sub: any) => sub._id);
 
     // Step 2: Get assessments for class and its subjects
     const assessments = await this.assessmentModel
@@ -108,18 +128,12 @@ export class SubjectService {
     // Step 3: Map subjects to stats
     return filteredAssignedSubjects.map((subject: any) => {
       // Assessments for this subject/class
-      const subjectAssessments = assessments.filter(
-        (a) => a.subject.toString() === subject._id.toString(),
-      );
-      const doneAssessments = subjectAssessments.filter(
-        (a) => a.status === AssessmentStatus.COMPLETED,
-      );
+      const subjectAssessments = assessments.filter(a => a.subject.toString() === subject._id.toString());
+      const doneAssessments = subjectAssessments.filter(a => a.status === AssessmentStatus.COMPLETED);
       const totalAssessments = subjectAssessments.length;
 
       // Marks for this subject/class
-      const subjectMarks = marks.filter(
-        (m) => m.subject.toString() === subject._id.toString(),
-      );
+      const subjectMarks = marks.filter(m => m.subject.toString() === subject._id.toString());
 
       let averageMark: number | null = null;
       let latestMarkDate: Date | null = null;
@@ -129,9 +143,7 @@ export class SubjectService {
 
         // Get latest mark date
         latestMarkDate = subjectMarks
-          .map((m) =>
-            (m as any).updatedAt ? (m as any).updatedAt : (m as any).createdAt,
-          )
+          .map((m) => (m as any).updatedAt ? (m as any).updatedAt : (m as any).createdAt)
           .sort()
           .reverse()[0];
       }
@@ -145,8 +157,7 @@ export class SubjectService {
       };
     });
   }
-  /**/
-
+  
   async assignSubjectsToTeacher(teacherId: string, subjectIds: string[]) {
     // Validate teacher exists
     const teacher = await this.teacherModel.findById(teacherId);
