@@ -609,7 +609,6 @@ export class AnalyticsService {
     if (percentage >= 60) return 'D';
     return 'F';
   }
-readonly
   async getHeadTeacherSubjectStats(
     schoolId: string,
   ): Promise<HeadTeacherSubjectStatsDto> {
