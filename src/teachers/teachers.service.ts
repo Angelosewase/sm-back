@@ -28,6 +28,8 @@ import {
   AssessmentDocument,
 } from 'src/assessments/schemas/assessment-schema';
 
+import * as bcrypt from 'bcrypt';
+
 @Injectable()
 export class TeachersService {
   private readonly logger = new Logger(TeachersService.name);
@@ -50,7 +52,7 @@ export class TeachersService {
     // Create user first with role TEACHER
     const userDto = {
       email: createTeacherDto.email,
-      password: createTeacherDto.password,
+      password: temporaryPassword,
       name: createTeacherDto.name,
       phone: createTeacherDto.phone,
       experience: createTeacherDto.experience,
