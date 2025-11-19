@@ -1495,8 +1495,347 @@ export class TeachersService {
     }
   }
 
+  /**
+   * Get teacher statistics by status and trash state with weekly trends
+   * Returns: cards with current values, changes, and weekly trend data
+   * Mirrors StudentService.getStudentStats logic
+   */
+  async getTeacherStats(schoolId?: string) {
+    // flexible filtering
+    const match: any = {};
+    if (schoolId) match.school = new Types.ObjectId(schoolId);
+
+    const now = new Date();
+    const periods = Array.from({ length: 6 }, (_, i) => {
+      const start = new Date(now);
+      start.setDate(now.getDate() - (6 - i - 1) * 7);
+      start.setHours(0, 0, 0, 0);
+      return {
+        start,
+        label: `Week ${i + 1}`,
+      };
+    });
+
+    // Build aggregation for each status & total
+    const pipeline = [
+      { $match: match },
+      {
+        $facet: {
+          // Counts by status
+          total: [{ $count: 'value' }],
+          active: [
+            { $match: { status: 'Active', isTrashed: false } },
+            { $count: 'value' },
+          ],
+          onLeave: [
+            { $match: { status: 'On Leave', isTrashed: false } },
+            { $count: 'value' },
+          ],
+          inactive: [
+            { $match: { status: 'Inactive', isTrashed: false } },
+            { $count: 'value' },
+          ],
+          trashed: [{ $match: { isTrashed: true } }, { $count: 'value' }],
+
+          // Weekly trends by status
+          totalTrend: [
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: periods.map((p) => p.start).concat([now]),
+                default: 'Other',
+                output: { count: { $sum: 1 } },
+              },
+            },
+          ],
+          activeTrend: [
+            { $match: { status: 'Active', isTrashed: false } },
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: periods.map((p) => p.start).concat([now]),
+                default: 'Other',
+                output: { count: { $sum: 1 } },
+              },
+            },
+          ],
+          onLeaveTrend: [
+            { $match: { status: 'On Leave', isTrashed: false } },
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: periods.map((p) => p.start).concat([now]),
+                default: 'Other',
+                output: { count: { $sum: 1 } },
+              },
+            },
+          ],
+          inactiveTrend: [
+            { $match: { status: 'Inactive', isTrashed: false } },
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: periods.map((p) => p.start).concat([now]),
+                default: 'Other',
+                output: { count: { $sum: 1 } },
+              },
+            },
+          ],
+          trashedTrend: [
+            { $match: { isTrashed: true } },
+            {
+              $bucket: {
+                groupBy: '$createdAt',
+                boundaries: periods.map((p) => p.start).concat([now]),
+                default: 'Other',
+                output: { count: { $sum: 1 } },
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    const result = await this.teacherModel.aggregate(pipeline).exec();
+    const stats = result[0] || {};
+
+    // Helper to extract count from [ { value: N } ] facet result
+    const safeCount = (arr: any[]) => (arr && arr.length ? arr[0].value : 0);
+
+    // Format trend data for frontend charts
+    const makeTrend = (bucketArr: any[], key: string) =>
+      periods.map((period, i) => ({
+        date: period.label,
+        [key]: bucketArr && bucketArr[i] ? bucketArr[i].count : 0,
+      }));
+
+    const cards = [
+      {
+        name: 'Total Teachers',
+        value: safeCount(stats.total),
+        change: '—',
+        percentageChange: '—',
+        changeType: 'neutral',
+        dataKey: 'Total',
+        data: makeTrend(stats.totalTrend, 'Total Teachers'),
+      },
+      {
+        name: 'Active Teachers',
+        value: safeCount(stats.active),
+        change: '—',
+        percentageChange: '—',
+        changeType: 'neutral',
+        dataKey: 'Active',
+        data: makeTrend(stats.activeTrend, 'Active Teachers'),
+      },
+      {
+        name: 'On Leave',
+        value: safeCount(stats.onLeave),
+        change: '—',
+        percentageChange: '—',
+        changeType: 'neutral',
+        dataKey: 'OnLeave',
+        data: makeTrend(stats.onLeaveTrend, 'On Leave'),
+      },
+      {
+        name: 'Inactive',
+        value: safeCount(stats.inactive),
+        change: '—',
+        percentageChange: '—',
+        changeType: 'neutral',
+        dataKey: 'Inactive',
+        data: makeTrend(stats.inactiveTrend, 'Inactive'),
+      },
+      {
+        name: 'In Trash',
+        value: safeCount(stats.trashed),
+        change: '—',
+        percentageChange: '—',
+        changeType: safeCount(stats.trashed) > 0 ? 'negative' : 'neutral',
+        dataKey: 'Trashed',
+        data: makeTrend(stats.trashedTrend, 'In Trash'),
+      },
+    ];
+
+    // Compute change metrics for each card comparing last two weeks
+    cards.forEach((card) => {
+      if (card.data && card.data.length >= 2) {
+        const changeParams = this.getTeacherChangeParams(card.data);
+        card.change = changeParams.change;
+        card.percentageChange = changeParams.percentageChange;
+        card.changeType = changeParams.changeType;
+      }
+    });
+
+    return { cards };
+  }
+
+  /**
+   * Helper method to compute change between last two data points
+   */
+  private getTeacherChangeParams(dataArr: any[]) {
+    if (!Array.isArray(dataArr) || dataArr.length < 2) {
+      return { change: '—', percentageChange: '—', changeType: 'neutral' };
+    }
+    // Get last entry (current week) and second-to-last (previous week)
+    const lastKey = Object.keys(dataArr[dataArr.length - 1]).find(
+      (k) => k !== 'date',
+    );
+    const prevKey = Object.keys(dataArr[dataArr.length - 2]).find(
+      (k) => k !== 'date',
+    );
+
+    const current = lastKey ? (dataArr[dataArr.length - 1][lastKey] ?? 0) : 0;
+    const previous = prevKey ? (dataArr[dataArr.length - 2][prevKey] ?? 0) : 0;
+
+    const rawChange = current - previous;
+
+    // Compute percentage change
+    let percent = 0;
+    if (previous === 0) {
+      percent = current === 0 ? 0 : 100;
+    } else {
+      percent = (rawChange / previous) * 100;
+    }
+
+    // Format values
+    const change = (rawChange >= 0 ? '+' : '') + rawChange.toString();
+    const percentageChange =
+      (rawChange >= 0 ? '+' : '') + percent.toFixed(1) + '%';
+
+    let changeType = 'neutral';
+    if (rawChange > 0) changeType = 'positive';
+    else if (rawChange < 0) changeType = 'negative';
+
+    return { change, percentageChange, changeType };
+  }
+
+  async getTeacherPerformanceMetrics(options?: {
+    schoolId?: string;
+    weeks?: number;
+  }) {
+    const weeks = options?.weeks ?? 6;
+    const schoolId = options?.schoolId;
+
+    const filter: any = {};
+    if (schoolId) {
+      if (Types.ObjectId.isValid(schoolId))
+        filter.school = new Types.ObjectId(schoolId);
+      else filter.school = schoolId;
+    }
+
+    // fetch minimal teacher data
+    const teachers = await this.teacherModel
+      .find(filter)
+      .select('status isTrashed trashedAt createdAt')
+      .lean()
+      .exec();
+
+    const now = new Date();
+    const weekPoints: Date[] = [];
+    for (let i = weeks - 1; i >= 0; i--) {
+      const d = new Date(now);
+      d.setHours(23, 59, 59, 999);
+      d.setDate(now.getDate() - i * 7);
+      weekPoints.push(d);
+    }
+
+    const series: any[] = [];
+    for (let i = 0; i < weekPoints.length; i++) {
+      const cutoff = weekPoints[i];
+      const total = teachers.filter((t: any) => {
+        const created = t.createdAt ? new Date(t.createdAt) : null;
+        return !created || created <= cutoff ? true : false;
+      }).length;
+
+      const activeCount = teachers.filter((t: any) => {
+        const created = t.createdAt ? new Date(t.createdAt) : null;
+        return (
+          (!created || created <= cutoff) &&
+          t.status === 'Active' &&
+          !t.isTrashed
+        );
+      }).length;
+
+      const onLeaveCount = teachers.filter((t: any) => {
+        const created = t.createdAt ? new Date(t.createdAt) : null;
+        return (
+          (!created || created <= cutoff) &&
+          t.status === 'On Leave' &&
+          !t.isTrashed
+        );
+      }).length;
+
+      const inTrashCount = teachers.filter((t: any) => {
+        const trashedAt = t.trashedAt ? new Date(t.trashedAt) : null;
+        if (trashedAt) return trashedAt <= cutoff;
+        const created = t.createdAt ? new Date(t.createdAt) : null;
+        return !!t.isTrashed && (!created || created <= cutoff);
+      }).length;
+
+      series.push({
+        date: `Week ${i + 1}`,
+        'Total Teachers': total,
+        'Active Teachers': activeCount,
+        'Teachers on Leave': onLeaveCount,
+        'In Trash Teachers': inTrashCount,
+      });
+    }
+
+    // compute card values comparing last two points
+    const last = series[series.length - 1] || null;
+    const prev = series[series.length - 2] || null;
+
+    function computeChange(curr: number, previous: number | null) {
+      if (previous === null || previous === undefined) {
+        return { change: '0', percentageChange: 'N/A', changeType: 'neutral' };
+      }
+      const diff = curr - previous;
+      const sign = diff > 0 ? '+' : diff < 0 ? '' : '';
+      const change = `${sign}${diff}`;
+      let percentageChange = 'N/A';
+      if (previous === 0) {
+        percentageChange = curr === 0 ? '0%' : 'N/A';
+      } else {
+        percentageChange = `${((diff / previous) * 100).toFixed(1)}%`;
+      }
+      const changeType =
+        diff > 0 ? 'positive' : diff < 0 ? 'negative' : 'neutral';
+      return { change, percentageChange, changeType };
+    }
+
+    const cards: any[] = [];
+    const keys = [
+      { key: 'Total Teachers', name: 'Total Teachers' },
+      { key: 'Active Teachers', name: 'Active Teachers' },
+      { key: 'Teachers on Leave', name: 'Teachers on Leave' },
+      { key: 'In Trash Teachers', name: 'In Trash Teachers' },
+    ];
+
+    for (const k of keys) {
+      const currVal = last ? ((last as any)[k.key] ?? 0) : 0;
+      const prevVal = prev ? ((prev as any)[k.key] ?? 0) : null;
+      const { change, percentageChange, changeType } = computeChange(
+        currVal,
+        prevVal,
+      );
+      cards.push({
+        name: k.name,
+        value: String(currVal),
+        change,
+        percentageChange,
+        changeType,
+        dataKey: k.key,
+      });
+    }
+
+    return { cards, series };
+  }
+
   async getTeacherByUserId(userId: string) {
-    const teacher = await this.teacherModel.findOne({ user: new Types.ObjectId(userId) }).exec();
+    const teacher = await this.teacherModel
+      .findOne({ user: new Types.ObjectId(userId) })
+      .exec();
     if (!teacher) {
       throw new NotFoundException('Teacher not found');
     }

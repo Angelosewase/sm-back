@@ -312,7 +312,33 @@ export class TeachersController {
     });
   }
 
-  //get teacher using user id 
+  // Aggregated stats endpoint (by status, with weekly trends and change metrics)
+  @Get('stats')
+  @ApiOperation({
+    summary: 'Get teacher statistics by status with weekly trends',
+  })
+  @ApiResponse({ status: 200, description: 'Stats retrieved' })
+  async getStats(@Query('schoolId') schoolId?: string) {
+    return this.teachersService.getTeacherStats(schoolId);
+  }
+
+  // Aggregated metrics endpoint
+  @Get('metrics/stats')
+  @ApiOperation({
+    summary: 'Get teacher performance metrics and weekly series',
+  })
+  @ApiResponse({ status: 200, description: 'Metrics retrieved' })
+  async getMetrics(
+    @Query('schoolId') schoolId?: string,
+    @Query('weeks') weeks?: number,
+  ) {
+    return this.teachersService.getTeacherPerformanceMetrics({
+      schoolId,
+      weeks: weeks ? Number(weeks) : undefined,
+    });
+  }
+
+  //get teacher using user id
   @Get('user/:userId')
   @ApiOperation({ summary: 'Get teacher using user ID' })
   @ApiParam({ name: 'userId', description: 'User ID' })
