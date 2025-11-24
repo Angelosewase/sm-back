@@ -8,10 +8,14 @@ import { AuthController } from './auth.controller';
 import { EmailService } from './email.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
+import { RegistrationTokensModule } from '../registration-tokens/registration-tokens.module';
+import { SchoolModule } from '../school/school.module';
 
 @Module({
   imports: [
     UsersModule,
+    RegistrationTokensModule,
+    SchoolModule,
     PassportModule,
     CacheModule.register({
       ttl: 900000, // 15 minutes default

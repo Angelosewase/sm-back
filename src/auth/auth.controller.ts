@@ -28,6 +28,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RegisterWithTokenDto } from '../registration-tokens/dto/register-with-token.dto';
 
 @ApiTags('auth')
 @Controller('api/auth')
@@ -190,5 +191,35 @@ export class AuthController {
   })
   getProfile(@Request() req) {
     return req.user;
+  }
+
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Register a new user with a registration token',
+    description:
+      'Register a new user account using a valid registration token. For School Owners, school information should be provided. For Teachers and Headteachers, the school is determined by the token.',
+  })
+  @ApiBody({ type: RegisterWithTokenDto })
+  @ApiResponse({
+    status: 201,
+    description: 'User registered successfully',
+    schema: {
+      example: {
+        message: 'Registration successful',
+        user: {
+          id: '507f1f77bcf86cd799439011',
+          email: 'user@example.com',
+          name: 'John Doe',
+          role: 'teacher',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid token or validation failed' })
+  @ApiResponse({ status: 409, description: 'Email already exists' })
+  async register(@Body() registerDto: RegisterWithTokenDto, @Request() req?: any) {
+    const ipAddress = req?.ip || req?.connection?.remoteAddress || undefined;
+    return this.authService.registerWithToken(registerDto, ipAddress);
   }
 }

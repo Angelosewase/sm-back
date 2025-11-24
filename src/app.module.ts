@@ -23,6 +23,7 @@ import { PassMarksModule } from './pass-marks/pass-marks.module';
 import { EventsModule } from './events/events.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { SuperAdminModule } from './super-admin/super-admin.module';
+import { RegistrationTokensModule } from './registration-tokens/registration-tokens.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { SuperAdminModule } from './super-admin/super-admin.module';
     PassMarksModule,
     EventsModule,
     SuperAdminModule,
+    RegistrationTokensModule,
   ],
   controllers: [AppController],
   providers: [AppService],
