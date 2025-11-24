@@ -98,6 +98,32 @@ export class SchoolService {
     }
   }
 
+  async activate(id: string): Promise<School> {
+    this.validateObjectId(id);
+    const school = await this.schoolModel
+      .findByIdAndUpdate(id, { isActive: true }, { new: true })
+      .exec();
+
+    if (!school) {
+      throw new NotFoundException(`School with id "${id}" not found`);
+    }
+
+    return school;
+  }
+
+  async deactivate(id: string): Promise<School> {
+    this.validateObjectId(id);
+    const school = await this.schoolModel
+      .findByIdAndUpdate(id, { isActive: false }, { new: true })
+      .exec();
+
+    if (!school) {
+      throw new NotFoundException(`School with id "${id}" not found`);
+    }
+
+    return school;
+  }
+
   private validateObjectId(id: string): void {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException(`Invalid school id "${id}"`);

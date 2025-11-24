@@ -22,6 +22,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { PassMarksModule } from './pass-marks/pass-marks.module';
 import { EventsModule } from './events/events.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { SuperAdminModule } from './super-admin/super-admin.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     AssessmentModule,
     PassMarksModule,
     EventsModule,
+    SuperAdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],
