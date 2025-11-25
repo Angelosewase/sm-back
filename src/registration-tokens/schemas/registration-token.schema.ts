@@ -23,6 +23,7 @@ export class RegistrationToken extends Document {
 
   @ApiProperty({ enum: [Role.SCHOOL_OWNER, Role.TEACHER, Role.HEADTeacher] })
   @Prop({ 
+    type: String,
     required: true,
     enum: [Role.SCHOOL_OWNER, Role.TEACHER, Role.HEADTeacher],
     index: true,
@@ -46,6 +47,7 @@ export class RegistrationToken extends Document {
 
   @ApiProperty({ enum: TokenStatus, default: TokenStatus.PENDING })
   @Prop({ 
+    type: String,
     enum: TokenStatus, 
     default: TokenStatus.PENDING,
     index: true,
@@ -61,8 +63,14 @@ export class RegistrationToken extends Document {
   usedBy?: Types.ObjectId | null;
 
   @ApiProperty({ required: false, description: 'IP address from which token was used' })
-  @Prop({ trim: true, default: null })
+  @Prop({ type: String, trim: true, default: null })
   usedFromIp?: string | null;
+
+  @ApiProperty({ description: 'Timestamp when the token was created' })
+  createdAt?: Date;
+
+  @ApiProperty({ description: 'Timestamp when the token was last updated' })
+  updatedAt?: Date;
 }
 
 export const RegistrationTokenSchema = SchemaFactory.createForClass(RegistrationToken);
