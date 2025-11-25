@@ -8,11 +8,6 @@ on:
       - develop
     tags:
       - 'v*'
-  pull_request:
-    branches:
-      - main
-      - master
-      - develop
   workflow_dispatch:
 
 env:
