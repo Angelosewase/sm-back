@@ -6,6 +6,7 @@ import {
   Query,
   UseGuards,
   Body,
+  Request,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -16,6 +17,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { SuperAdminService } from './super-admin.service';
+import { RegistrationRequestsService } from '../registration-tokens/registration-requests.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -23,7 +25,17 @@ import { Role } from '../users/schemas/user.schema';
 import { QuerySchoolsDto } from './dto/query-schools.dto';
 import { QueryUserDto } from '../users/dto/query-user.dto';
 import { ActivateSchoolDto } from './dto/activate-school.dto';
+import { QueryRegistrationRequestsDto } from '../registration-tokens/dto/query-registration-requests.dto';
+import { UpdateRegistrationRequestDto } from '../registration-tokens/dto/update-registration-request.dto';
 import { School } from '../school/entities/school.entity';
+
+interface AuthenticatedRequest extends Request {
+  user: {
+    userId: string;
+    email: string;
+    role: Role;
+  };
+}
 
 @ApiTags('Super Admin')
 @Controller('api/super-admin')
@@ -31,7 +43,10 @@ import { School } from '../school/entities/school.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.SUPER_ADMIN)
 export class SuperAdminController {
-  constructor(private readonly superAdminService: SuperAdminService) {}
+  constructor(
+    private readonly superAdminService: SuperAdminService,
+    private readonly registrationRequestsService: RegistrationRequestsService,
+  ) {}
 
   // ==================== School Management ====================
 
@@ -123,6 +138,67 @@ export class SuperAdminController {
   })
   async getAllUsers(@Query() query: QueryUserDto) {
     return this.superAdminService.getAllUsers(query);
+  }
+
+  // ==================== Registration Requests Management ====================
+
+  @Get('registration-requests')
+  @ApiOperation({
+    summary: 'View all registration requests',
+    description:
+      'Get a paginated list of all registration requests with optional status filtering',
+  })
+  @ApiOkResponse({
+    description: 'List of registration requests retrieved successfully',
+  })
+  async getAllRegistrationRequests(@Query() query: QueryRegistrationRequestsDto) {
+    return this.registrationRequestsService.findAll(query);
+  }
+
+  @Get('registration-requests/stats')
+  @ApiOperation({
+    summary: 'Get registration request statistics',
+    description: 'Get statistics about registration requests (total, pending, approved, rejected)',
+  })
+  @ApiOkResponse({
+    description: 'Statistics retrieved successfully',
+  })
+  async getRegistrationRequestStats() {
+    return this.registrationRequestsService.getStats();
+  }
+
+  @Get('registration-requests/:id')
+  @ApiOperation({
+    summary: 'View a specific registration request',
+    description: 'Get detailed information about a specific registration request',
+  })
+  @ApiParam({ name: 'id', description: 'Registration request identifier' })
+  @ApiOkResponse({
+    description: 'Registration request retrieved successfully',
+  })
+  async getRegistrationRequest(@Param('id') id: string) {
+    return this.registrationRequestsService.findOne(id);
+  }
+
+  @Patch('registration-requests/:id/status')
+  @ApiOperation({
+    summary: 'Approve or reject a registration request',
+    description: 'Update the status of a registration request (approve or reject)',
+  })
+  @ApiParam({ name: 'id', description: 'Registration request identifier' })
+  @ApiOkResponse({
+    description: 'Registration request status updated successfully',
+  })
+  async updateRegistrationRequestStatus(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateRegistrationRequestDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.registrationRequestsService.updateStatus(
+      id,
+      updateDto,
+      req.user.userId,
+    );
   }
 }
 

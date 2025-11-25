@@ -17,8 +17,10 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { RegistrationTokensService } from './registration-tokens.service';
+import { RegistrationRequestsService } from './registration-requests.service';
 import { GenerateTokenDto } from './dto/generate-token.dto';
 import { ValidateTokenDto } from './dto/validate-token.dto';
+import { CreateRegistrationRequestDto } from './dto/create-registration-request.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -37,6 +39,7 @@ interface AuthenticatedRequest extends Request {
 export class RegistrationTokensController {
   constructor(
     private readonly registrationTokensService: RegistrationTokensService,
+    private readonly registrationRequestsService: RegistrationRequestsService,
   ) {}
 
   @Post('generate')
@@ -157,6 +160,37 @@ export class RegistrationTokensController {
   })
   async getTokenStats(@Request() req: AuthenticatedRequest) {
     return this.registrationTokensService.getTokenStats(req.user.userId);
+  }
+
+  // ==================== Registration Requests ====================
+
+  @Post('requests')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Create a registration request',
+    description:
+      'Submit a registration request. Users can request to register by providing their full name, email, and optional additional notes.',
+  })
+  @ApiBody({ type: CreateRegistrationRequestDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Registration request created successfully',
+    schema: {
+      example: {
+        _id: '507f1f77bcf86cd799439011',
+        fullName: 'John Doe',
+        email: 'user@example.com',
+        additionalNotes: 'I would like to register as a school owner',
+        status: 'pending',
+        createdAt: '2024-01-01T00:00:00Z',
+      },
+    },
+  })
+  @ApiResponse({ status: 409, description: 'A request with this email already exists' })
+  async createRegistrationRequest(
+    @Body() createDto: CreateRegistrationRequestDto,
+  ) {
+    return this.registrationRequestsService.create(createDto);
   }
 }
 
