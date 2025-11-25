@@ -244,7 +244,7 @@ export class AuthService {
 
     // Mark token as used
     await this.registrationTokensService.markTokenAsUsed(
-      token._id.toString(),
+      (token as any)._id.toString(),
       userId,
       ipAddress,
     );
