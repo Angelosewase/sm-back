@@ -21,7 +21,8 @@ async function bootstrap() {
 
   // Enable CORS with credentials for cookie-based auth
   app.enableCors({
-    origin: ['http://138.197.93.9:8500'],
+   
+    origin: ['http://138.197.93.9:8500', 'http://localhost:3000'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
