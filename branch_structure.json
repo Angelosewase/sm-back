@@ -1,0 +1,45 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "Angelosewase-patch-1",
+    "feat-docker-compoe",
+    "ft-admin",
+    "ft-admin-integration",
+    "ft-auth",
+    "ft-bug-fixes",
+    "ft-fixes-initial-testing",
+    "ft-teacher-integration",
+    "main",
+    "marks-subject-management",
+    "origin",
+    "usermanage"
+  ],
+  "parent": {
+    "Angelosewase-patch-1": "main",
+    "feat-docker-compoe": "main",
+    "ft-admin": "main",
+    "ft-admin-integration": "ft-admin",
+    "ft-auth": "main",
+    "ft-bug-fixes": "main",
+    "ft-fixes-initial-testing": "main",
+    "ft-teacher-integration": "main",
+    "main": null,
+    "marks-subject-management": "main",
+    "origin": "main",
+    "usermanage": "main"
+  },
+  "order": [
+    "main",
+    "Angelosewase-patch-1",
+    "feat-docker-compoe",
+    "ft-admin",
+    "ft-auth",
+    "ft-bug-fixes",
+    "ft-fixes-initial-testing",
+    "ft-teacher-integration",
+    "marks-subject-management",
+    "origin",
+    "usermanage",
+    "ft-admin-integration"
+  ]
+}
