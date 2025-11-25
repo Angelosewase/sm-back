@@ -46,7 +46,7 @@ RUN chown -R nestjs:nodejs /app
 USER nestjs
 
 # Expose the port
-EXPOSE 3030
+EXPOSE 5060
 
 # Start the application
 CMD ["node", "dist/main"]
