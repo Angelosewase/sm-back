@@ -67,8 +67,8 @@ type PopulatedMark = {
   assessment?: any;
   assessmentType?: string | null;
   maxScore?: number | null;
-  academicYear?: string | null;
-  term?: string | null;
+  academicYear?: Types.ObjectId | null;
+  term?: Types.ObjectId | null;
   score?: number | null;
   [key: string]: any;
 };
@@ -143,7 +143,7 @@ export class StudentPerformanceService {
       subjectAcc.totalWeight += weight;
 
       const termAcc =
-        subjectAcc.terms.get(termKey) ?? {
+        subjectAcc.terms.get(termKey.toString()) ?? {
           weightedSum: 0,
           totalWeight: 0,
           subjectScaleMax,
@@ -151,7 +151,7 @@ export class StudentPerformanceService {
 
       termAcc.weightedSum += normalized * weight;
       termAcc.totalWeight += weight;
-      subjectAcc.terms.set(termKey, termAcc);
+      subjectAcc.terms.set(termKey.toString(), termAcc);
     }
 
     let overallScore = 0;
