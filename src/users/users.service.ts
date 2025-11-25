@@ -360,16 +360,6 @@ export class UsersService {
       }
 
       await session.commitTransaction();
-
-      // Emit event
-      this.eventEmitter.emit(
-        EventType.CREATE,
-        'User created via registration token',
-        createdUser._id,
-        'User',
-        createdUser._id,
-      );
-
       // Return user without password
       return this.userModel
         .findById(createdUser._id)

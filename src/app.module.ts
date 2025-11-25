@@ -52,6 +52,7 @@ import { RegistrationTokensModule } from './registration-tokens/registration-tok
     EventsModule,
     SuperAdminModule,
     RegistrationTokensModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
