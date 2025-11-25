@@ -3,7 +3,9 @@ import { Document, Types } from 'mongoose';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum Role {
+  SUPER_ADMIN = 'super admin',
   ADMIN = 'admin',
+  SCHOOL_OWNER = 'school owner',
   TEACHER = 'teacher',
   STUDENT = 'student',
   HEADTeacher = 'head teacher',

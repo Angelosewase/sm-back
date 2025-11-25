@@ -47,6 +47,9 @@ export class School extends Document {
 
   @Prop({ type: [Types.ObjectId], ref: 'User', default: [] })
   users?: Types.ObjectId[];
+
+  @Prop({ type: Boolean, default: true, index: true })
+  isActive?: boolean;
 }
 
 export const SchoolSchema = SchemaFactory.createForClass(School);

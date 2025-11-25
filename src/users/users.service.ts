@@ -295,4 +295,96 @@ export class UsersService {
     throw error;
   }
 }
+
+  /**
+   * Create a user with token-based registration
+   * This method is used when registering with a registration token
+   * School is optional for SCHOOL_OWNER role (will be set later)
+   * School is required from token for TEACHER and HEADTEACHER roles
+   */
+  async createUserWithToken(
+    createUserDto: RegisterDto,
+    tokenRole: Role,
+    schoolId?: string | null,
+  ): Promise<User> {
+    const session = await this.userModel.db.startSession();
+    session.startTransaction();
+
+    try {
+      // Check if user already exists
+      const existingUser = await this.findByEmail(createUserDto.email);
+      if (existingUser) {
+        throw new ConflictException('User with that email already exists');
+      }
+
+      // Validate school for TEACHER and HEADTEACHER
+      let school: School | null = null;
+      if (tokenRole === Role.TEACHER || tokenRole === Role.HEADTeacher) {
+        if (!schoolId) {
+          throw new BadRequestException('School ID is required for this role');
+        }
+        school = await this.schoolModel.findById(schoolId).session(session).exec();
+        if (!school) {
+          throw new BadRequestException(
+            'School with that id "' + schoolId + '" not found',
+          );
+        }
+      }
+      // For SCHOOL_OWNER, schoolId should be null initially (will be set when school is created)
+
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+
+      // Create user with role from token
+      const user = await this.userModel.create(
+        [
+          {
+            ...createUserDto,
+            password: hashedPassword,
+            role: tokenRole, // Use role from token, not from DTO
+            school: school ? school._id : null,
+          },
+        ],
+        { session },
+      );
+
+      const createdUser = user[0];
+
+      // Add user to school's users array if school exists
+      if (school) {
+        await this.schoolModel.findByIdAndUpdate(
+          school._id,
+          { $addToSet: { users: createdUser._id } },
+          { session },
+        );
+      }
+
+      await session.commitTransaction();
+
+      // Emit event
+      this.eventEmitter.emit(
+        EventType.CREATE,
+        'User created via registration token',
+        createdUser._id,
+        'User',
+        createdUser._id,
+      );
+
+      // Return user without password
+      return this.userModel
+        .findById(createdUser._id)
+        .select('-password -__v')
+        .exec() as any;
+    } catch (error) {
+      await session.abortTransaction();
+      if (error instanceof BadRequestException) {
+        throw new BadRequestException(error.message);
+      } else if (error instanceof ConflictException) {
+        throw new ConflictException(error.message);
+      }
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
 }

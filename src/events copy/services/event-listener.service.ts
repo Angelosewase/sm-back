@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { SystemEventService } from './system-event.service';
-import { EventPayload } from '../interfaces/event-payload.interface';
+import type { EventPayload } from '../interfaces/event-payload.interface';
 
 @Injectable()
 export class EventListenerService {
