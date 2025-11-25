@@ -14,13 +14,18 @@ export class Marks {
   @Prop({ type: Types.ObjectId, ref: 'Class', index: true })
   class?: Types.ObjectId;
 
-  @Prop({ required: true, trim: true, index: true })
-  academicYear: string; // e.g. "2023/2024"
+  @Prop({ type: Types.ObjectId, ref: 'AcademicYear', required: true })
+  academicYear: Types.ObjectId;
 
-  @Prop({ required: true, trim: true, index: true })
-  term: string; // e.g. "Term 1"
+  @Prop({ type: Types.ObjectId, ref: 'Term', required: true })
+  term: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Assessment', required: true, index: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Assessment',
+    required: true,
+    index: true,
+  })
   assessment: Types.ObjectId;
 
   @Prop({ type: Number, required: true })
@@ -59,4 +64,3 @@ MarksSchema.index({ academicYear: 1, term: 1, subject: 1 });
 // 📊 Performance analytics helper indexes
 MarksSchema.index({ student: 1, academicYear: 1, term: 1 });
 MarksSchema.index({ class: 1, academicYear: 1, term: 1 });
-

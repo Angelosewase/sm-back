@@ -1,6 +1,6 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { EventsService } from './events.service';
-import { EventType } from './schemas/event.schema';
+import { EventTypeI as EventType } from './schemas/event.schema';
 import { EventEmitter2 } from 'eventemitter2';
 
 @Injectable()

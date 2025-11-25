@@ -29,6 +29,8 @@ import {
 } from 'src/assessments/schemas/assessment-schema';
 
 import * as bcrypt from 'bcrypt';
+import { EventsService } from 'src/events/events.service';
+import { EventTypeI } from 'src/events/schemas/event.schema';
 
 @Injectable()
 export class TeachersService {
@@ -44,6 +46,8 @@ export class TeachersService {
     private subjectModel: Model<SubjectDocument>,
     @InjectModel(SubjectAssignment.name)
     private readonly subjectAssignmentModel: Model<SubjectAssignmentDocument>,
+
+    private readonly eventsService: EventsService,
   ) {}
   async create(createTeacherDto: CreateTeacherDto): Promise<Teacher> {
     console.log('the create teacher dto is 1: ', createTeacherDto);
@@ -86,6 +90,20 @@ export class TeachersService {
     });
 
     this.sendWelcomeEmailSafely(user, temporaryPassword);
+
+    const event = 'Teacher Created';
+
+    const details = `${event} ${user.name}`;
+    const resourceType = 'Teacher';
+    const resourceId = (user as any)._id.toString();
+
+    await this.eventsService.logEvent(
+      EventTypeI.CREATE,
+      details,
+      undefined,
+      resourceType,
+      resourceId,
+    );
 
     return teacher.save();
   }

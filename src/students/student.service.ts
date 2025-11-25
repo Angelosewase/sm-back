@@ -21,6 +21,8 @@ import { Class, ClassDocument } from '../classes/schemas/class.schema';
 
 import moment from 'moment';
 import { Teacher, TeacherDocument } from 'src/teachers/schemas/teacher.schema';
+import { EventsService } from 'src/events/events.service';
+import { EventTypeI } from 'src/events/schemas/event.schema';
 
 type PaginatedStudents = {
   data: Student[];
@@ -49,6 +51,8 @@ export class StudentService {
     @InjectModel(Class.name) private readonly classModel: Model<ClassDocument>,
     @InjectModel(Teacher.name)
     private readonly teacherModel: Model<TeacherDocument>,
+
+    private readonly eventsService: EventsService,
   ) {}
 
   private readonly logger = new Logger('StudentService');
@@ -81,6 +85,22 @@ export class StudentService {
       const student_ = (await this.getStudentById(
         (student as any)._id.toString(),
       )) as Student;
+
+      const event = dto.isTrashed ? 'STUDENT Trashed' : 'STUDENT Created';
+
+      const details = `${event} ${student_.name}`;
+      const user = (student_ as any).createdBy;
+      const resourceType = 'student';
+      const resourceId = (student_ as any)._id.toString();
+
+      await this.eventsService.logEvent(
+        dto.isTrashed ? EventTypeI.TRASH : EventTypeI.CREATE,
+        details,
+        user,
+        resourceType,
+        resourceId,
+      );
+
       return student_;
     } catch (error: any) {
       await session.abortTransaction();
@@ -264,8 +284,6 @@ export class StudentService {
     const sortDirection = sortOrder === 'asc' ? 1 : -1;
 
     const skip = (page - 1) * limit;
-
-    
 
     const [data, total] = await Promise.all([
       this.studentModel
@@ -813,7 +831,6 @@ export class StudentService {
       session.endSession();
     }
   }
-
 
   async getStudentStats(schoolId?: string) {
     // flexible filtering

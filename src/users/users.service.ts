@@ -4,22 +4,18 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
-  Inject,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, FilterQuery, Types, ClientSession } from 'mongoose';
+import { Model, FilterQuery, Types } from 'mongoose';
 import { Role, User } from './schemas/user.schema';
 import { promises as fsPromises, existsSync } from 'fs';
 import { join } from 'path';
 import * as bcrypt from 'bcrypt';
 import { QueryUserDto } from './dto/query-user.dto';
 import { RegisterDto } from './dto/register-user.dto';
-import { isInstance } from 'class-validator';
 import { School } from '../school/entities/school.entity';
-import { hash } from 'crypto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import EventEmitter2 from 'eventemitter2';
-import { EventType } from 'src/events/schemas/event.schema';
+;
 
 @Injectable()
 export class UsersService {
@@ -27,7 +23,7 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(School.name) private schoolModel: Model<School>,
 
-    private readonly eventEmitter: EventEmitter2,
+
   ) {}
 
   async createUser(createUserDto: RegisterDto): Promise<User> {
@@ -50,7 +46,6 @@ export class UsersService {
         school,
       });
 
-      this.eventEmitter.emit(EventType.CREATE, 'User created', user._id, 'User', user._id);
       return this.userModel
         .findById(user._id)
         .select('-password -__v')

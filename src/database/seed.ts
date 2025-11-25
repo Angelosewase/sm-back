@@ -12,9 +12,6 @@ async function bootstrap() {
   const ayService = app.get(AcademicYearService);
   const termService = app.get(TermService);
 
-  await ayService.seed();
-  
-  await termService.seed();
 
   console.log('🌱 Starting database seeding...');
   await userSeeder.seedAllUsers();

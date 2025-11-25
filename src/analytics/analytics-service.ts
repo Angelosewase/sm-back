@@ -367,7 +367,7 @@ export class AnalyticsService {
     const match: any = {};
     if (schoolId) match['student.school'] = new Types.ObjectId(schoolId);
     if (classId) match['class'] = new Types.ObjectId(classId);
-    if (academicYear) match.academicYear = academicYear;
+    if (academicYear) match.academicYear = new Types.ObjectId(academicYear);
     if (termId) match.term = new Types.ObjectId(termId);
 
     // Get all relevant marks

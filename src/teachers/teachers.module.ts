@@ -16,6 +16,7 @@ import {
 } from 'src/subjects/schemas/subject-assignment.schema';
 import { User, UserSchema } from 'src/users/schemas/user.schema';
 import { Assessment, AssessmentSchema } from 'src/assessments/schemas/assessment-schema';
+import { EventsModule } from 'src/events/events.module';
 
 @Module({
   imports: [UsersModule, AuthModule,
@@ -26,8 +27,10 @@ import { Assessment, AssessmentSchema } from 'src/assessments/schemas/assessment
       {name: Subject.name, schema: SubjectSchema},
       {name: SubjectAssignment.name, schema: SubjectAssignmentSchema},
       {name: Assessment.name, schema: AssessmentSchema},
-    ])
+    ]),
+      EventsModule,
   ],
+
   controllers: [TeachersController],
   providers: [TeachersService],
   exports: [TeachersService],

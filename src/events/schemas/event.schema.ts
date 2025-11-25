@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-export enum EventType {
+export enum EventTypeI {
   CREATE = 'create',
   UPDATE = 'update',
   DELETE = 'delete',
@@ -18,8 +18,8 @@ export type EventDocument = Event & Document;
 
 @Schema({ timestamps: true })
 export class Event {
-  @Prop({ type: String, enum: EventType, required: true })
-  eventType: EventType;
+  @Prop({ type: String, enum: EventTypeI, required: true })
+  eventType: EventTypeI;
 
   @Prop({ trim: true, required: true })
   details: string;

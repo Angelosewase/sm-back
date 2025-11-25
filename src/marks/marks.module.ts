@@ -7,6 +7,8 @@ import { Subject, SubjectSchema } from 'src/subjects/schemas/subject.schema';
 import { Assessment, AssessmentSchema } from 'src/assessments/schemas/assessment-schema';
 import { ClassesModule } from 'src/classes/classes.module';
 import { StudentsModule } from 'src/students/students.module';
+import { Student, StudentSchema } from 'src/students/schemas/student.schema';
+import { EventsModule } from 'src/events/events.module';
 
 @Module({
   imports: [
@@ -14,9 +16,11 @@ import { StudentsModule } from 'src/students/students.module';
       { name: Marks.name, schema: MarksSchema },
       { name: Subject.name, schema: SubjectSchema },
       { name: Assessment.name, schema: AssessmentSchema },
+      { name: Student.name, schema: StudentSchema },
     ]),
     forwardRef(() => ClassesModule),
     StudentsModule,
+    EventsModule
   ],
   controllers: [MarksController],
   providers: [MarksService],

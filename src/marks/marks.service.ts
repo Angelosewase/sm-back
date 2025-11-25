@@ -13,6 +13,9 @@ import {
   Assessment,
   AssessmentDocument,
 } from 'src/assessments/schemas/assessment-schema';
+import { EventsService } from 'src/events/events.service';
+import { EventTypeI } from 'src/events/schemas/event.schema';
+import { Student, StudentDocument } from 'src/students/schemas/student.schema';
 
 function round(n: number) {
   return Math.round((n || 0) * 100) / 100;
@@ -25,7 +28,9 @@ export class MarksService {
     @InjectModel(Subject.name) private subjectModel: Model<Subject>,
     @InjectModel(Assessment.name)
     private assessmentModel: Model<AssessmentDocument>,
+    @InjectModel(Student.name) private studentModel: Model<StudentDocument>,
     private readonly classService: ClassesService,
+    private readonly eventsService: EventsService,
   ) {}
 
   async enterMark(actorUser: any, dto: EnterMarkDto) {
@@ -40,6 +45,8 @@ export class MarksService {
         'Provided class id "' + dto.classId + '" not found',
       );
 
+    const student_ = await this.studentModel.findById(dto.studentId).exec();
+    if (!student_) throw new BadRequestException('student not found');
     // Prefer assessment-specific maxScore over subject.maxScore
     const assessment = dto.assessmentId
       ? await this.assessmentModel.findById(dto.assessmentId).exec()
@@ -53,12 +60,12 @@ export class MarksService {
     // ensure student is enrolled in the class for academicYear
 
     const mark = new this.marksModel({
-      student: dto.studentId,
-      subject: dto.subjectId,
-      class: dto.classId,
-      academicYear: dto.academicYear,
-      term: dto.term,
-      assessment: dto.assessmentId,
+      student: new Types.ObjectId(dto.studentId),
+      subject: new Types.ObjectId(dto.subjectId),
+      class: new Types.ObjectId(dto.classId),
+      academicYear: new Types.ObjectId(dto.academicYear),
+      term: new Types.ObjectId(dto.term),
+      assessment: new Types.ObjectId(dto.assessmentId),
       assessmentType: dto.assessmentType,
       score: dto.score,
       maxScore: max,
@@ -66,6 +73,18 @@ export class MarksService {
       createdBy: actorUser?.id,
       updatedBy: actorUser?.id,
     });
+
+    const details = `Marks recorded ${student_.name}`;
+    // const user = (student_ as any).createdBy;
+    const resourceType = 'Marks';
+    const resourceId = (student_ as any)._id;
+
+    await this.eventsService.logEvent(
+      EventTypeI.CREATE,
+      details,
+      resourceType,
+      resourceId,
+    );
     return mark.save();
   }
 
@@ -144,8 +163,11 @@ export class MarksService {
     topN = 10,
   ) {
     // For each subject in class compute averages and pass rates
-    const match: any = { class: classId, academicYear };
-    if (term) match.term = term;
+    const match: any = {
+      class: new Types.ObjectId(classId),
+      academicYear: new Types.ObjectId(academicYear),
+    };
+    if (term) match.term = new Types.ObjectId(term);
 
     const subjectStats = await this.marksModel
       .aggregate([
@@ -205,7 +227,10 @@ export class MarksService {
    */
   async getClassSubjectQuarterAverages(classId: string, academicYear: string) {
     // group by subject and term, then pivot
-    const match: any = { class: classId, academicYear };
+    const match: any = {
+      class: new Types.ObjectId(classId),
+      academicYear: new Types.ObjectId(academicYear),
+    };
 
     const pipeline = [
       { $match: match },
@@ -301,8 +326,11 @@ export class MarksService {
     academicYear: string,
     classId?: string,
   ) {
-    const match: any = { student: studentId, academicYear };
-    if (classId) match.class = classId;
+    const match: any = {
+      student: new Types.ObjectId(studentId),
+      academicYear: new Types.ObjectId(academicYear),
+    };
+    if (classId) match.class = new Types.ObjectId(classId);
 
     const pipeline = [
       { $match: match },

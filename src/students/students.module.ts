@@ -15,6 +15,7 @@ import { StudentPerformanceController } from './student-performance.controller';
 import { StudentPerformanceService } from './student-performance.service';
 import { AcademicYear, AcademicYearSchema } from 'src/academic-year/schemas/academic-year.schema';
 import { Term, TermSchema } from 'src/terms/schemas/term.schema';
+import { EventsModule } from 'src/events/events.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { Term, TermSchema } from 'src/terms/schemas/term.schema';
       { name: AcademicYear.name, schema: AcademicYearSchema },
       { name: Term.name, schema: TermSchema },
     ]),
+    EventsModule,
   ],
   controllers: [StudentController, StudentPerformanceController],
   providers: [StudentService, StudentPerformanceService],

@@ -12,6 +12,7 @@ import { Class, ClassSchema } from 'src/classes/schemas/class.schema';
 import { SchoolModule } from 'src/school/school.module';
 import { Marks, MarksSchema } from 'src/marks/schemas/marks.schema';
 import { Assessment, AssessmentSchema } from 'src/assessments/schemas/assessment-schema';
+import { EventsModule } from 'src/events/events.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { Assessment, AssessmentSchema } from 'src/assessments/schemas/assessment
       { name:Assessment.name, schema:AssessmentSchema },
     ]),
     UsersModule,
+    EventsModule,
     forwardRef(() => SchoolModule),
     forwardRef(() => ClassesModule),
   ],

@@ -24,6 +24,8 @@ import {
   AssessmentStatus,
 } from 'src/assessments/schemas/assessment-schema';
 import { School } from 'src/school/entities/school.entity';
+import { EventsService } from 'src/events/events.service';
+import { EventTypeI } from 'src/events/schemas/event.schema';
 
 interface ResultInterface {
   class?: Class | null;
@@ -45,6 +47,7 @@ export class SubjectService {
     private readonly usersService: UsersService,
     private readonly schoolService: SchoolService,
     private readonly classService: ClassesService,
+    private readonly eventsService: EventsService
   ) {}
 
   async assignSubjectsToClass(classId: string, subjectIds: string[]) {
@@ -65,9 +68,21 @@ export class SubjectService {
       { _id: classId },
       { $addToSet: { assignedSubjects: { $each: subjectIds } } },
     );
-    this.logger.log(
-      `Assigned subjects ${subjectIds.join(', ')} to class ${classId}`,
-    );
+    
+          const event = 'Subjects Assigned';
+    
+          const details = `Subjects assigned to class ${classDoc.name}`;
+          // const user = (student_ as any).createdBy;
+          const resourceType = 'Subject';
+          const resourceId = classId;
+         
+          await this.eventsService.logEvent(
+            EventTypeI.ASSIGN,
+            details,
+            resourceType,
+            resourceId,
+          );
+    
     return await this.classModel.findById(classId).populate('assignedSubjects');
   }
 
@@ -78,7 +93,21 @@ export class SubjectService {
       { _id: classId },
       { $pull: { assignedSubjects: subjectId } },
     );
-    this.logger.log(`Removed subject ${subjectId} from class ${classId}`);
+
+        const event = 'Subjects Assigned';
+    
+          const details = `Subjects Removed From class ${classDoc.name}`;
+          // const user = (student_ as any).createdBy;
+          const resourceType = 'Subject';
+          const resourceId = classId;
+         
+          await this.eventsService.logEvent(
+            EventTypeI.UNASSIGN,
+            details,
+            resourceType,
+            resourceId,
+          );
+   
     return await this.classModel.findById(classId).populate('assignedSubjects');
   }
 
@@ -274,6 +303,19 @@ export class SubjectService {
     const obj = (saved as any).toObject ? (saved as any).toObject() : saved;
     obj.subjectName = obj.name;
     obj.subjectCode = obj.code;
+
+
+          const details = `Subjects Created ${obj.name}`;
+          // const user = (student_ as any).createdBy;
+          const resourceType = 'Subject';
+          const resourceId = obj._id;
+         
+          await this.eventsService.logEvent(
+            EventTypeI.CREATE,
+            details,
+            resourceType,
+            resourceId,
+          );
     return obj;
   }
 
