@@ -8,7 +8,10 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
@@ -16,6 +19,7 @@ import {
   ApiOperation,
   ApiParam,
   ApiTags,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { SchoolService } from './school.service';
 import { CreateSchoolDto } from './dto/create-school.dto';
@@ -26,6 +30,10 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../users/schemas/user.schema';
 import { Request } from 'express';
+import {
+  schoolLogoStorage,
+  logoFileFilter,
+} from '../common/interceptors/file-storage.interceptor';
 
 interface AuthenticatedRequest extends Request {
   user: {
@@ -48,12 +56,20 @@ export class SchoolController {
     description: 'School created successfully',
     type: SchoolEntity,
   })
+  @ApiConsumes('multipart/form-data')
   @Post()
+  @UseInterceptors(
+    FileInterceptor('logo', {
+      storage: schoolLogoStorage,
+      fileFilter: logoFileFilter,
+    }),
+  )
   create(
     @Req() req: AuthenticatedRequest,
     @Body() createSchoolDto: CreateSchoolDto,
+    @UploadedFile() file?: Express.Multer.File,
   ): Promise<SchoolEntity> {
-    return this.schoolService.create(createSchoolDto, req.user.userId);
+    return this.schoolService.create(createSchoolDto, req.user.userId, file);
   }
 
   @ApiOperation({ summary: 'Retrieve all schools' })
@@ -83,12 +99,20 @@ export class SchoolController {
     description: 'School updated successfully',
     type: SchoolEntity,
   })
+  @ApiConsumes('multipart/form-data')
   @Patch(':id')
+  @UseInterceptors(
+    FileInterceptor('logo', {
+      storage: schoolLogoStorage,
+      fileFilter: logoFileFilter,
+    }),
+  )
   update(
     @Param('id') id: string,
     @Body() updateSchoolDto: UpdateSchoolDto,
+    @UploadedFile() file?: Express.Multer.File,
   ): Promise<SchoolEntity> {
-    return this.schoolService.update(id, updateSchoolDto);
+    return this.schoolService.update(id, updateSchoolDto, file);
   }
 
   @ApiOperation({ summary: 'Remove a school' })

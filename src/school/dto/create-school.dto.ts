@@ -106,4 +106,12 @@ export class CreateSchoolDto {
   @IsUrl()
   @IsNotEmpty()
   website: string;
+
+  @ApiPropertyOptional({
+    description: 'Logo of the school',
+    example: 'https://example.com/logo.png',
+  })
+  @IsOptional()
+  @IsString()
+  logo?: any;
 }

@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -31,6 +33,11 @@ import { RegistrationTokensModule } from './registration-tokens/registration-tok
       isGlobal: true,
     }),
     EventEmitterModule.forRoot(),
+    // Serve uploaded files statically at /uploads
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads',
+    }),
     MongooseModule.forRoot(process.env.MONGODB_URI as string),
     AuthModule,
     UsersModule,

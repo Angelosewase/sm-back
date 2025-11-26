@@ -48,6 +48,9 @@ export class School extends Document {
   @Prop({ type: [Types.ObjectId], ref: 'User', default: [] })
   users?: Types.ObjectId[];
 
+  @Prop({ trim: true, default: null })
+  logo?: string;
+
   @Prop({ type: Boolean, default: true, index: true })
   isActive?: boolean;
 }
@@ -56,4 +59,7 @@ export const SchoolSchema = SchemaFactory.createForClass(School);
 SchoolSchema.set('toJSON', { versionKey: false });
 SchoolSchema.set('toObject', { versionKey: false });
 SchoolSchema.index({ email: 1 }, { unique: true, sparse: true });
-SchoolSchema.index({ name: 1, city: 1, district: 1 }, { unique: true, sparse: true });
+SchoolSchema.index(
+  { name: 1, city: 1, district: 1 },
+  { unique: true, sparse: true },
+);
