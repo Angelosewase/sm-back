@@ -94,12 +94,10 @@ export class SchoolService {
     if (!school) {
       throw new NotFoundException(`School with id "${id}" not found`);
     }
-
     const base = process.env.API_BASE_URL
       ? process.env.API_BASE_URL.replace(/\/$/, '')
       : '';
     const obj: any = school.toObject ? school.toObject() : school;
-    console.log("the object is: ", `${base}/uploads/schools-logos/${obj.logo}`);
     obj.logoUrl = obj.logo ? `${base}/uploads/schools-logos/${obj.logo}` : null;
 
     return obj;
