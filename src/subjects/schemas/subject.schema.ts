@@ -29,7 +29,7 @@ export enum SubjectStatus {
 
 @Schema({ timestamps: true })
 export class Subject {
-  @Prop({ trim: true, unique: true })
+  @Prop({ trim: true })
   code?: string;
 
   @Prop({ required: true, trim: true, index: true, unique: true })
@@ -92,4 +92,6 @@ export class Subject {
 }
 
 export const SubjectSchema = SchemaFactory.createForClass(Subject);
-SubjectSchema.index({ school: 1, code: 1 }, { unique: false });
+SubjectSchema.index({ school: 1, name: 1}, { unique: true });
+
+SubjectSchema.index({ code: 1 }, { unique: false, sparse: true });

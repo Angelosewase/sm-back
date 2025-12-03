@@ -25,6 +25,16 @@ export class UpdateSubjectDto {
   @IsNumber()
   maxScore?: number;
 
+  @ApiProperty({
+    required: false,
+    example: 'Core',
+    description:
+      'Category of the subject as used on the frontend (Core/Elective/Optional).',
+  })
+  @IsOptional()
+  @IsString()
+  category?: string;
+
   @ApiProperty({ required: false, example: 50 })
   @IsOptional()
   @IsNumber()

@@ -567,13 +567,35 @@ export class ClassesService {
   }
 
   private async ensureTeacherExists(teacherId: Types.ObjectId): Promise<void> {
-    const teacher = await this.usersService.findById(teacherId.toString());
+    const teacher = await this.teacherModel
+      .findById(teacherId)
+      .populate('user')
+      .exec();
 
     if (!teacher) {
       throw new BadRequestException('Class teacher does not exist');
     }
 
-    if (teacher.role !== Role.TEACHER) {
+    const user = teacher.user as any;
+    const userId =
+      user instanceof Types.ObjectId
+        ? user.toString()
+        : user?._id?.toString() || user?.toString();
+
+    if (!userId) {
+      throw new BadRequestException('Teacher user reference is invalid');
+    }
+
+    const userDoc =
+      user instanceof Types.ObjectId
+        ? await this.usersService.findById(userId)
+        : user;
+
+    if (!userDoc) {
+      throw new BadRequestException('Teacher user does not exist');
+    }
+
+    if (userDoc.role !== Role.TEACHER) {
       throw new BadRequestException(
         'Assigned class teacher must have teacher role',
       );

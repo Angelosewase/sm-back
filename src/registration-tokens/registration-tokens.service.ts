@@ -39,18 +39,16 @@ export class RegistrationTokensService {
       throw new NotFoundException('User not found');
     }
 
-    // Super Admin can only create SCHOOL_OWNER tokens
     if (creator.role === Role.SUPER_ADMIN && createDto.role !== Role.SCHOOL_OWNER) {
       throw new ForbiddenException('Super Admin can only generate tokens for School Owners');
     }
-
-    // School Admin (ADMIN/SCHOOL_OWNER) can only create TEACHER and HEADTEACHER tokens
     if ((creator.role === Role.ADMIN || creator.role === Role.SCHOOL_OWNER) && 
         createDto.role === Role.SCHOOL_OWNER) {
       throw new ForbiddenException('School Admins cannot generate tokens for School Owners');
     }
-
-    // For TEACHER and HEADTEACHER tokens, use creator's school if schoolId not provided
+    if (creator.role === Role.HEADTeacher && createDto.role !== Role.TEACHER) {
+      throw new ForbiddenException('Headteachers can only generate tokens for Teachers');
+    }
     let finalSchoolId = schoolId;
     if (createDto.role === Role.TEACHER || createDto.role === Role.HEADTeacher) {
       if (!finalSchoolId && creator.school) {
@@ -59,13 +57,11 @@ export class RegistrationTokensService {
       if (!finalSchoolId) {
         throw new BadRequestException('School ID is required for Teacher and Headteacher tokens');
       }
-      // Validate that the creator's school matches the schoolId
       if (creator.school && creator.school.toString() !== finalSchoolId) {
         throw new ForbiddenException('You can only generate tokens for your own school');
       }
     }
 
-    // SCHOOL_OWNER tokens should not have a schoolId
     if (createDto.role === Role.SCHOOL_OWNER && finalSchoolId) {
       throw new BadRequestException('School ID should not be provided for School Owner tokens');
     }
@@ -101,14 +97,11 @@ export class RegistrationTokensService {
       throw new NotFoundException('Invalid registration token');
     }
 
-    // Check if token is already used
     if (tokenDoc.status === TokenStatus.USED) {
       throw new BadRequestException('This registration token has already been used');
     }
 
-    // Check if token is expired
     if (new Date() > tokenDoc.expiresAt) {
-      // Mark as expired
       await this.tokenModel.findByIdAndUpdate(tokenDoc._id, {
         status: TokenStatus.EXPIRED,
       }).exec();
@@ -139,9 +132,7 @@ export class RegistrationTokensService {
     }).exec();
   }
 
-  /**
-   * Get token by token string
-   */
+
   async getTokenByTokenString(token: string): Promise<RegistrationToken | null> {
     return this.tokenModel.findOne({ token }).exec();
   }
@@ -164,9 +155,7 @@ export class RegistrationTokensService {
       .exec();
   }
 
-  /**
-   * Get token statistics for a creator
-   */
+ 
   async getTokenStats(createdBy: string) {
     const creatorId = new Types.ObjectId(createdBy);
     

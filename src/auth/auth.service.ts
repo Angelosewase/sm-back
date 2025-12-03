@@ -6,6 +6,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
 import { UsersService } from '../users/users.service';
 import { EmailService } from './email.service';
 import * as bcrypt from 'bcrypt';
@@ -18,6 +20,8 @@ import { RegistrationTokensService } from '../registration-tokens/registration-t
 import { SchoolService } from '../school/school.service';
 import { RegisterWithTokenDto } from '../registration-tokens/dto/register-with-token.dto';
 import { CreateSchoolDto } from '../school/dto/create-school.dto';
+import { Teacher, TeacherDocument } from '../teachers/schemas/teacher.schema';
+import { HeadTeacher, HeadTeacherDocument } from '../head-teacher/schemas/head-teacher-schema';
 
 @Injectable()
 export class AuthService {
@@ -28,6 +32,8 @@ export class AuthService {
     private registrationTokensService: RegistrationTokensService,
     private schoolService: SchoolService,
     @Inject(CACHE_MANAGER) private cacheManager: cacheManager.Cache,
+    @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
+    @InjectModel(HeadTeacher.name) private headTeacherModel: Model<HeadTeacherDocument>,
   ) {}
 
   // Login Flow
@@ -234,12 +240,55 @@ export class AuthService {
         throw new BadRequestException('School ID is missing from token');
       }
 
+      // For HEADTEACHER, check if school already has a head teacher before creating user
+      if (token.role === Role.HEADTeacher) {
+        const existingHeadTeacher = await this.headTeacherModel.findOne({
+          school: new Types.ObjectId(token.schoolId.toString()),
+        });
+        if (existingHeadTeacher) {
+          throw new BadRequestException('This school already has a head teacher.');
+        }
+      }
+
       const user = await this.usersService.createUserWithToken(
         userData as any,
         token.role,
         token.schoolId.toString(),
       );
       userId = (user as any)._id.toString();
+
+      // Create Teacher or HeadTeacher entity based on role
+      if (token.role === Role.TEACHER) {
+        const teacher = new this.teacherModel({
+          user: new Types.ObjectId(userId),
+          school: new Types.ObjectId(token.schoolId.toString()),
+          phone: registerDto.phone,
+          qualification: registerDto.qualifications?.join(', ') || undefined,
+          address: registerDto.address,
+          city: registerDto.city,
+          state: registerDto.state,
+          zip: registerDto.zipCode,
+          emergencyContact: registerDto.emergencyContact,
+          notes: registerDto.additionalNotes,
+          status: 'Active',
+        });
+        await teacher.save();
+      } else if (token.role === Role.HEADTeacher) {
+        const headTeacher = new this.headTeacherModel({
+          user: new Types.ObjectId(userId),
+          school: new Types.ObjectId(token.schoolId.toString()),
+          phone: registerDto.phone,
+          qualification: registerDto.qualifications?.join(', ') || undefined,
+          address: registerDto.address,
+          city: registerDto.city,
+          state: registerDto.state,
+          zip: registerDto.zipCode,
+          emergencyContact: registerDto.emergencyContact,
+          notes: registerDto.additionalNotes,
+          status: 'Active',
+        });
+        await headTeacher.save();
+      }
     }
 
     // Mark token as used
