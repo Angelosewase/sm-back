@@ -47,7 +47,7 @@ interface AuthenticatedRequest extends Request {
 @Controller('school')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.SCHOOL_OWNER)
 export class SchoolController {
   constructor(private readonly schoolService: SchoolService) {}
 

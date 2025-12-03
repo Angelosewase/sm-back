@@ -507,7 +507,7 @@ export class MarksService {
 
   async getAssessmentMarks(assessmentId: string) {
     return this.marksModel
-      .find({ assessment: assessmentId })
+      .find({ assessment: new Types.ObjectId(assessmentId) })
       .populate('student', '_id')
       .populate('subject', '_id')
       .populate('assessment', '_id')
