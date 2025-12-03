@@ -22,10 +22,10 @@ async function bootstrap() {
   // Enable CORS with credentials for cookie-based auth
   app.enableCors({
    
-    origin: ['http://138.197.93.9:8500', 'http://localhost:3000'],
+    origin: process.env.FRONTEND_URL,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-info'],
   });
 
   // Swagger API Documentation

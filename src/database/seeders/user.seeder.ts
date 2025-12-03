@@ -2,10 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcrypt';
-import { Role, User, UserDocument } from 'src/users/schemas/user.schema';
-import { School } from 'src/school/entities/school.entity';
-import { Teacher, TeacherDocument } from 'src/teachers/schemas/teacher.schema';
-import { UsersService } from 'src/users/users.service';
+import { Role, User } from 'src/users/schemas/user.schema';
 
 interface SeedUser {
   email: string;
@@ -16,22 +13,12 @@ interface SeedUser {
 
 @Injectable()
 export class SeederService {
-  constructor(
-    @InjectModel(School.name) private schoolModel: Model<School>,
-    @InjectModel(User.name) private userModel: Model<User>,
-    @InjectModel(Teacher.name) private teacherModel: Model<TeacherDocument>,
-    private userService: UsersService,
-  ) {}
-
-  /** --------------------------------------------------------------
-   *  1. Seed a school + its admin (called once at startup)
-   *  -------------------------------------------------------------- */
-  async seedSchoolAndAdmin(): Promise<void> {
-    // ---- 2. Ensure the admin user exists -------------------------------
+  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  async seedSuperAdmin(): Promise<void> {
     const adminData: SeedUser = {
-      email: 'theodufi.rw@gmail.com',
+      email: 'sewasejo8@gmail.com',
       name: 'Super Admin',
-      role: Role.ADMIN,
+      role: Role.SUPER_ADMIN,
       passwordRaw: 'Secret@123',
     };
 
@@ -48,11 +35,9 @@ export class SeederService {
       await admin.save();
       console.log('Admin user created:', admin.email);
     }
-
   }
 
   async seedAllUsers(): Promise<void> {
-    // First make sure the school exists (so other users can reference it)
-    await this.seedSchoolAndAdmin();
+    await this.seedSuperAdmin();
   }
 }
