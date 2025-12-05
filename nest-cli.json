@@ -6,8 +6,7 @@
     "deleteOutDir": true,
     "assets": [
       {
-        "include": "reports/templates/**/*",
-        "outDir": "dist"
+        "include": "reports/templates/**/*"
       }
     ]
   }
