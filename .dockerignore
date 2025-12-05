@@ -24,6 +24,5 @@ test
 .eslintrc*
 .prettierrc*
 jest.config.*
-nest-cli.json
 .github
 
