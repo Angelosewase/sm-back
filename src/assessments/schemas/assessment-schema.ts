@@ -12,11 +12,11 @@ export enum AssessmentStatus {
 }
 
 export enum AssessmentType {
-    QUIZ = 'Quiz',
-    EXAM = 'Exam',
-    TEST = 'Test',
-    HOMEWORK = 'Homework',
-    CLASSWORK = 'Classwork',
+  QUIZ = 'Quiz',
+  EXAM = 'Exam',
+  TEST = 'Test',
+  HOMEWORK = 'Homework',
+  CLASSWORK = 'Classwork',
 }
 
 export type AssessmentDocument = Assessment & Document;
@@ -37,14 +37,14 @@ export class Assessment extends Document {
   @Prop({ required: true, trim: true, index: true })
   title: string;
 
-  @Prop({required: false })
+  @Prop({ required: false })
   weight?: number;
 
   @Prop({ trim: true })
   description?: string;
 
   @Prop({ required: true, trim: true })
-  AssessmentType: AssessmentType; 
+  AssessmentType: AssessmentType;
 
   @Prop({ required: true })
   deadline: Date;
@@ -73,7 +73,7 @@ export class Assessment extends Document {
   averageScore?: number; // For analytics
 
   @Prop({ type: [Types.ObjectId], ref: 'Marks', default: [] })
-  marks?: Types.ObjectId[]; 
+  marks?: Types.ObjectId[];
 }
 
 export const AssessmentSchema = SchemaFactory.createForClass(Assessment);
