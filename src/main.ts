@@ -21,7 +21,6 @@ async function bootstrap() {
 
   // Enable CORS with credentials for cookie-based auth
   app.enableCors({
-   
     origin: process.env.FRONTEND_URL,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -29,7 +28,6 @@ async function bootstrap() {
   });
 
   // Swagger API Documentation
-  const config = new DocumentBuilder().build();
 
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
