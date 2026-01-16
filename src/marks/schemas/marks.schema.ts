@@ -43,6 +43,14 @@ export class Marks {
   @Prop({ trim: true })
   comment?: string;
 
+  @Prop({
+    type: String,
+    enum: ['active', 'trashed', 'deleted'],
+    default: 'active',
+    index: true,
+  })
+  status?: string;
+
   @Prop({ type: Types.ObjectId, ref: 'Teacher' })
   createdBy?: Types.ObjectId;
 
