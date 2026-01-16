@@ -6,6 +6,7 @@ import {
   Req,
   Param,
   Get,
+  Delete,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Roles } from 'src/auth/decorators/roles.decorator';
@@ -77,5 +78,14 @@ export class MarksController {
   @Get('assessments/:assessmentId')
   async getAssessmentMarks(@Param('assessmentId') assessmentId: string) {
     return this.marksService.getAssessmentMarks(assessmentId);
+  }
+
+  @ApiOperation({ summary: 'Delete a mark (teacher/admin)' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.TEACHER, Role.ADMIN)
+  @Delete(':id')
+  async deleteMark(@Req() req: any, @Param('id') id: string) {
+    return this.marksService.deleteMark(req.user, id);
   }
 }
