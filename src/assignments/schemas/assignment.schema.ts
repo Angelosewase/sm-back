@@ -36,9 +36,9 @@ export const SubjectAssignmentSchema =
 // Compound unique index - prevents duplicate assignments
 SubjectAssignmentSchema.index(
   { class: 1, subject: 1, academicYear: 1, term: 1 },
-  { 
+  {
     unique: true,
-    partialFilterExpression: { class: { $exists: true } }
+    partialFilterExpression: { class: { $exists: true } },
   },
 );
 

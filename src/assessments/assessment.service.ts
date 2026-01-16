@@ -77,7 +77,7 @@ export class AssessmentService {
       );
       return created;
     } catch (error) {
-      this.logger.error('Failed to create assessment', error as any);
+      this.logger.error('Failed to create assessment', error);
       throw new InternalServerErrorException('Failed to create assessment');
     }
   }
@@ -87,13 +87,46 @@ export class AssessmentService {
     dto: UpdateAssessmentDto,
   ): Promise<Assessment | null> {
     try {
+      const existingAssessment = await this.assessmentModel.findById(id).exec();
+      if (!existingAssessment)
+        throw new NotFoundException('Assessment not found');
+
+      if (existingAssessment.status === AssessmentStatus.LOCKED) {
+        throw new BadRequestException('Cannot edit a locked assessment');
+      }
+
+      if (
+        dto.maxScore !== undefined &&
+        dto.maxScore !== existingAssessment.maxScore
+      ) {
+        const exceedingMarks = await this.marksModel
+          .find({
+            assessment: new Types.ObjectId(id),
+            score: { $gt: dto.maxScore },
+          })
+          .exec();
+
+        if (exceedingMarks.length > 0) {
+          throw new BadRequestException(
+            `Cannot reduce maxScore to ${dto.maxScore}. ${exceedingMarks.length} mark(s) exceed this value. Please adjust marks first.`,
+          );
+        } else {
+          await this.marksModel
+            .updateMany(
+              { assessment: new Types.ObjectId(id) },
+              { $set: { maxScore: dto.maxScore } },
+            )
+            .exec();
+        }
+      }
+
       const updated = await this.assessmentModel
         .findByIdAndUpdate(id, dto, { new: true })
         .exec();
-      if (!updated) throw new NotFoundException('Assessment not found');
+
       return updated;
     } catch (error) {
-      this.logger.error(`Failed to update assessment ${id}`, error as any);
+      this.logger.error(`Failed to update assessment ${id}`, error);
       throw new InternalServerErrorException('Failed to update assessment');
     }
   }
@@ -133,7 +166,7 @@ export class AssessmentService {
         pageSize: filter.pageSize ?? 10,
       };
     } catch (error) {
-      this.logger.error('Failed to fetch assessments', error as any);
+      this.logger.error('Failed to fetch assessments', error);
       throw new InternalServerErrorException('Failed to fetch assessments');
     }
   }
@@ -160,13 +193,22 @@ export class AssessmentService {
       if (!assessment) throw new NotFoundException('Assessment not found');
       return assessment;
     } catch (error) {
-      this.logger.error(`Failed to fetch assessment ${id}`, error as any);
+      this.logger.error(`Failed to fetch assessment ${id}`, error);
       throw new InternalServerErrorException('Failed to fetch assessment');
     }
   }
 
   async softDelete(id: string) {
     try {
+      const assessment = await this.assessmentModel.findById(id).exec();
+      if (!assessment) throw new NotFoundException('Assessment not found');
+
+      // Check if assessment is already locked
+      if (assessment.status === AssessmentStatus.LOCKED) {
+        throw new BadRequestException('Cannot delete a locked assessment');
+      }
+
+      // Update assessment status to trashed
       const updated = await this.assessmentModel
         .findByIdAndUpdate(
           id,
@@ -174,10 +216,18 @@ export class AssessmentService {
           { new: true },
         )
         .exec();
-      if (!updated) throw new NotFoundException('Assessment not found');
+
+      // Cascade soft delete to related marks
+      await this.marksModel
+        .updateMany(
+          { assessment: new Types.ObjectId(id) },
+          { $set: { status: 'trashed' } },
+        )
+        .exec();
+
       return updated;
     } catch (error) {
-      this.logger.error(`Failed to soft-delete assessment ${id}`, error as any);
+      this.logger.error(`Failed to soft-delete assessment ${id}`, error);
       throw new InternalServerErrorException('Failed to delete assessment');
     }
   }
@@ -186,29 +236,22 @@ export class AssessmentService {
     try {
       const deleted = await this.assessmentModel.findByIdAndDelete(id).exec();
       if (!deleted) throw new NotFoundException('Assessment not found');
-      // Optionally remove marks references; here we remove marks that directly reference this assessment if present
-      if (
-        deleted.marks &&
-        Array.isArray(deleted.marks) &&
-        deleted.marks.length
-      ) {
-        await this.marksModel
-          .deleteMany({ _id: { $in: deleted.marks } })
-          .exec();
-      }
+
+      // Delete ALL marks associated with this assessment for complete cleanup
+      // This ensures data integrity even if marks array is out of sync
+      await this.marksModel
+        .deleteMany({ assessment: new Types.ObjectId(id) })
+        .exec();
+
       return deleted;
     } catch (error) {
-      this.logger.error(
-        `Failed to permanently delete assessment ${id}`,
-        error as any,
-      );
+      this.logger.error(`Failed to permanently delete assessment ${id}`, error);
       throw new InternalServerErrorException(
         'Failed to permanently delete assessment',
       );
     }
   }
 
-  // Analytics: Get current submissions & performance for assessment
   async getPerformance(id: string) {
     try {
       const assessment = await this.assessmentModel.findById(id).exec();
@@ -268,7 +311,7 @@ export class AssessmentService {
     } catch (error) {
       this.logger.error(
         `Failed to compute performance for assessment ${id}`,
-        error as any,
+        error,
       );
       throw new InternalServerErrorException(
         'Failed to compute assessment performance',
@@ -334,7 +377,7 @@ export class AssessmentService {
     } catch (error) {
       this.logger.error(
         `Failed to compute subject performance for ${subjectId}`,
-        error as any,
+        error,
       );
       throw new InternalServerErrorException(
         'Failed to compute subject performance',
@@ -395,7 +438,7 @@ export class AssessmentService {
     } catch (error) {
       this.logger.error(
         `Failed to compute class performance for ${classId}`,
-        error as any,
+        error,
       );
       throw new InternalServerErrorException(
         'Failed to compute class performance',
