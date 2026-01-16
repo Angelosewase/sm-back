@@ -12,6 +12,7 @@ import { Subject } from 'src/subjects/schemas/subject.schema';
 import {
   Assessment,
   AssessmentDocument,
+  AssessmentStatus,
 } from 'src/assessments/schemas/assessment-schema';
 import { EventsService } from 'src/events/events.service';
 import { EventTypeI } from 'src/events/schemas/event.schema';
@@ -47,12 +48,10 @@ export class MarksService {
 
     const student_ = await this.studentModel.findById(dto.studentId).exec();
     if (!student_) throw new BadRequestException('student not found');
-    // Prefer assessment-specific maxScore over subject.maxScore
     const assessment = dto.assessmentId
       ? await this.assessmentModel.findById(dto.assessmentId).exec()
       : null;
-    const max =
-      (assessment?.maxScore as number | undefined) ?? subject.maxScore ?? 100;
+    const max = assessment?.maxScore ?? subject.maxScore ?? 100;
     if (dto.score < 0 || dto.score > max) {
       throw new BadRequestException(`score must be between 0 and ${max}`);
     }
@@ -95,6 +94,19 @@ export class MarksService {
   ) {
     const m = await this.marksModel.findById(markId).exec();
     if (!m) throw new NotFoundException('Mark not found');
+
+    // Check if assessment is locked before allowing edit
+    if (m.assessment) {
+      const assessment = await this.assessmentModel
+        .findById(m.assessment)
+        .exec();
+      if (assessment && assessment.status === AssessmentStatus.LOCKED) {
+        throw new BadRequestException(
+          'Cannot edit marks for a locked assessment',
+        );
+      }
+    }
+
     if (patch.score !== undefined) {
       if (patch.score < 0)
         throw new BadRequestException('score must be a positive number');
@@ -102,10 +114,7 @@ export class MarksService {
       const assessment = m.assessment
         ? await this.assessmentModel.findById(m.assessment).exec()
         : null;
-      const max =
-        (assessment?.maxScore as number | undefined) ??
-        subject?.maxScore ??
-        100;
+      const max = assessment?.maxScore ?? subject?.maxScore ?? 100;
       if (patch.score > max) {
         throw new BadRequestException(`score must be between 0 and ${max}`);
       }
@@ -497,7 +506,7 @@ export class MarksService {
   }
 
   async getSubjectName(subjectId: string): Promise<string | undefined> {
-    let subject = await this.subjectModel.findOne({ _id: subjectId }).exec();
+    const subject = await this.subjectModel.findOne({ _id: subjectId }).exec();
     return subject?.name;
   }
 
@@ -512,5 +521,65 @@ export class MarksService {
       .populate('subject', '_id')
       .populate('assessment', '_id')
       .exec();
+  }
+
+  async deleteMark(user: any, markId: string) {
+    const mark = await this.marksModel.findById(markId).exec();
+    if (!mark) throw new NotFoundException('Mark not found');
+
+    // Check if assessment is locked before allowing deletion
+    if (mark.assessment) {
+      const assessment = await this.assessmentModel
+        .findById(mark.assessment)
+        .exec();
+      if (assessment && assessment.status === AssessmentStatus.LOCKED) {
+        throw new BadRequestException(
+          'Cannot delete marks for a locked assessment',
+        );
+      }
+    }
+
+    // Remove mark reference from assessment
+    if (mark.assessment) {
+      await this.assessmentModel
+        .updateOne({ _id: mark.assessment }, { $pull: { marks: mark._id } })
+        .exec();
+    }
+
+    // Log the deletion event
+    const details = `Mark deleted for student ${String(mark.student)}`;
+    const resourceType = 'Marks';
+    const resourceId = String(mark._id);
+
+    await this.eventsService.logEvent(
+      EventTypeI.DELETE,
+      details,
+      resourceType,
+      resourceId,
+    );
+
+    return this.marksModel.findByIdAndDelete(markId).exec();
+  }
+
+  async softDeleteMarksByAssessment(assessmentId: string) {
+    // This method is called when an assessment is soft deleted
+    // We could add a status field to marks schema for soft delete in the future
+    // For now, we'll just log the action
+    const marks = await this.marksModel
+      .find({
+        assessment: new Types.ObjectId(assessmentId),
+      })
+      .exec();
+
+    for (const mark of marks) {
+      await this.eventsService.logEvent(
+        EventTypeI.DELETE,
+        `Mark soft deleted due to assessment deletion: ${String(mark._id)}`,
+        'Marks',
+        String(mark._id),
+      );
+    }
+
+    return { deletedCount: marks.length };
   }
 }
