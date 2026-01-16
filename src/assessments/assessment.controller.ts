@@ -29,7 +29,6 @@ export class AssessmentController {
   @Put(':id')
   @ApiOperation({ summary: 'Update assessment' })
   @ApiResponse({ status: 200, description: 'Assessment updated.' })
-
   async update(@Param('id') id: string, @Body() dto: UpdateAssessmentDto) {
     return this.service.update(id, dto);
   }
